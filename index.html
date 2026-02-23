@@ -27,7 +27,6 @@
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .tool-btn:active { background: #585b70; }
-        .tool-btn.accent { background: #f38ba8; color: #1e1e2e; border-color: #f38ba8; }
         .key-btn {
             padding: 5px 8px; background: #313244; color: #9399b2;
             border: 1px solid #3b3d54; border-radius: 4px;
@@ -67,8 +66,6 @@
         .input-btn.primary:active { background: #74c7ec; }
         .input-btn.uploading { opacity: 0.5; pointer-events: none; }
         #file-input { display: none; }
-        .tool-btn.scroll { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; }
-        .tool-btn.scroll:active { background: #74c7ec; }
         .fab-area {
             position: absolute; z-index: 20;
             display: flex; align-items: center; gap: 6px;
@@ -307,9 +304,7 @@
             'tmux-prev': function() { tmuxCmd('p', 80); },
             'tmux-next': function() { tmuxCmd('n', 78); },
             'tmux-list': function() { tmuxCmd('w', 87); },
-            'tmux-kill': function() { tmuxCmd('&', 55); },
-            'pgup':      function() { sendKey('b', 66, {ctrl: true}); setTimeout(function() { sendKey('PageUp', 33); }, 50); },
-            'pgdn':      function() { sendKey('PageDown', 34); }
+            'tmux-kill': function() { tmuxCmd('&', 55); }
         };
 
         // --- Image upload ---
@@ -324,7 +319,6 @@
             .then(function(data) {
                 var cur = textInput.value;
                 textInput.value = cur ? cur + ' ' + data.path : data.path;
-                textInput.focus();
             })
             .catch(function() {
                 textInput.value += '[upload failed]';
@@ -364,7 +358,6 @@
             textInput.value = '';
             textInput.style.height = '38px';
             sessionStorage.removeItem('terminal-input');
-            textInput.focus();
         }
 
         textInput.addEventListener('keydown', function(e) {
