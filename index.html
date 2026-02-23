@@ -118,6 +118,205 @@
             opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 10;
         }
         #scroll-indicator.visible { opacity: 1; }
+
+        /* --- Settings Bottom Sheet --- */
+        #settings-backdrop {
+            position: fixed; inset: 0; z-index: 100;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #settings-backdrop.open { opacity: 1; pointer-events: auto; }
+
+        #settings-sheet {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 101;
+            max-height: 85dvh; background: #1a1815;
+            border-radius: 16px 16px 0 0;
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            display: flex; flex-direction: column;
+            will-change: transform;
+        }
+        #settings-sheet.open { transform: translateY(0); }
+        #settings-sheet.dragging { transition: none; }
+
+        .sheet-header {
+            display: flex; align-items: center; padding: 12px 16px 8px;
+            flex-shrink: 0; cursor: grab; user-select: none; touch-action: none;
+        }
+        .sheet-handle {
+            width: 36px; height: 5px; background: #3a352b; border-radius: 3px;
+            margin: 0 auto 8px;
+        }
+        .sheet-title {
+            flex: 1; font-size: 17px; font-weight: 600; color: #e8e6e3;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .sheet-close {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #2a251d; border: none; color: #a09888;
+            font-size: 16px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+        }
+        .sheet-close:active { background: #3a352b; }
+
+        .sheet-body {
+            flex: 1; overflow-y: auto; overscroll-behavior: contain;
+            padding: 0 16px 16px; -webkit-overflow-scrolling: touch;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+
+        .settings-section-title {
+            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: #a09888; margin: 20px 0 8px;
+        }
+        .settings-section-title:first-child { margin-top: 8px; }
+
+        .settings-group {
+            background: #201d18; border-radius: 12px;
+            border: 1px solid #2a251d; overflow: hidden;
+        }
+        .settings-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; min-height: 44px;
+        }
+        .settings-divider { height: 1px; background: #2a251d; margin-left: 16px; }
+        .settings-item-label {
+            font-size: 15px; color: #e8e6e3; font-weight: 500;
+        }
+        .settings-item-desc {
+            font-size: 12px; color: #6a6158; margin-top: 2px;
+        }
+
+        /* iOS-style toggle */
+        .ios-toggle {
+            position: relative; width: 51px; height: 31px; flex-shrink: 0;
+        }
+        .ios-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .ios-toggle .tog-track {
+            position: absolute; inset: 0; background: #3a352b;
+            border-radius: 16px; cursor: pointer; transition: background 0.25s;
+        }
+        .ios-toggle .tog-thumb {
+            position: absolute; width: 27px; height: 27px;
+            left: 2px; top: 2px; background: #fff;
+            border-radius: 50%; transition: transform 0.25s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .ios-toggle input:checked ~ .tog-track { background: #C15F3C; }
+        .ios-toggle input:checked ~ .tog-thumb { transform: translateX(20px); }
+
+        /* Font size control */
+        .font-ctrl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .font-ctrl button {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: #2a251d; color: #e8e6e3; border: 1px solid #3a352b;
+            font-size: 18px; cursor: pointer; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            touch-action: manipulation;
+        }
+        .font-ctrl button:active { background: #3a352b; }
+        .font-ctrl .font-val {
+            font-size: 15px; color: #e8e6e3; min-width: 28px; text-align: center;
+        }
+
+        /* Snippet card in sheet */
+        .sn-card {
+            background: #201d18; border-radius: 12px;
+            border: 2px solid #2a251d; padding: 14px 16px;
+            margin-bottom: 8px; transition: border-color 0.15s;
+        }
+        .sn-card.dragging { opacity: 0.4; }
+        .sn-card.drag-over { border-color: #C15F3C; }
+        .sn-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .sn-handle {
+            cursor: grab; color: #6a6158; font-size: 18px; padding: 6px;
+            user-select: none; touch-action: none; min-width: 32px; text-align: center;
+        }
+        .sn-handle:active { cursor: grabbing; color: #C15F3C; }
+        .sn-top input {
+            flex: 1; min-width: 0; padding: 8px 10px; background: #2a251d;
+            color: #e8e6e3; border: 1px solid #3a352b; border-radius: 8px;
+            font-size: 15px; font-weight: 600; outline: none;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .sn-top input:focus { border-color: #C15F3C; }
+        .sn-del {
+            padding: 8px 10px; background: none; border: none;
+            color: #ff6b6b; cursor: pointer; font-size: 18px; border-radius: 6px;
+            min-width: 36px; text-align: center;
+        }
+        .sn-del:active { background: #2a251d; }
+
+        .sn-field { margin-bottom: 10px; }
+        .sn-field:last-child { margin-bottom: 0; }
+        .sn-field-label { font-size: 11px; color: #a09888; margin-bottom: 4px; font-weight: 600; }
+        .sn-field textarea {
+            width: 100%; padding: 8px 10px; background: #2a251d;
+            color: #e8e6e3; border: 1px solid #3a352b; border-radius: 8px;
+            font-size: 13px; font-family: 'SF Mono', 'Cascadia Code', monospace;
+            resize: vertical; min-height: 34px; outline: none; line-height: 1.4;
+        }
+        .sn-field textarea:focus { border-color: #C15F3C; }
+
+        .sn-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+        .sn-color-opt {
+            width: 28px; height: 28px; border-radius: 50%;
+            border: 2px solid transparent; cursor: pointer; transition: 0.15s;
+        }
+        .sn-color-opt:hover { transform: scale(1.1); }
+        .sn-color-opt.selected { border-color: #e8e6e3; box-shadow: 0 0 0 1px #1a1815; }
+
+        .sn-confirm-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 10px; background: #2a251d; border-radius: 8px;
+        }
+        .sn-confirm-row span { font-size: 13px; color: #a09888; }
+        .sn-mini-toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+        .sn-mini-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .sn-mini-toggle .mt-track {
+            position: absolute; inset: 0; background: #3a352b;
+            border-radius: 11px; cursor: pointer; transition: 0.2s;
+        }
+        .sn-mini-toggle .mt-thumb {
+            position: absolute; width: 18px; height: 18px;
+            left: 2px; top: 2px; background: #e8e6e3;
+            border-radius: 50%; transition: 0.2s;
+        }
+        .sn-mini-toggle input:checked ~ .mt-track { background: #ff6b6b; }
+        .sn-mini-toggle input:checked ~ .mt-thumb { transform: translateX(18px); }
+
+        .sn-add-btn {
+            width: 100%; padding: 12px; background: transparent;
+            color: #C15F3C; border: 1px dashed #3a352b; border-radius: 12px;
+            font-size: 15px; cursor: pointer; margin-top: 4px;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .sn-add-btn:active { background: #201d18; }
+
+        /* Logout button */
+        .settings-logout {
+            width: 100%; padding: 14px; margin: 24px 0 8px;
+            background: #201d18; border: 1px solid #2a251d; border-radius: 12px;
+            color: #ff6b6b; font-size: 15px; font-weight: 600; cursor: pointer;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .settings-logout:active { background: #2a251d; }
+
+        /* Save bar */
+        .settings-save-bar {
+            flex-shrink: 0; padding: 12px 16px;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            border-top: 1px solid #2a251d;
+        }
+        .settings-save-btn {
+            width: 100%; padding: 14px; background: #C15F3C; color: #fff;
+            border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+            cursor: pointer; transition: background 0.2s;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .settings-save-btn:active { background: #A14A2F; }
+        .settings-save-btn.saved { background: #4caf50; }
     </style>
 </head>
 <body>
@@ -135,15 +334,13 @@
                     <button class="fab-btn" data-key="tmux-list">List</button>
                     <div class="fab-sep"></div>
                     <button class="fab-btn" onclick="location.reload()">&#x21BB;</button>
-                    <div class="fab-sep"></div>
-                    <button class="fab-btn kill" id="logout-btn">&#x23FB;</button>
                 </div>
                 <button class="fab-circle green" id="tmux-fab-toggle">&#x2261;</button>
             </div>
         </div>
         <div class="toolbar-row hidden" id="toolbar">
             <span id="snippet-btns"></span>
-            <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
+            <button class="tool-btn" id="settings-btn" style="font-size:15px">&#x2699;</button>
         </div>
         <div class="toolbar-row hidden" id="keys-bar">
             <button class="key-btn accent" data-key="ctrl-c">C-c</button>
@@ -168,6 +365,55 @@
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
             <button id="toolbar-toggle" class="input-btn">&#x25B2;</button>
         </div>
+        <div id="settings-backdrop"></div>
+        <div id="settings-sheet">
+            <div class="sheet-header" id="sheet-header">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                    <div class="sheet-handle"></div>
+                    <div style="display:flex;align-items:center;width:100%">
+                        <span class="sheet-title">Settings</span>
+                        <button class="sheet-close" id="sheet-close">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="sheet-body" id="sheet-body">
+                <div class="settings-section-title" style="margin-top:8px">General</div>
+                <div class="settings-group">
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Wake Lock</div>
+                            <div class="settings-item-desc">화면 자동 꺼짐 방지</div>
+                        </div>
+                        <label class="ios-toggle">
+                            <input type="checkbox" id="sh-wakeLock">
+                            <div class="tog-track"></div>
+                            <div class="tog-thumb"></div>
+                        </label>
+                    </div>
+                    <div class="settings-divider"></div>
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Font Size</div>
+                            <div class="settings-item-desc">입력창 글자 크기</div>
+                        </div>
+                        <div class="font-ctrl">
+                            <button id="sh-font-minus">&minus;</button>
+                            <span class="font-val" id="sh-fontVal">16</span>
+                            <button id="sh-font-plus">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section-title">Snippets</div>
+                <div id="sh-snippet-list"></div>
+                <button class="sn-add-btn" id="sh-add-snippet">+ Add Snippet</button>
+
+                <button class="settings-logout" id="sh-logout">&#x23FB; Log Out</button>
+            </div>
+            <div class="settings-save-bar">
+                <button class="settings-save-btn" id="sh-save-btn">Save</button>
+            </div>
+        </div>
     </div>
     <script>
     (function() {
@@ -180,13 +426,6 @@
                 document.body.style.visibility = 'visible';
             })
             .catch(function() { onUnauthorized(); });
-
-        // --- Logout ---
-        document.getElementById('logout-btn').addEventListener('click', function() {
-            fetch('/api/auth/logout', { method: 'POST' })
-                .then(function() { onUnauthorized(); })
-                .catch(function() { onUnauthorized(); });
-        });
 
         // --- Wrap fetch to handle 401 globally ---
         var _origFetch = window.fetch;
@@ -648,6 +887,335 @@
             window.visualViewport.addEventListener('resize', onViewportResize);
             window.visualViewport.addEventListener('scroll', onViewportResize);
         }
+
+        // ========================================
+        // --- Settings Bottom Sheet ---
+        // ========================================
+        var shBackdrop = document.getElementById('settings-backdrop');
+        var shSheet = document.getElementById('settings-sheet');
+        var shHeader = document.getElementById('sheet-header');
+        var shBody = document.getElementById('sheet-body');
+        var shClose = document.getElementById('sheet-close');
+        var settingsBtn = document.getElementById('settings-btn');
+        var shSettings = { general: { wakeLock: false, fontSize: 16 }, snippets: [] };
+
+        // Color map for snippet cards (same as settings.html, Claude theme)
+        var SH_COLORS = {
+            'default': '#6a6158',
+            'green':   '#4caf50',
+            'blue':    '#C15F3C',
+            'red':     '#ff6b6b',
+            'yellow':  '#f9e2af',
+            'purple':  '#cba6f7',
+            'teal':    '#388e3c'
+        };
+        var SH_COLOR_NAMES = Object.keys(SH_COLORS);
+
+        function escAttr(s) { return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+        function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+        // --- A. Open / Close ---
+        function openSettings() {
+            fetch('/api/settings')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    shSettings = data;
+                    applySettingsToSheet();
+                    renderSettingsSnippets();
+                })
+                .catch(function() {
+                    applySettingsToSheet();
+                    renderSettingsSnippets();
+                });
+            shBackdrop.classList.add('open');
+            shSheet.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeSettings() {
+            shBackdrop.classList.remove('open');
+            shSheet.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        settingsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openSettings();
+        });
+        shBackdrop.addEventListener('click', closeSettings);
+        shClose.addEventListener('click', closeSettings);
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && shSheet.classList.contains('open')) {
+                closeSettings();
+            }
+        });
+
+        // --- B. Swipe to dismiss ---
+        var shSwipeStartY = 0;
+        var shSwipeDy = 0;
+        var shSwipeActive = false;
+
+        shHeader.addEventListener('touchstart', function(e) {
+            if (e.touches.length !== 1) return;
+            shSwipeStartY = e.touches[0].clientY;
+            shSwipeDy = 0;
+            shSwipeActive = true;
+            shSheet.classList.add('dragging');
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!shSwipeActive) return;
+            var dy = e.touches[0].clientY - shSwipeStartY;
+            if (dy < 0) dy = 0;
+            shSwipeDy = dy;
+            shSheet.style.transform = 'translateY(' + dy + 'px)';
+        }, { passive: true });
+
+        document.addEventListener('touchend', function() {
+            if (!shSwipeActive) return;
+            shSwipeActive = false;
+            shSheet.classList.remove('dragging');
+            shSheet.style.transform = '';
+            var sheetH = shSheet.offsetHeight;
+            if (shSwipeDy > sheetH * 0.3) {
+                closeSettings();
+            }
+        }, { passive: true });
+
+        // --- C. Settings value binding ---
+        function applySettingsToSheet() {
+            document.getElementById('sh-wakeLock').checked = shSettings.general.wakeLock;
+            document.getElementById('sh-fontVal').textContent = shSettings.general.fontSize || 16;
+        }
+
+        document.getElementById('sh-font-minus').addEventListener('click', function() {
+            var v = (shSettings.general.fontSize || 16) - 1;
+            if (v >= 10) { shSettings.general.fontSize = v; document.getElementById('sh-fontVal').textContent = v; }
+        });
+        document.getElementById('sh-font-plus').addEventListener('click', function() {
+            var v = (shSettings.general.fontSize || 16) + 1;
+            if (v <= 28) { shSettings.general.fontSize = v; document.getElementById('sh-fontVal').textContent = v; }
+        });
+        document.getElementById('sh-wakeLock').addEventListener('change', function() {
+            shSettings.general.wakeLock = this.checked;
+        });
+
+        // --- D. Snippet management ---
+        var shDragSrcIdx = null;
+        var shTouchState = null;
+
+        function renderSettingsSnippets() {
+            var list = document.getElementById('sh-snippet-list');
+            list.innerHTML = '';
+            (shSettings.snippets || []).forEach(function(sn, i) {
+                var card = document.createElement('div');
+                card.className = 'sn-card';
+                card.draggable = true;
+                card.dataset.idx = i;
+
+                var colorHtml = SH_COLOR_NAMES.map(function(c) {
+                    return '<div class="sn-color-opt' + (sn.color === c ? ' selected' : '') +
+                        '" style="background:' + SH_COLORS[c] + '" data-color="' + c + '"></div>';
+                }).join('');
+
+                card.innerHTML =
+                    '<div class="sn-top">' +
+                        '<span class="sn-handle">&#x2630;</span>' +
+                        '<input type="text" value="' + escAttr(sn.label) + '" placeholder="Label" data-field="label">' +
+                        '<button class="sn-del" data-action="delete">&times;</button>' +
+                    '</div>' +
+                    '<div class="sn-field">' +
+                        '<div class="sn-field-label">Command</div>' +
+                        '<textarea rows="1" data-field="command" placeholder="command...">' + escHtml(sn.command) + '</textarea>' +
+                    '</div>' +
+                    '<div class="sn-field">' +
+                        '<div class="sn-field-label">Color</div>' +
+                        '<div class="sn-colors" data-field="color">' + colorHtml + '</div>' +
+                    '</div>' +
+                    '<div class="sn-field">' +
+                        '<div class="sn-confirm-row">' +
+                            '<span>실행 전 확인</span>' +
+                            '<label class="sn-mini-toggle">' +
+                                '<input type="checkbox"' + (sn.confirm ? ' checked' : '') + ' data-field="confirm">' +
+                                '<div class="mt-track"></div>' +
+                                '<div class="mt-thumb"></div>' +
+                            '</label>' +
+                        '</div>' +
+                    '</div>';
+
+                // Auto-resize textarea
+                var ta = card.querySelector('textarea');
+                ta.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = this.scrollHeight + 'px';
+                });
+                setTimeout(function() { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
+
+                // Field changes
+                card.addEventListener('input', function(e) {
+                    var el = e.target; var field = el.dataset.field;
+                    if (!field) return;
+                    if (field === 'label') shSettings.snippets[i].label = el.value;
+                    else if (field === 'command') shSettings.snippets[i].command = el.value;
+                    else if (field === 'confirm') shSettings.snippets[i].confirm = el.checked;
+                });
+
+                // Click delegation (delete, color)
+                card.addEventListener('click', function(e) {
+                    var t = e.target;
+                    if (t.dataset.action === 'delete') {
+                        shSettings.snippets.splice(i, 1);
+                        renderSettingsSnippets();
+                    }
+                    if (t.dataset.color !== undefined) {
+                        shSettings.snippets[i].color = t.dataset.color;
+                        t.parentElement.querySelectorAll('.sn-color-opt').forEach(function(o) { o.classList.remove('selected'); });
+                        t.classList.add('selected');
+                    }
+                });
+
+                // Desktop drag
+                card.addEventListener('dragstart', function(e) {
+                    shDragSrcIdx = i;
+                    card.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                card.addEventListener('dragover', function(e) {
+                    if (shDragSrcIdx === null || shDragSrcIdx === i) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    card.classList.add('drag-over');
+                });
+                card.addEventListener('dragleave', function() { card.classList.remove('drag-over'); });
+                card.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    card.classList.remove('drag-over');
+                    if (shDragSrcIdx === null || shDragSrcIdx === i) return;
+                    var moved = shSettings.snippets.splice(shDragSrcIdx, 1)[0];
+                    shSettings.snippets.splice(i, 0, moved);
+                    shDragSrcIdx = null;
+                    renderSettingsSnippets();
+                });
+                card.addEventListener('dragend', function() { card.classList.remove('dragging'); shDragSrcIdx = null; });
+
+                // Mobile touch drag
+                var handle = card.querySelector('.sn-handle');
+                handle.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    var touch = e.touches[0];
+                    var rect = card.getBoundingClientRect();
+                    shTouchState = { idx: i, card: card, offsetY: touch.clientY - rect.top, clone: null };
+                    card.classList.add('dragging');
+
+                    var clone = card.cloneNode(true);
+                    clone.style.cssText = 'position:fixed;left:16px;right:16px;width:' + rect.width + 'px;z-index:200;pointer-events:none;opacity:0.8;';
+                    clone.style.top = rect.top + 'px';
+                    document.body.appendChild(clone);
+                    shTouchState.clone = clone;
+
+                    document.addEventListener('touchmove', shOnTouchMove, { passive: false });
+                    document.addEventListener('touchend', shOnTouchEnd);
+                }, { passive: false });
+
+                list.appendChild(card);
+            });
+        }
+
+        function shOnTouchMove(e) {
+            if (!shTouchState) return;
+            e.preventDefault();
+            var y = e.touches[0].clientY;
+            shTouchState.clone.style.top = (y - shTouchState.offsetY) + 'px';
+            document.querySelectorAll('.sn-card').forEach(function(c, ci) {
+                var r = c.getBoundingClientRect();
+                if (y > r.top && y < r.bottom && ci !== shTouchState.idx) {
+                    c.classList.add('drag-over');
+                } else {
+                    c.classList.remove('drag-over');
+                }
+            });
+        }
+
+        function shOnTouchEnd(e) {
+            if (!shTouchState) return;
+            document.removeEventListener('touchmove', shOnTouchMove);
+            document.removeEventListener('touchend', shOnTouchEnd);
+            if (shTouchState.clone) shTouchState.clone.remove();
+
+            var y = e.changedTouches[0].clientY;
+            var targetIdx = -1;
+            document.querySelectorAll('.sn-card').forEach(function(c, ci) {
+                var r = c.getBoundingClientRect();
+                if (y > r.top && y < r.bottom && ci !== shTouchState.idx) targetIdx = ci;
+                c.classList.remove('drag-over');
+            });
+
+            shTouchState.card.classList.remove('dragging');
+            if (targetIdx >= 0 && targetIdx !== shTouchState.idx) {
+                var moved = shSettings.snippets.splice(shTouchState.idx, 1)[0];
+                shSettings.snippets.splice(targetIdx, 0, moved);
+                renderSettingsSnippets();
+            }
+            shTouchState = null;
+        }
+
+        // Add snippet
+        document.getElementById('sh-add-snippet').addEventListener('click', function() {
+            shSettings.snippets.push({
+                id: 's' + Date.now(),
+                label: '',
+                command: '',
+                color: 'default',
+                confirm: false
+            });
+            renderSettingsSnippets();
+            var cards = document.querySelectorAll('.sn-card');
+            var last = cards[cards.length - 1];
+            if (last) {
+                last.querySelector('input[data-field="label"]').focus();
+                last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+
+        // --- E. Save ---
+        document.getElementById('sh-save-btn').addEventListener('click', function() {
+            var btn = this;
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            fetch('/api/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(shSettings)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function() {
+                // Update main UI immediately
+                renderSnippets(shSettings.snippets || []);
+                applyGeneral(shSettings.general || {});
+
+                btn.textContent = 'Saved!';
+                btn.classList.add('saved');
+                setTimeout(function() {
+                    btn.textContent = 'Save';
+                    btn.classList.remove('saved');
+                    btn.disabled = false;
+                }, 1500);
+            })
+            .catch(function() {
+                btn.textContent = 'Error';
+                btn.disabled = false;
+                setTimeout(function() { btn.textContent = 'Save'; }, 2000);
+            });
+        });
+
+        // --- F. Logout ---
+        document.getElementById('sh-logout').addEventListener('click', function() {
+            if (!confirm('로그아웃 하시겠습니까?')) return;
+            fetch('/api/auth/logout', { method: 'POST' })
+                .then(function() { onUnauthorized(); })
+                .catch(function() { onUnauthorized(); });
+        });
     })();
     </script>
 </body>
