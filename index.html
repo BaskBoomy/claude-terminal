@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>Claude Terminal</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1e1e2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; background: #1e1e2e; color: #cdd6f4; overflow: hidden; }
+        #app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
+        #terminal-wrap { flex: 1; overflow: hidden; }
+        #terminal-frame { width: 100%; height: 100%; border: none; background: #1e1e2e; }
+        #toolbar {
+            display: flex; gap: 4px; padding: 4px 8px;
+            background: #181825; border-top: 1px solid #313244;
+            overflow-x: auto; flex-shrink: 0;
+        }
+        .tool-btn {
+            padding: 8px 12px; background: #313244; color: #cdd6f4;
+            border: 1px solid #45475a; border-radius: 6px;
+            font-size: 13px; cursor: pointer; white-space: nowrap;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .tool-btn:active { background: #585b70; }
+        .tool-btn.accent { background: #f38ba8; color: #1e1e2e; border-color: #f38ba8; }
+        .tool-btn.tmux { background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1; }
+        .tool-btn.tmux:active { background: #94e2d5; }
+        .sep { width: 1px; background: #45475a; margin: 2px 2px; flex-shrink: 0; }
+        #snippet-btns { display: contents; }
+        #input-bar {
+            display: flex; gap: 4px; padding: 6px 8px;
+            background: #181825; border-top: 1px solid #313244; flex-shrink: 0;
+            align-items: center;
+        }
+        #text-input {
+            flex: 1; min-width: 0; padding: 10px 12px; background: #313244; color: #cdd6f4;
+            border: 1px solid #45475a; border-radius: 8px;
+            font-size: 16px; outline: none; font-family: inherit;
+        }
+        #text-input:focus { border-color: #89b4fa; }
+        #text-input::placeholder { color: #6c7086; }
+        .input-btn {
+            padding: 10px; background: #313244; color: #cdd6f4;
+            border: 1px solid #45475a; border-radius: 8px; font-size: 16px;
+            cursor: pointer; touch-action: manipulation; flex-shrink: 0;
+            line-height: 1;
+        }
+        .input-btn:active { background: #585b70; }
+        .input-btn.primary { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; font-weight: bold; }
+        .input-btn.primary:active { background: #74c7ec; }
+        .input-btn.uploading { opacity: 0.5; pointer-events: none; }
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="terminal-wrap">
+            <iframe id="terminal-frame" src="/ttyd/"></iframe>
+        </div>
+        <div id="toolbar">
+            <button class="tool-btn tmux" data-key="tmux-new">+Win</button>
+            <button class="tool-btn tmux" data-key="tmux-prev">&#x25C0;</button>
+            <button class="tool-btn tmux" data-key="tmux-next">&#x25B6;</button>
+            <button class="tool-btn tmux" data-key="tmux-list">List</button>
+            <div class="sep"></div>
+            <span id="snippet-btns"></span>
+            <button class="tool-btn" onclick="location.reload()">&#x21BB;</button>
+            <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
+            <div class="sep"></div>
+            <button class="tool-btn accent" data-key="ctrl-c">Ctrl+C</button>
+            <button class="tool-btn" data-key="enter">Enter</button>
+            <button class="tool-btn" data-key="tab">Tab</button>
+            <button class="tool-btn" data-key="up">&#x2191;</button>
+            <button class="tool-btn" data-key="down">&#x2193;</button>
+            <button class="tool-btn" data-key="left">&#x2190;</button>
+            <button class="tool-btn" data-key="right">&#x2192;</button>
+            <button class="tool-btn" data-key="esc">ESC</button>
+            <button class="tool-btn" data-key="ctrl-d">Ctrl+D</button>
+            <button class="tool-btn" data-key="space">Space</button>
+            <button class="tool-btn" data-key="y">Y</button>
+            <button class="tool-btn" data-key="n">N</button>
+        </div>
+        <div id="input-bar">
+            <button id="img-btn" class="input-btn">&#x1F4F7;</button>
+            <input id="file-input" type="file" accept="image/*">
+            <input id="text-input" type="text" placeholder="입력 후 Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <button id="send-btn" class="input-btn primary">&#x23CE;</button>
+        </div>
+    </div>
+    <script>
+    (function() {
+        var frame = document.getElementById('terminal-frame');
+        var textInput = document.getElementById('text-input');
+        var sendBtn = document.getElementById('send-btn');
+        var imgBtn = document.getElementById('img-btn');
+        var fileInput = document.getElementById('file-input');
+        var inputHistory = [];
+        var historyIndex = -1;
+
+        // Snippet color map
+        var SNIPPET_COLORS = {
+            'default': { bg: '#313244', fg: '#cdd6f4', border: '#45475a' },
+            'green':   { bg: '#a6e3a1', fg: '#1e1e2e', border: '#a6e3a1' },
+            'blue':    { bg: '#89b4fa', fg: '#1e1e2e', border: '#89b4fa' },
+            'red':     { bg: '#f38ba8', fg: '#1e1e2e', border: '#f38ba8' },
+            'yellow':  { bg: '#f9e2af', fg: '#1e1e2e', border: '#f9e2af' },
+            'purple':  { bg: '#cba6f7', fg: '#1e1e2e', border: '#cba6f7' },
+            'teal':    { bg: '#94e2d5', fg: '#1e1e2e', border: '#94e2d5' }
+        };
+
+        // --- Load settings ---
+        fetch('/api/settings')
+            .then(function(r) { return r.json(); })
+            .then(function(settings) {
+                renderSnippets(settings.snippets || []);
+                applyGeneral(settings.general || {});
+            })
+            .catch(function() {});
+
+        function renderSnippets(snippets) {
+            var container = document.getElementById('snippet-btns');
+            container.innerHTML = '';
+            snippets.forEach(function(sn) {
+                var btn = document.createElement('button');
+                btn.className = 'tool-btn';
+                btn.textContent = sn.label;
+                var colors = SNIPPET_COLORS[sn.color] || SNIPPET_COLORS['default'];
+                btn.style.background = colors.bg;
+                btn.style.color = colors.fg;
+                btn.style.borderColor = colors.border;
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (sn.confirm && !confirm('Run: ' + sn.command + '?')) return;
+                    sendText(sn.command + '\r');
+                    textInput.focus();
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        function applyGeneral(general) {
+            // Font size
+            if (general.fontSize && general.fontSize !== 16) {
+                textInput.style.fontSize = general.fontSize + 'px';
+            }
+            // Wake Lock
+            if (general.wakeLock && 'wakeLock' in navigator) {
+                navigator.wakeLock.request('screen').catch(function() {});
+                // Re-acquire on visibility change
+                document.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'visible' && general.wakeLock) {
+                        navigator.wakeLock.request('screen').catch(function() {});
+                    }
+                });
+            }
+        }
+
+        // Unregister old service worker if any
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+                regs.forEach(function(r) { r.unregister(); });
+            });
+        }
+
+        // --- Find xterm.js hidden textarea inside iframe ---
+        function getTA() {
+            try {
+                return frame.contentDocument.querySelector('.xterm-helper-textarea') ||
+                       frame.contentDocument.querySelector('textarea');
+            } catch(e) { return null; }
+        }
+
+        // --- Send text via input event ---
+        function sendText(text) {
+            var ta = getTA();
+            if (!ta) return false;
+            ta.value = '';
+            ta.value = text;
+            ta.dispatchEvent(new InputEvent('input', {
+                data: text, inputType: 'insertText', bubbles: true
+            }));
+            ta.value = '';
+            return true;
+        }
+
+        // --- Send special key via keydown event ---
+        function sendKey(key, keyCode, mods) {
+            var ta = getTA();
+            if (!ta) return false;
+            ta.dispatchEvent(new KeyboardEvent('keydown', {
+                key: key, keyCode: keyCode, which: keyCode,
+                bubbles: true, cancelable: true,
+                ctrlKey: !!(mods && mods.ctrl),
+                altKey: !!(mods && mods.alt),
+                shiftKey: !!(mods && mods.shift)
+            }));
+            return true;
+        }
+
+        // --- tmux prefix (Ctrl+B) then command key ---
+        function tmuxCmd(cmdKey, cmdKeyCode) {
+            sendKey('b', 66, {ctrl: true});
+            setTimeout(function() {
+                sendKey(cmdKey, cmdKeyCode);
+            }, 50);
+        }
+
+        // --- Toolbar key actions ---
+        var KEYS = {
+            'ctrl-c':    function() { sendKey('c', 67, {ctrl: true}); },
+            'ctrl-d':    function() { sendKey('d', 68, {ctrl: true}); },
+            'enter':     function() { sendKey('Enter', 13); },
+            'tab':       function() { sendKey('Tab', 9); },
+            'up':        function() { sendKey('ArrowUp', 38); },
+            'down':      function() { sendKey('ArrowDown', 40); },
+            'left':      function() { sendKey('ArrowLeft', 37); },
+            'right':     function() { sendKey('ArrowRight', 39); },
+            'esc':       function() { sendKey('Escape', 27); },
+            'space':     function() { sendText(' '); },
+            'y':         function() { sendText('y'); },
+            'n':         function() { sendText('n'); },
+            'tmux-new':  function() { tmuxCmd('c', 67); },
+            'tmux-prev': function() { tmuxCmd('p', 80); },
+            'tmux-next': function() { tmuxCmd('n', 78); },
+            'tmux-list': function() { tmuxCmd('w', 87); }
+        };
+
+        // --- Image upload ---
+        function uploadImage(file) {
+            imgBtn.classList.add('uploading');
+            fetch('/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': file.type || 'image/png' },
+                body: file
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var cur = textInput.value;
+                textInput.value = cur ? cur + ' ' + data.path : data.path;
+                textInput.focus();
+            })
+            .catch(function() {
+                textInput.value += '[upload failed]';
+            })
+            .finally(function() {
+                imgBtn.classList.remove('uploading');
+                fileInput.value = '';
+            });
+        }
+
+        imgBtn.addEventListener('click', function() { fileInput.click(); });
+
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files[0]) uploadImage(fileInput.files[0]);
+        });
+
+        // --- Paste image from clipboard ---
+        textInput.addEventListener('paste', function(e) {
+            var items = e.clipboardData && e.clipboardData.items;
+            if (!items) return;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image/') === 0) {
+                    e.preventDefault();
+                    uploadImage(items[i].getAsFile());
+                    return;
+                }
+            }
+        });
+
+        // --- Input bar ---
+        function submitInput() {
+            var text = textInput.value;
+            sendText((text || '') + '\r');
+            if (text) inputHistory.push(text);
+            if (inputHistory.length > 50) inputHistory.shift();
+            historyIndex = -1;
+            textInput.value = '';
+            textInput.focus();
+        }
+
+        textInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.isComposing) {
+                e.preventDefault();
+                submitInput();
+            } else if (e.key === 'ArrowUp' && !e.isComposing && document.activeElement === textInput) {
+                if (inputHistory.length > 0 && historyIndex < inputHistory.length - 1) {
+                    e.preventDefault();
+                    historyIndex++;
+                    textInput.value = inputHistory[inputHistory.length - 1 - historyIndex];
+                }
+            } else if (e.key === 'ArrowDown' && !e.isComposing && document.activeElement === textInput) {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    textInput.value = inputHistory[inputHistory.length - 1 - historyIndex];
+                } else {
+                    historyIndex = -1;
+                    textInput.value = '';
+                }
+            }
+        });
+
+        sendBtn.addEventListener('click', function() { submitInput(); });
+
+        // --- Toolbar buttons ---
+        function bindToolbarButtons() {
+            document.querySelectorAll('.tool-btn[data-key]').forEach(function(btn) {
+                var isTmux = btn.dataset.key.indexOf('tmux') === 0;
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var action = KEYS[btn.dataset.key];
+                    if (action) action();
+                    if (!isTmux) textInput.focus();
+                });
+            });
+        }
+        bindToolbarButtons();
+
+        // --- Keyboard resize handling (iOS Safari fallback) ---
+        var app = document.getElementById('app');
+        if (window.visualViewport) {
+            function onViewportResize() {
+                app.style.height = window.visualViewport.height + 'px';
+                app.style.transform = 'translateY(' + window.visualViewport.offsetTop + 'px)';
+            }
+            window.visualViewport.addEventListener('resize', onViewportResize);
+            window.visualViewport.addEventListener('scroll', onViewportResize);
+        }
+    })();
+    </script>
+</body>
+</html>
