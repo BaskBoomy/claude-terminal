@@ -15,7 +15,7 @@
         #app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
         #terminal-wrap { flex: 1; overflow: hidden; position: relative; }
         #terminal-frame { width: 100%; height: 100%; border: none; background: #1e1e2e; }
-        #toolbar {
+        .toolbar-row {
             display: flex; gap: 4px; padding: 4px 8px;
             background: #181825; border-top: 1px solid #313244;
             overflow-x: auto; flex-shrink: 0;
@@ -30,6 +30,15 @@
         .tool-btn.accent { background: #f38ba8; color: #1e1e2e; border-color: #f38ba8; }
         .tool-btn.tmux { background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1; }
         .tool-btn.tmux:active { background: #94e2d5; }
+        .key-btn {
+            padding: 5px 8px; background: #313244; color: #9399b2;
+            border: 1px solid #3b3d54; border-radius: 4px;
+            font-size: 11px; cursor: pointer; white-space: nowrap;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            min-width: 28px; text-align: center;
+        }
+        .key-btn:active { background: #585b70; color: #cdd6f4; }
+        .key-btn.accent { background: #45475a; color: #f38ba8; border-color: #f38ba8; }
         .sep { width: 1px; background: #45475a; margin: 2px 2px; flex-shrink: 0; }
         #snippet-btns { display: contents; }
         #input-bar {
@@ -71,7 +80,23 @@
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
             <div id="scroll-indicator"></div>
         </div>
-        <div id="toolbar">
+        <div class="toolbar-row" id="keys-bar">
+            <button class="key-btn accent" data-key="ctrl-c">C-c</button>
+            <button class="key-btn" data-key="enter">&#x23CE;</button>
+            <button class="key-btn" data-key="tab">Tab</button>
+            <button class="key-btn" data-key="esc">Esc</button>
+            <button class="key-btn" data-key="space">&#x2423;</button>
+            <div class="sep"></div>
+            <button class="key-btn" data-key="up">&#x25B2;</button>
+            <button class="key-btn" data-key="down">&#x25BC;</button>
+            <button class="key-btn" data-key="left">&#x25C0;</button>
+            <button class="key-btn" data-key="right">&#x25B6;</button>
+            <div class="sep"></div>
+            <button class="key-btn" data-key="ctrl-d">C-d</button>
+            <button class="key-btn" data-key="y">Y</button>
+            <button class="key-btn" data-key="n">N</button>
+        </div>
+        <div class="toolbar-row" id="toolbar">
             <button class="tool-btn tmux" data-key="tmux-new">+Win</button>
             <button class="tool-btn tmux" data-key="tmux-prev">&#x25C0;</button>
             <button class="tool-btn tmux" data-key="tmux-next">&#x25B6;</button>
@@ -82,19 +107,6 @@
             <span id="snippet-btns"></span>
             <button class="tool-btn" onclick="location.reload()">&#x21BB;</button>
             <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
-            <div class="sep"></div>
-            <button class="tool-btn accent" data-key="ctrl-c">Ctrl+C</button>
-            <button class="tool-btn" data-key="enter">Enter</button>
-            <button class="tool-btn" data-key="tab">Tab</button>
-            <button class="tool-btn" data-key="up">&#x2191;</button>
-            <button class="tool-btn" data-key="down">&#x2193;</button>
-            <button class="tool-btn" data-key="left">&#x2190;</button>
-            <button class="tool-btn" data-key="right">&#x2192;</button>
-            <button class="tool-btn" data-key="esc">ESC</button>
-            <button class="tool-btn" data-key="ctrl-d">Ctrl+D</button>
-            <button class="tool-btn" data-key="space">Space</button>
-            <button class="tool-btn" data-key="y">Y</button>
-            <button class="tool-btn" data-key="n">N</button>
         </div>
         <div id="input-bar">
             <button id="img-btn" class="input-btn">&#x1F4F7;</button>
@@ -112,6 +124,13 @@
         var fileInput = document.getElementById('file-input');
         var inputHistory = [];
         var historyIndex = -1;
+
+        // --- Persist input text across page navigation ---
+        var savedInput = sessionStorage.getItem('terminal-input');
+        if (savedInput) textInput.value = savedInput;
+        textInput.addEventListener('input', function() {
+            sessionStorage.setItem('terminal-input', textInput.value);
+        });
 
         // Snippet color map
         var SNIPPET_COLORS = {
@@ -293,6 +312,7 @@
             if (inputHistory.length > 50) inputHistory.shift();
             historyIndex = -1;
             textInput.value = '';
+            sessionStorage.removeItem('terminal-input');
             textInput.focus();
         }
 
@@ -322,7 +342,7 @@
 
         // --- Toolbar buttons ---
         function bindToolbarButtons() {
-            document.querySelectorAll('.tool-btn[data-key]').forEach(function(btn) {
+            document.querySelectorAll('[data-key]').forEach(function(btn) {
                 var isTmux = btn.dataset.key.indexOf('tmux') === 0;
                 var isScroll = btn.classList.contains('scroll');
                 btn.addEventListener('click', function(e) {
