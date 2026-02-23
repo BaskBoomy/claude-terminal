@@ -42,7 +42,7 @@
         .sep { width: 1px; background: #45475a; margin: 2px 2px; flex-shrink: 0; }
         #snippet-btns { display: contents; }
         #input-bar {
-            display: flex; gap: 4px; padding: 6px 8px;
+            display: flex; gap: 4px; padding: 8px 8px 48px;
             background: #181825; border-top: 1px solid #313244; flex-shrink: 0;
             align-items: center;
         }
@@ -73,7 +73,6 @@
         }
         .fab-area > * { pointer-events: auto; }
         .fab-area.bottom-right { right: 10px; bottom: 10px; }
-        .fab-area.bottom-left { left: 10px; bottom: 10px; }
         .fab-circle {
             width: 40px; height: 40px; border-radius: 50%; border: none;
             font-size: 16px; cursor: pointer;
@@ -100,6 +99,7 @@
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
         .fab-panel .fab-btn:active { background: #94e2d5; }
+        .fab-sep { width: 1px; background: #45475a; align-self: stretch; }
         .fab-panel .fab-btn.kill {
             background: #f38ba8; color: #1e1e2e; border-color: #f38ba8;
         }
@@ -117,16 +117,16 @@
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
             <div id="scroll-indicator"></div>
-            <div class="fab-area bottom-left">
-                <button class="fab-circle blue" onclick="location.reload()">&#x21BB;</button>
-            </div>
             <div class="fab-area bottom-right" id="tmux-fab">
                 <div class="fab-panel" id="tmux-fab-panel">
+                    <button class="fab-btn kill" data-key="tmux-kill">&#x2715;</button>
+                    <div class="fab-sep"></div>
                     <button class="fab-btn" data-key="tmux-new">+Win</button>
                     <button class="fab-btn" data-key="tmux-prev">&#x25C0;</button>
                     <button class="fab-btn" data-key="tmux-next">&#x25B6;</button>
                     <button class="fab-btn" data-key="tmux-list">List</button>
-                    <button class="fab-btn kill" data-key="tmux-kill">&#x2715;</button>
+                    <div class="fab-sep"></div>
+                    <button class="fab-btn" onclick="location.reload()">&#x21BB;</button>
                 </div>
                 <button class="fab-circle green" id="tmux-fab-toggle">&#x2261;</button>
             </div>
