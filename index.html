@@ -610,6 +610,10 @@
         }
 
         imgBtn.addEventListener('click', function() { fileInput.click(); });
+        imgBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            fileInput.click();
+        });
 
         fileInput.addEventListener('change', function() {
             if (fileInput.files[0]) uploadImage(fileInput.files[0]);
@@ -671,6 +675,11 @@
             submitInput();
             setTimeout(function() { textInput.blur(); }, 100);
         });
+        sendBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            submitInput();
+            setTimeout(function() { textInput.blur(); }, 100);
+        });
 
         // --- Toolbar buttons ---
         function bindToolbarButtons() {
@@ -687,6 +696,7 @@
         // Prevent any button/key-btn from opening keyboard
         document.addEventListener('touchend', function(e) {
             var t = e.target;
+            if (t.id === 'send-btn' || t.id === 'img-btn') return;
             if (t.tagName === 'BUTTON' || t.classList.contains('key-btn') || t.classList.contains('tool-btn') || t.classList.contains('fab-btn') || t.classList.contains('fab-circle')) {
                 document.activeElement && document.activeElement.blur && document.activeElement !== document.body && document.activeElement.blur();
             }
