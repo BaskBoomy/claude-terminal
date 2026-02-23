@@ -563,6 +563,20 @@
             }, 250);
         });
 
+        // --- Auto-reconnect on page visibility change ---
+        var hiddenAt = 0;
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                hiddenAt = Date.now();
+                return;
+            }
+            // Reload iframe if away for 5+ seconds
+            if (hiddenAt && Date.now() - hiddenAt > 5000) {
+                frame.src = '/ttyd/';
+            }
+            hiddenAt = 0;
+        });
+
         // --- Keyboard resize handling (iOS Safari fallback) ---
         var app = document.getElementById('app');
         if (window.visualViewport) {
