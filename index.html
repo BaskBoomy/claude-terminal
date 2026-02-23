@@ -35,7 +35,7 @@
             border: 1px solid #3b3d54; border-radius: 4px;
             font-size: 11px; cursor: pointer; white-space: nowrap;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-            min-width: 28px; text-align: center;
+            min-width: 28px; text-align: center; flex-shrink: 0;
         }
         .key-btn:active { background: #585b70; color: #cdd6f4; }
         .key-btn.accent { background: #45475a; color: #f38ba8; border-color: #f38ba8; }
@@ -80,6 +80,18 @@
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
             <div id="scroll-indicator"></div>
         </div>
+        <div class="toolbar-row" id="toolbar">
+            <button class="tool-btn tmux" data-key="tmux-new">+Win</button>
+            <button class="tool-btn tmux" data-key="tmux-prev">&#x25C0;</button>
+            <button class="tool-btn tmux" data-key="tmux-next">&#x25B6;</button>
+            <button class="tool-btn tmux" data-key="tmux-list">List</button>
+            <button class="tool-btn scroll" data-key="pgup">PgUp</button>
+            <button class="tool-btn scroll" data-key="pgdn">PgDn</button>
+            <div class="sep"></div>
+            <span id="snippet-btns"></span>
+            <button class="tool-btn" onclick="location.reload()">&#x21BB;</button>
+            <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
+        </div>
         <div class="toolbar-row" id="keys-bar">
             <button class="key-btn accent" data-key="ctrl-c">C-c</button>
             <button class="key-btn" data-key="enter">&#x23CE;</button>
@@ -95,18 +107,6 @@
             <button class="key-btn" data-key="ctrl-d">C-d</button>
             <button class="key-btn" data-key="y">Y</button>
             <button class="key-btn" data-key="n">N</button>
-        </div>
-        <div class="toolbar-row" id="toolbar">
-            <button class="tool-btn tmux" data-key="tmux-new">+Win</button>
-            <button class="tool-btn tmux" data-key="tmux-prev">&#x25C0;</button>
-            <button class="tool-btn tmux" data-key="tmux-next">&#x25B6;</button>
-            <button class="tool-btn tmux" data-key="tmux-list">List</button>
-            <button class="tool-btn scroll" data-key="pgup">PgUp</button>
-            <button class="tool-btn scroll" data-key="pgdn">PgDn</button>
-            <div class="sep"></div>
-            <span id="snippet-btns"></span>
-            <button class="tool-btn" onclick="location.reload()">&#x21BB;</button>
-            <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
         </div>
         <div id="input-bar">
             <button id="img-btn" class="input-btn">&#x1F4F7;</button>
