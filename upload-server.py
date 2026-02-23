@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import os, uuid, json, mimetypes
+import os, uuid, json, mimetypes, secrets, hashlib, time
 
 UPLOAD_DIR = '/tmp/claude-uploads'
 SETTINGS_FILE = '/home/jack/claude-terminal/settings.json'
@@ -10,20 +10,127 @@ DEFAULT_SETTINGS = {
     "snippets": []
 }
 
+# --- Auth config ---
+PASSWORD_SALT = bytes.fromhex('616b76223e08750cb9c6766f48d6c63934699767567fe72a66e6406ea06f7880')
+PASSWORD_HASH = '0a8f6ff79bdd949bea53425aed99392dd0b9fa837936de3ef6816474b4f2ca16'
+PBKDF2_ITERATIONS = 600000
+SESSION_MAX_AGE = 86400  # 24 hours
+COOKIE_NAME = '__claude_session'
+
+# In-memory session store: {token: {created, last_active, ip}}
+sessions = {}
+
+# Rate limiting: {ip: {count, first_attempt}}
+login_attempts = {}
+RATE_LIMIT_WINDOW = 900  # 15 minutes
+RATE_LIMIT_MAX = 5
+
+
+def verify_password(password):
+    dk = hashlib.pbkdf2_hmac('sha256', password.encode(), PASSWORD_SALT, PBKDF2_ITERATIONS)
+    return dk.hex() == PASSWORD_HASH
+
+
+def cleanup_sessions():
+    now = time.time()
+    expired = [t for t, s in sessions.items() if now - s['created'] > SESSION_MAX_AGE]
+    for t in expired:
+        del sessions[t]
+
+
+def check_rate_limit(ip):
+    now = time.time()
+    entry = login_attempts.get(ip)
+    if not entry:
+        return True
+    if now - entry['first_attempt'] > RATE_LIMIT_WINDOW:
+        del login_attempts[ip]
+        return True
+    return entry['count'] < RATE_LIMIT_MAX
+
+
+def record_failed_attempt(ip):
+    now = time.time()
+    entry = login_attempts.get(ip)
+    if not entry or now - entry['first_attempt'] > RATE_LIMIT_WINDOW:
+        login_attempts[ip] = {'count': 1, 'first_attempt': now}
+    else:
+        entry['count'] += 1
+
+
+def reset_attempts(ip):
+    login_attempts.pop(ip, None)
+
+
 class Handler(BaseHTTPRequestHandler):
+
+    def _get_client_ip(self):
+        forwarded = self.headers.get('X-Forwarded-For')
+        if forwarded:
+            return forwarded.split(',')[0].strip()
+        return self.client_address[0]
+
+    def _get_session_token(self):
+        cookie_header = self.headers.get('Cookie', '')
+        for part in cookie_header.split(';'):
+            part = part.strip()
+            if part.startswith(COOKIE_NAME + '='):
+                return part[len(COOKIE_NAME) + 1:]
+        return None
+
+    def _require_auth(self):
+        cleanup_sessions()
+        token = self._get_session_token()
+        if token and token in sessions:
+            sessions[token]['last_active'] = time.time()
+            return True
+        self._json_response(401, json.dumps({'error': 'unauthorized'}).encode())
+        return False
+
+    def _set_session_cookie(self, token):
+        cookie = '{}={}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age={}'.format(
+            COOKIE_NAME, token, SESSION_MAX_AGE
+        )
+        self.send_header('Set-Cookie', cookie)
+
+    def _clear_session_cookie(self):
+        cookie = '{}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0'.format(COOKIE_NAME)
+        self.send_header('Set-Cookie', cookie)
+
+    def _json_response(self, code, body, extra_headers=None):
+        self.send_response(code)
+        self.send_header('Content-Type', 'application/json')
+        if extra_headers:
+            extra_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
-        if self.path == '/api/settings':
+        if self.path == '/api/auth/check':
+            cleanup_sessions()
+            token = self._get_session_token()
+            authenticated = token is not None and token in sessions
+            if authenticated:
+                sessions[token]['last_active'] = time.time()
+            self._json_response(200, json.dumps({'authenticated': authenticated}).encode())
+
+        elif self.path == '/api/settings':
+            if not self._require_auth():
+                return
             try:
                 with open(SETTINGS_FILE, 'r') as f:
                     data = f.read()
             except FileNotFoundError:
                 data = json.dumps(DEFAULT_SETTINGS)
             self._json_response(200, data.encode())
+
         else:
             self.send_error(404)
 
     def do_PUT(self):
         if self.path == '/api/settings':
+            if not self._require_auth():
+                return
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length)
             try:
@@ -37,7 +144,49 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):
-        if self.path == '/upload':
+        if self.path == '/api/auth/login':
+            ip = self._get_client_ip()
+            if not check_rate_limit(ip):
+                self._json_response(429, json.dumps({
+                    'error': 'Too many attempts. Try again later.'
+                }).encode())
+                return
+
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                self.send_error(400, 'Invalid JSON')
+                return
+
+            password = data.get('password', '')
+            if verify_password(password):
+                reset_attempts(ip)
+                token = secrets.token_hex(32)
+                sessions[token] = {
+                    'created': time.time(),
+                    'last_active': time.time(),
+                    'ip': ip
+                }
+                self._json_response(200, json.dumps({'ok': True}).encode(),
+                    extra_headers=lambda: self._set_session_cookie(token))
+            else:
+                record_failed_attempt(ip)
+                self._json_response(401, json.dumps({
+                    'error': 'Wrong password'
+                }).encode())
+
+        elif self.path == '/api/auth/logout':
+            token = self._get_session_token()
+            if token and token in sessions:
+                del sessions[token]
+            self._json_response(200, json.dumps({'ok': True}).encode(),
+                extra_headers=lambda: self._clear_session_cookie())
+
+        elif self.path == '/upload':
+            if not self._require_auth():
+                return
             length = int(self.headers.get('Content-Length', 0))
             content_type = self.headers.get('Content-Type', 'application/octet-stream')
             body = self.rfile.read(length)
@@ -49,14 +198,9 @@ class Handler(BaseHTTPRequestHandler):
             with open(filepath, 'wb') as f:
                 f.write(body)
             self._json_response(200, json.dumps({'path': filepath}).encode())
+
         else:
             self.send_error(404)
-
-    def _json_response(self, code, body):
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json')
-        self.end_headers()
-        self.wfile.write(body)
 
     def log_message(self, format, *args):
         pass
