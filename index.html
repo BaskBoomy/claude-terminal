@@ -5,38 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Claude Terminal</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1e1e2e">
+    <meta name="theme-color" content="#1a1815">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; background: #1e1e2e; color: #cdd6f4; overflow: hidden; }
+        html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden; }
         #app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
         #terminal-wrap { flex: 1; overflow: hidden; position: relative; }
-        #terminal-frame { width: 100%; height: 100%; border: none; background: #1e1e2e; }
+        #terminal-frame { width: 100%; height: 100%; border: none; background: #1a1815; }
         .toolbar-row {
             display: flex; gap: 4px; padding: 4px 8px;
-            background: #181825; border-top: 1px solid #313244;
+            background: #201d18; border-top: 1px solid #2a251d;
             overflow-x: auto; flex-shrink: 0;
         }
         .tool-btn {
-            padding: 8px 12px; background: #313244; color: #cdd6f4;
-            border: 1px solid #45475a; border-radius: 6px;
+            padding: 8px 12px; background: #2a251d; color: #e8e6e3;
+            border: 1px solid #3a352b; border-radius: 6px;
             font-size: 13px; cursor: pointer; white-space: nowrap;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        .tool-btn:active { background: #585b70; }
+        .tool-btn:active { background: #3f3930; }
         .key-btn {
-            padding: 5px 8px; background: #313244; color: #9399b2;
-            border: 1px solid #3b3d54; border-radius: 4px;
+            padding: 5px 8px; background: #2a251d; color: #a09888;
+            border: 1px solid #3a352b; border-radius: 4px;
             font-size: 11px; cursor: pointer; white-space: nowrap;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
             min-width: 28px; text-align: center; flex-shrink: 0;
         }
-        .key-btn:active { background: #585b70; color: #cdd6f4; }
-        .key-btn.accent { background: #45475a; color: #f38ba8; border-color: #f38ba8; }
-        .sep { width: 1px; background: #45475a; margin: 2px 2px; flex-shrink: 0; }
+        .key-btn:active { background: #3f3930; color: #e8e6e3; }
+        .key-btn.accent { background: #3a352b; color: #ff6b6b; border-color: #ff6b6b; }
+        .sep { width: 1px; background: #3a352b; margin: 2px 2px; flex-shrink: 0; }
         #snippet-btns { display: contents; }
         .toolbar-row {
             max-height: 40px;
@@ -49,30 +49,30 @@
         }
         #input-bar {
             display: flex; gap: 6px; padding: 8px 10px 48px;
-            background: #181825; border-top: 1px solid #313244; flex-shrink: 0;
+            background: #201d18; border-top: 1px solid #2a251d; flex-shrink: 0;
             align-items: flex-end;
         }
         #text-input {
-            flex: 1; min-width: 0; padding: 8px 12px; background: #313244; color: #cdd6f4;
-            border: 1px solid #45475a; border-radius: 12px;
+            flex: 1; min-width: 0; padding: 8px 12px; background: #2a251d; color: #e8e6e3;
+            border: 1px solid #3a352b; border-radius: 12px;
             font-size: 15px; outline: none; font-family: -apple-system, system-ui, sans-serif;
             resize: none; height: 38px; max-height: 120px; line-height: 1.5;
         }
-        #text-input:focus { border-color: #89b4fa; }
-        #text-input::placeholder { color: #6c7086; }
+        #text-input:focus { border-color: #C15F3C; }
+        #text-input::placeholder { color: #6a6158; }
         .input-btn {
             width: 38px; height: 38px; padding: 0;
-            background: #313244; color: #6c7086;
-            border: 1px solid #45475a; border-radius: 50%;
+            background: #2a251d; color: #6a6158;
+            border: 1px solid #3a352b; border-radius: 50%;
             font-size: 17px; cursor: pointer; touch-action: manipulation; flex-shrink: 0;
             display: flex; align-items: center; justify-content: center;
         }
-        .input-btn:active { background: #585b70; color: #cdd6f4; }
+        .input-btn:active { background: #3f3930; color: #e8e6e3; }
         .input-btn.primary {
-            background: #89b4fa; color: #1e1e2e; border-color: #89b4fa;
+            background: #C15F3C; color: #fff; border-color: #C15F3C;
             font-weight: bold; font-size: 16px;
         }
-        .input-btn.primary:active { background: #74c7ec; }
+        .input-btn.primary:active { background: #A14A2F; }
         .input-btn.uploading { opacity: 0.5; pointer-events: none; }
         #file-input { display: none; }
         .fab-area {
@@ -90,30 +90,30 @@
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
             flex-shrink: 0;
         }
-        .fab-circle.green { background: #a6e3a1; color: #1e1e2e; }
-        .fab-circle.green:active { background: #94e2d5; }
+        .fab-circle.green { background: #4caf50; color: #fff; }
+        .fab-circle.green:active { background: #388e3c; }
         .fab-panel {
             display: none; gap: 4px; align-items: center;
-            background: #181825; border: 1px solid #313244;
+            background: #201d18; border: 1px solid #2a251d;
             border-radius: 8px; padding: 4px 6px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.5);
         }
         .fab-panel.open { display: flex; }
         .fab-panel .fab-btn {
-            padding: 8px 10px; border-radius: 6px; border: 1px solid #45475a;
+            padding: 8px 10px; border-radius: 6px; border: 1px solid #3a352b;
             font-size: 13px; cursor: pointer; white-space: nowrap;
-            background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1;
+            background: #4caf50; color: #fff; border-color: #4caf50;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        .fab-panel .fab-btn:active { background: #94e2d5; }
-        .fab-sep { width: 1px; background: #45475a; align-self: stretch; }
+        .fab-panel .fab-btn:active { background: #388e3c; }
+        .fab-sep { width: 1px; background: #3a352b; align-self: stretch; }
         .fab-panel .fab-btn.kill {
-            background: #f38ba8; color: #1e1e2e; border-color: #f38ba8;
+            background: #ff6b6b; color: #fff; border-color: #ff6b6b;
         }
-        .fab-panel .fab-btn.kill:active { background: #eba0ac; }
+        .fab-panel .fab-btn.kill:active { background: #ff5252; }
         #scroll-indicator {
             position: absolute; right: 2px; top: 10%; width: 4px; height: 30%;
-            background: rgba(137,180,250,0.5); border-radius: 2px;
+            background: rgba(193,95,60,0.5); border-radius: 2px;
             opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 10;
         }
         #scroll-indicator.visible { opacity: 1; }
@@ -191,13 +191,13 @@
 
         // Snippet color map
         var SNIPPET_COLORS = {
-            'default': { bg: '#313244', fg: '#cdd6f4', border: '#45475a' },
-            'green':   { bg: '#a6e3a1', fg: '#1e1e2e', border: '#a6e3a1' },
-            'blue':    { bg: '#89b4fa', fg: '#1e1e2e', border: '#89b4fa' },
-            'red':     { bg: '#f38ba8', fg: '#1e1e2e', border: '#f38ba8' },
-            'yellow':  { bg: '#f9e2af', fg: '#1e1e2e', border: '#f9e2af' },
-            'purple':  { bg: '#cba6f7', fg: '#1e1e2e', border: '#cba6f7' },
-            'teal':    { bg: '#94e2d5', fg: '#1e1e2e', border: '#94e2d5' }
+            'default': { bg: '#2a251d', fg: '#e8e6e3', border: '#3a352b' },
+            'green':   { bg: '#4caf50', fg: '#1a1815', border: '#4caf50' },
+            'blue':    { bg: '#C15F3C', fg: '#1a1815', border: '#C15F3C' },
+            'red':     { bg: '#ff6b6b', fg: '#1a1815', border: '#ff6b6b' },
+            'yellow':  { bg: '#f9e2af', fg: '#1a1815', border: '#f9e2af' },
+            'purple':  { bg: '#cba6f7', fg: '#1a1815', border: '#cba6f7' },
+            'teal':    { bg: '#388e3c', fg: '#1a1815', border: '#388e3c' }
         };
 
         // --- Load settings ---
