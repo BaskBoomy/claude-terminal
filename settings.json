@@ -1,0 +1,36 @@
+{
+  "general": {
+    "wakeLock": false,
+    "fontSize": 12
+  },
+  "snippets": [
+    {
+      "id": "s1",
+      "label": "Claude",
+      "command": "cd ~ && claude --dangerously-skip-permissions",
+      "color": "green",
+      "confirm": false
+    },
+    {
+      "id": "s2",
+      "label": "Deploy",
+      "command": "cd ~/dokjaeja && docker compose up -d --build",
+      "color": "red",
+      "confirm": true
+    },
+    {
+      "id": "s3",
+      "label": "Logs",
+      "command": "cd ~/dokjaeja && docker compose logs -f --tail 100",
+      "color": "default",
+      "confirm": false
+    },
+    {
+      "id": "s4",
+      "label": "Status",
+      "command": "docker ps --format \"table {{.Names}}\\t{{.Status}}\"",
+      "color": "blue",
+      "confirm": false
+    }
+  ]
+}
