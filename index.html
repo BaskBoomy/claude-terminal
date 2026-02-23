@@ -38,6 +38,15 @@
         .key-btn.accent { background: #45475a; color: #f38ba8; border-color: #f38ba8; }
         .sep { width: 1px; background: #45475a; margin: 2px 2px; flex-shrink: 0; }
         #snippet-btns { display: contents; }
+        .toolbar-row {
+            max-height: 40px;
+            transition: max-height 0.25s ease, opacity 0.25s ease, padding 0.25s ease;
+            opacity: 1;
+        }
+        .toolbar-row.hidden {
+            max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0;
+            border-top-color: transparent; overflow: hidden;
+        }
         #input-bar {
             display: flex; gap: 6px; padding: 8px 10px 48px;
             background: #181825; border-top: 1px solid #313244; flex-shrink: 0;
@@ -129,11 +138,11 @@
                 <button class="fab-circle green" id="tmux-fab-toggle">&#x2261;</button>
             </div>
         </div>
-        <div class="toolbar-row" id="toolbar">
+        <div class="toolbar-row hidden" id="toolbar">
             <span id="snippet-btns"></span>
             <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
         </div>
-        <div class="toolbar-row" id="keys-bar">
+        <div class="toolbar-row hidden" id="keys-bar">
             <button class="key-btn accent" data-key="ctrl-c">C-c</button>
             <button class="key-btn" data-key="enter">&#x23CE;</button>
             <button class="key-btn" data-key="tab">Tab</button>
@@ -154,6 +163,7 @@
             <input id="file-input" type="file" accept="image/*">
             <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
+            <button id="toolbar-toggle" class="input-btn">&#x25B2;</button>
         </div>
     </div>
     <script>
@@ -407,6 +417,26 @@
             if (t.tagName === 'BUTTON' || t.classList.contains('key-btn') || t.classList.contains('tool-btn') || t.classList.contains('fab-btn') || t.classList.contains('fab-circle')) {
                 document.activeElement && document.activeElement.blur && document.activeElement !== document.body && document.activeElement.blur();
             }
+        });
+
+        // --- Toolbar toggle ---
+        var toolbarToggle = document.getElementById('toolbar-toggle');
+        var toolbar = document.getElementById('toolbar');
+        var keysBar = document.getElementById('keys-bar');
+        var toolbarsOpen = sessionStorage.getItem('toolbars-open') === '1';
+
+        function setToolbars(open) {
+            toolbarsOpen = open;
+            toolbar.classList.toggle('hidden', !open);
+            keysBar.classList.toggle('hidden', !open);
+            toolbarToggle.innerHTML = open ? '\u25BC' : '\u25B2';
+            sessionStorage.setItem('toolbars-open', open ? '1' : '0');
+        }
+        setToolbars(toolbarsOpen);
+
+        toolbarToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            setToolbars(!toolbarsOpen);
         });
 
         // --- Floating tmux FAB ---
