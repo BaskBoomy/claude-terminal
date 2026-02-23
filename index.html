@@ -13,7 +13,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; background: #1e1e2e; color: #cdd6f4; overflow: hidden; }
         #app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
-        #terminal-wrap { flex: 1; overflow: hidden; }
+        #terminal-wrap { flex: 1; overflow: hidden; position: relative; }
         #terminal-frame { width: 100%; height: 100%; border: none; background: #1e1e2e; }
         #toolbar {
             display: flex; gap: 4px; padding: 4px 8px;
@@ -55,18 +55,29 @@
         .input-btn.primary:active { background: #74c7ec; }
         .input-btn.uploading { opacity: 0.5; pointer-events: none; }
         #file-input { display: none; }
+        .tool-btn.scroll { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; }
+        .tool-btn.scroll:active { background: #74c7ec; }
+        #scroll-indicator {
+            position: absolute; right: 2px; top: 10%; width: 4px; height: 30%;
+            background: rgba(137,180,250,0.5); border-radius: 2px;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 10;
+        }
+        #scroll-indicator.visible { opacity: 1; }
     </style>
 </head>
 <body>
     <div id="app">
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
+            <div id="scroll-indicator"></div>
         </div>
         <div id="toolbar">
             <button class="tool-btn tmux" data-key="tmux-new">+Win</button>
             <button class="tool-btn tmux" data-key="tmux-prev">&#x25C0;</button>
             <button class="tool-btn tmux" data-key="tmux-next">&#x25B6;</button>
             <button class="tool-btn tmux" data-key="tmux-list">List</button>
+            <button class="tool-btn scroll" data-key="pgup">PgUp</button>
+            <button class="tool-btn scroll" data-key="pgdn">PgDn</button>
             <div class="sep"></div>
             <span id="snippet-btns"></span>
             <button class="tool-btn" onclick="location.reload()">&#x21BB;</button>
@@ -227,7 +238,9 @@
             'tmux-new':  function() { tmuxCmd('c', 67); },
             'tmux-prev': function() { tmuxCmd('p', 80); },
             'tmux-next': function() { tmuxCmd('n', 78); },
-            'tmux-list': function() { tmuxCmd('w', 87); }
+            'tmux-list': function() { tmuxCmd('w', 87); },
+            'pgup':      function() { sendKey('b', 66, {ctrl: true}); setTimeout(function() { sendKey('PageUp', 33); }, 50); },
+            'pgdn':      function() { sendKey('PageDown', 34); }
         };
 
         // --- Image upload ---
@@ -311,15 +324,129 @@
         function bindToolbarButtons() {
             document.querySelectorAll('.tool-btn[data-key]').forEach(function(btn) {
                 var isTmux = btn.dataset.key.indexOf('tmux') === 0;
+                var isScroll = btn.classList.contains('scroll');
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     var action = KEYS[btn.dataset.key];
                     if (action) action();
-                    if (!isTmux) textInput.focus();
+                    if (!isTmux && !isScroll) textInput.focus();
                 });
             });
         }
         bindToolbarButtons();
+
+        // --- Mobile touch scroll support ---
+        var scrollIndicator = document.getElementById('scroll-indicator');
+        var scrollFadeTimer = null;
+
+        function showScrollIndicator() {
+            scrollIndicator.classList.add('visible');
+            clearTimeout(scrollFadeTimer);
+            scrollFadeTimer = setTimeout(function() {
+                scrollIndicator.classList.remove('visible');
+            }, 800);
+        }
+
+        function emitScroll(direction) {
+            var dispatched = false;
+            try {
+                var viewport = frame.contentDocument.querySelector('.xterm-viewport');
+                if (viewport) {
+                    viewport.dispatchEvent(new WheelEvent('wheel', {
+                        deltaY: direction === 'up' ? -100 : 100,
+                        bubbles: true, cancelable: true
+                    }));
+                    dispatched = true;
+                }
+            } catch(e) {}
+            // Fallback: send SGR mouse escape sequences if viewport not found
+            if (!dispatched) {
+                if (direction === 'up') {
+                    sendText('\x1b[<64;1;1M');
+                } else {
+                    sendText('\x1b[<65;1;1M');
+                }
+            }
+            showScrollIndicator();
+        }
+
+        function initTouchScroll() {
+            var xtermScreen = null;
+            try {
+                xtermScreen = frame.contentDocument.querySelector('.xterm-screen');
+            } catch(e) {}
+            if (!xtermScreen) return false;
+
+            var startX = 0;
+            var startY = 0;
+            var lastY = 0;
+            var isScrolling = false;
+            var directionLocked = false;
+            var accumulated = 0;
+            var THRESHOLD = 10;   // min px to detect direction
+            var STEP = 30;        // px per scroll line
+
+            xtermScreen.addEventListener('touchstart', function(e) {
+                if (e.touches.length !== 1) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                lastY = startY;
+                isScrolling = false;
+                directionLocked = false;
+                accumulated = 0;
+            }, { passive: true });
+
+            xtermScreen.addEventListener('touchmove', function(e) {
+                if (e.touches.length !== 1) return;
+                var currentY = e.touches[0].clientY;
+                var deltaY = Math.abs(startY - currentY);
+                var deltaX = Math.abs(e.touches[0].clientX - startX);
+
+                // Determine direction once past threshold
+                if (!directionLocked && (deltaY > THRESHOLD || deltaX > THRESHOLD)) {
+                    directionLocked = true;
+                    // Only scroll if predominantly vertical
+                    isScrolling = deltaY > deltaX;
+                    lastY = currentY;
+                }
+
+                if (isScrolling) {
+                    e.preventDefault();
+                    var delta = lastY - currentY;
+                    accumulated += delta;
+                    lastY = currentY;
+
+                    // Emit scroll events based on accumulated movement
+                    while (Math.abs(accumulated) >= STEP) {
+                        if (accumulated > 0) {
+                            emitScroll('down');
+                            accumulated -= STEP;
+                        } else {
+                            emitScroll('up');
+                            accumulated += STEP;
+                        }
+                    }
+                }
+            }, { passive: false });
+
+            xtermScreen.addEventListener('touchend', function() {
+                isScrolling = false;
+                directionLocked = false;
+                accumulated = 0;
+            }, { passive: true });
+
+            return true;
+        }
+
+        // Attach touch scroll after iframe loads, with retry
+        frame.addEventListener('load', function() {
+            var attempts = 0;
+            var tryInit = setInterval(function() {
+                if (initTouchScroll() || ++attempts > 20) {
+                    clearInterval(tryInit);
+                }
+            }, 250);
+        });
 
         // --- Keyboard resize handling (iOS Safari fallback) ---
         var app = document.getElementById('app');
