@@ -66,6 +66,44 @@
         #file-input { display: none; }
         .tool-btn.scroll { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; }
         .tool-btn.scroll:active { background: #74c7ec; }
+        .fab-area {
+            position: absolute; z-index: 20;
+            display: flex; align-items: center; gap: 6px;
+            pointer-events: none;
+        }
+        .fab-area > * { pointer-events: auto; }
+        .fab-area.bottom-right { right: 10px; bottom: 10px; }
+        .fab-area.bottom-left { left: 10px; bottom: 10px; }
+        .fab-circle {
+            width: 40px; height: 40px; border-radius: 50%; border: none;
+            font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            flex-shrink: 0;
+        }
+        .fab-circle.green { background: #a6e3a1; color: #1e1e2e; }
+        .fab-circle.green:active { background: #94e2d5; }
+        .fab-circle.blue { background: #89b4fa; color: #1e1e2e; }
+        .fab-circle.blue:active { background: #74c7ec; }
+        .fab-panel {
+            display: none; gap: 4px; align-items: center;
+            background: #181825; border: 1px solid #313244;
+            border-radius: 8px; padding: 4px 6px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+        }
+        .fab-panel.open { display: flex; }
+        .fab-panel .fab-btn {
+            padding: 8px 10px; border-radius: 6px; border: 1px solid #45475a;
+            font-size: 13px; cursor: pointer; white-space: nowrap;
+            background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .fab-panel .fab-btn:active { background: #94e2d5; }
+        .fab-panel .fab-btn.kill {
+            background: #f38ba8; color: #1e1e2e; border-color: #f38ba8;
+        }
+        .fab-panel .fab-btn.kill:active { background: #eba0ac; }
         #scroll-indicator {
             position: absolute; right: 2px; top: 10%; width: 4px; height: 30%;
             background: rgba(137,180,250,0.5); border-radius: 2px;
@@ -79,17 +117,25 @@
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
             <div id="scroll-indicator"></div>
+            <div class="fab-area bottom-left">
+                <button class="fab-circle blue" onclick="location.reload()">&#x21BB;</button>
+            </div>
+            <div class="fab-area bottom-right" id="tmux-fab">
+                <div class="fab-panel" id="tmux-fab-panel">
+                    <button class="fab-btn" data-key="tmux-new">+Win</button>
+                    <button class="fab-btn" data-key="tmux-prev">&#x25C0;</button>
+                    <button class="fab-btn" data-key="tmux-next">&#x25B6;</button>
+                    <button class="fab-btn" data-key="tmux-list">List</button>
+                    <button class="fab-btn kill" data-key="tmux-kill">&#x2715;</button>
+                </div>
+                <button class="fab-circle green" id="tmux-fab-toggle">&#x2261;</button>
+            </div>
         </div>
         <div class="toolbar-row" id="toolbar">
-            <button class="tool-btn tmux" data-key="tmux-new">+Win</button>
-            <button class="tool-btn tmux" data-key="tmux-prev">&#x25C0;</button>
-            <button class="tool-btn tmux" data-key="tmux-next">&#x25B6;</button>
-            <button class="tool-btn tmux" data-key="tmux-list">List</button>
             <button class="tool-btn scroll" data-key="pgup">PgUp</button>
             <button class="tool-btn scroll" data-key="pgdn">PgDn</button>
             <div class="sep"></div>
             <span id="snippet-btns"></span>
-            <button class="tool-btn" onclick="location.reload()">&#x21BB;</button>
             <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
         </div>
         <div class="toolbar-row" id="keys-bar">
@@ -258,6 +304,7 @@
             'tmux-prev': function() { tmuxCmd('p', 80); },
             'tmux-next': function() { tmuxCmd('n', 78); },
             'tmux-list': function() { tmuxCmd('w', 87); },
+            'tmux-kill': function() { tmuxCmd('&', 55); },
             'pgup':      function() { sendKey('b', 66, {ctrl: true}); setTimeout(function() { sendKey('PageUp', 33); }, 50); },
             'pgdn':      function() { sendKey('PageDown', 34); }
         };
@@ -354,6 +401,20 @@
             });
         }
         bindToolbarButtons();
+
+        // --- Floating tmux FAB ---
+        var tmuxFabToggle = document.getElementById('tmux-fab-toggle');
+        var tmuxFabPanel = document.getElementById('tmux-fab-panel');
+        tmuxFabToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            tmuxFabPanel.classList.toggle('open');
+        });
+        // Close panel when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#tmux-fab')) {
+                tmuxFabPanel.classList.remove('open');
+            }
+        });
 
         // --- Mobile touch scroll support ---
         var scrollIndicator = document.getElementById('scroll-indicator');
