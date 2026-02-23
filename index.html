@@ -44,12 +44,13 @@
         #input-bar {
             display: flex; gap: 4px; padding: 8px 8px 48px;
             background: #181825; border-top: 1px solid #313244; flex-shrink: 0;
-            align-items: center;
+            align-items: flex-end;
         }
         #text-input {
             flex: 1; min-width: 0; padding: 10px 12px; background: #313244; color: #cdd6f4;
             border: 1px solid #45475a; border-radius: 8px;
             font-size: 16px; outline: none; font-family: inherit;
+            resize: none; height: 42px; max-height: 120px; line-height: 1.4;
         }
         #text-input:focus { border-color: #89b4fa; }
         #text-input::placeholder { color: #6c7086; }
@@ -157,7 +158,7 @@
         <div id="input-bar">
             <button id="img-btn" class="input-btn">&#x1F4F7;</button>
             <input id="file-input" type="file" accept="image/*">
-            <input id="text-input" type="text" placeholder="입력 후 Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
         </div>
     </div>
@@ -359,12 +360,19 @@
             if (inputHistory.length > 50) inputHistory.shift();
             historyIndex = -1;
             textInput.value = '';
+            textInput.style.height = '42px';
             sessionStorage.removeItem('terminal-input');
             textInput.focus();
         }
 
+        function autoResize() {
+            textInput.style.height = 'auto';
+            textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+        }
+        textInput.addEventListener('input', autoResize);
+
         textInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.isComposing) {
+            if (e.key === 'Enter' && e.shiftKey && !e.isComposing) {
                 e.preventDefault();
                 submitInput();
             } else if (e.key === 'ArrowUp' && !e.isComposing && document.activeElement === textInput) {
@@ -372,6 +380,7 @@
                     e.preventDefault();
                     historyIndex++;
                     textInput.value = inputHistory[inputHistory.length - 1 - historyIndex];
+                    autoResize();
                 }
             } else if (e.key === 'ArrowDown' && !e.isComposing && document.activeElement === textInput) {
                 e.preventDefault();
@@ -382,6 +391,7 @@
                     historyIndex = -1;
                     textInput.value = '';
                 }
+                autoResize();
             }
         });
 
