@@ -12,6 +12,20 @@
       "confirm": false
     },
     {
+      "id": "s1771838793646",
+      "label": "Resume",
+      "command": "/resume",
+      "color": "red",
+      "confirm": false
+    },
+    {
+      "id": "s1771835850683",
+      "label": "개발서버",
+      "command": "restartNaught",
+      "color": "default",
+      "confirm": false
+    },
+    {
       "id": "s2",
       "label": "Deploy",
       "command": "cd ~/dokjaeja && docker compose up -d --build",
@@ -30,13 +44,6 @@
       "label": "Status",
       "command": "docker ps --format \"table {{.Names}}\\t{{.Status}}\"",
       "color": "blue",
-      "confirm": false
-    },
-    {
-      "id": "s1771835850683",
-      "label": "개발서버",
-      "command": "restartNaught",
-      "color": "default",
       "confirm": false
     }
   ]

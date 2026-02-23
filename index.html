@@ -133,9 +133,6 @@
             </div>
         </div>
         <div class="toolbar-row" id="toolbar">
-            <button class="tool-btn scroll" data-key="pgup">PgUp</button>
-            <button class="tool-btn scroll" data-key="pgdn">PgDn</button>
-            <div class="sep"></div>
             <span id="snippet-btns"></span>
             <button class="tool-btn" onclick="location.href='/settings.html'" style="font-size:15px">&#x2699;</button>
         </div>
@@ -220,7 +217,6 @@
                     e.preventDefault();
                     if (sn.confirm && !confirm('Run: ' + sn.command + '?')) return;
                     sendText(sn.command + '\r');
-                    textInput.focus();
                 });
                 container.appendChild(btn);
             });
@@ -361,7 +357,7 @@
         // --- Input bar ---
         function submitInput() {
             var text = textInput.value;
-            sendText((text || '').replace(/\n/g, '\r') + '\r');
+            sendText((text || '') + '\r');
             if (text) inputHistory.push(text);
             if (inputHistory.length > 50) inputHistory.shift();
             historyIndex = -1;
@@ -395,22 +391,30 @@
             }
         });
 
-        sendBtn.addEventListener('click', function() { submitInput(); textInput.blur(); });
+        sendBtn.addEventListener('click', function() {
+            submitInput();
+            setTimeout(function() { textInput.blur(); }, 100);
+        });
 
         // --- Toolbar buttons ---
         function bindToolbarButtons() {
             document.querySelectorAll('[data-key]').forEach(function(btn) {
-                var isTmux = btn.dataset.key.indexOf('tmux') === 0;
-                var isScroll = btn.classList.contains('scroll');
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     var action = KEYS[btn.dataset.key];
                     if (action) action();
-                    if (!isTmux && !isScroll) textInput.focus();
                 });
             });
         }
         bindToolbarButtons();
+
+        // Prevent any button/key-btn from opening keyboard
+        document.addEventListener('touchend', function(e) {
+            var t = e.target;
+            if (t.tagName === 'BUTTON' || t.classList.contains('key-btn') || t.classList.contains('tool-btn') || t.classList.contains('fab-btn') || t.classList.contains('fab-circle')) {
+                document.activeElement && document.activeElement.blur && document.activeElement !== document.body && document.activeElement.blur();
+            }
+        });
 
         // --- Floating tmux FAB ---
         var tmuxFabToggle = document.getElementById('tmux-fab-toggle');
