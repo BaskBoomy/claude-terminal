@@ -391,7 +391,10 @@
         // --- Input bar ---
         function submitInput() {
             var text = textInput.value;
-            sendText((text || '') + '\r');
+            sendText(text || '');
+            setTimeout(function() {
+                sendKey('Enter', 13);
+            }, 50);
             if (text) inputHistory.push(text);
             if (inputHistory.length > 50) inputHistory.shift();
             historyIndex = -1;
