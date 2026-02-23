@@ -31,6 +31,13 @@
       "command": "docker ps --format \"table {{.Names}}\\t{{.Status}}\"",
       "color": "blue",
       "confirm": false
+    },
+    {
+      "id": "s1771835850683",
+      "label": "개발서버",
+      "command": "restartNaught",
+      "color": "default",
+      "confirm": false
     }
   ]
 }

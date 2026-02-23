@@ -476,10 +476,13 @@
             var startY = 0;
             var lastY = 0;
             var isScrolling = false;
+            var isSwiping = false;
+            var swipeHandled = false;
             var directionLocked = false;
             var accumulated = 0;
             var THRESHOLD = 10;   // min px to detect direction
             var STEP = 30;        // px per scroll line
+            var SWIPE_MIN = 60;   // min px for swipe trigger
 
             xtermScreen.addEventListener('touchstart', function(e) {
                 if (e.touches.length !== 1) return;
@@ -487,21 +490,24 @@
                 startY = e.touches[0].clientY;
                 lastY = startY;
                 isScrolling = false;
+                isSwiping = false;
+                swipeHandled = false;
                 directionLocked = false;
                 accumulated = 0;
             }, { passive: true });
 
             xtermScreen.addEventListener('touchmove', function(e) {
                 if (e.touches.length !== 1) return;
+                var currentX = e.touches[0].clientX;
                 var currentY = e.touches[0].clientY;
                 var deltaY = Math.abs(startY - currentY);
-                var deltaX = Math.abs(e.touches[0].clientX - startX);
+                var deltaX = Math.abs(currentX - startX);
 
                 // Determine direction once past threshold
                 if (!directionLocked && (deltaY > THRESHOLD || deltaX > THRESHOLD)) {
                     directionLocked = true;
-                    // Only scroll if predominantly vertical
                     isScrolling = deltaY > deltaX;
+                    isSwiping = !isScrolling;
                     lastY = currentY;
                 }
 
@@ -511,7 +517,6 @@
                     accumulated += delta;
                     lastY = currentY;
 
-                    // Emit scroll events based on accumulated movement
                     while (Math.abs(accumulated) >= STEP) {
                         if (accumulated > 0) {
                             emitScroll('down');
@@ -522,10 +527,25 @@
                         }
                     }
                 }
+
+                // Horizontal swipe → tmux session switch
+                if (isSwiping && !swipeHandled) {
+                    var swipeDist = currentX - startX;
+                    if (Math.abs(swipeDist) >= SWIPE_MIN) {
+                        swipeHandled = true;
+                        if (swipeDist < 0) {
+                            tmuxCmd('n', 78); // swipe left → next
+                        } else {
+                            tmuxCmd('p', 80); // swipe right → prev
+                        }
+                    }
+                }
             }, { passive: false });
 
             xtermScreen.addEventListener('touchend', function() {
                 isScrolling = false;
+                isSwiping = false;
+                swipeHandled = false;
                 directionLocked = false;
                 accumulated = 0;
             }, { passive: true });
