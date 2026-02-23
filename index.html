@@ -28,8 +28,6 @@
         }
         .tool-btn:active { background: #585b70; }
         .tool-btn.accent { background: #f38ba8; color: #1e1e2e; border-color: #f38ba8; }
-        .tool-btn.tmux { background: #a6e3a1; color: #1e1e2e; border-color: #a6e3a1; }
-        .tool-btn.tmux:active { background: #94e2d5; }
         .key-btn {
             padding: 5px 8px; background: #313244; color: #9399b2;
             border: 1px solid #3b3d54; border-radius: 4px;
@@ -42,26 +40,30 @@
         .sep { width: 1px; background: #45475a; margin: 2px 2px; flex-shrink: 0; }
         #snippet-btns { display: contents; }
         #input-bar {
-            display: flex; gap: 4px; padding: 8px 8px 48px;
+            display: flex; gap: 6px; padding: 8px 10px 48px;
             background: #181825; border-top: 1px solid #313244; flex-shrink: 0;
             align-items: flex-end;
         }
         #text-input {
-            flex: 1; min-width: 0; padding: 10px 12px; background: #313244; color: #cdd6f4;
-            border: 1px solid #45475a; border-radius: 8px;
-            font-size: 16px; outline: none; font-family: inherit;
-            resize: none; height: 42px; max-height: 120px; line-height: 1.4;
+            flex: 1; min-width: 0; padding: 8px 12px; background: #313244; color: #cdd6f4;
+            border: 1px solid #45475a; border-radius: 12px;
+            font-size: 15px; outline: none; font-family: -apple-system, system-ui, sans-serif;
+            resize: none; height: 38px; max-height: 120px; line-height: 1.5;
         }
         #text-input:focus { border-color: #89b4fa; }
         #text-input::placeholder { color: #6c7086; }
         .input-btn {
-            padding: 10px; background: #313244; color: #cdd6f4;
-            border: 1px solid #45475a; border-radius: 8px; font-size: 16px;
-            cursor: pointer; touch-action: manipulation; flex-shrink: 0;
-            line-height: 1;
+            width: 38px; height: 38px; padding: 0;
+            background: #313244; color: #6c7086;
+            border: 1px solid #45475a; border-radius: 50%;
+            font-size: 17px; cursor: pointer; touch-action: manipulation; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
         }
-        .input-btn:active { background: #585b70; }
-        .input-btn.primary { background: #89b4fa; color: #1e1e2e; border-color: #89b4fa; font-weight: bold; }
+        .input-btn:active { background: #585b70; color: #cdd6f4; }
+        .input-btn.primary {
+            background: #89b4fa; color: #1e1e2e; border-color: #89b4fa;
+            font-weight: bold; font-size: 16px;
+        }
         .input-btn.primary:active { background: #74c7ec; }
         .input-btn.uploading { opacity: 0.5; pointer-events: none; }
         #file-input { display: none; }
@@ -84,8 +86,6 @@
         }
         .fab-circle.green { background: #a6e3a1; color: #1e1e2e; }
         .fab-circle.green:active { background: #94e2d5; }
-        .fab-circle.blue { background: #89b4fa; color: #1e1e2e; }
-        .fab-circle.blue:active { background: #74c7ec; }
         .fab-panel {
             display: none; gap: 4px; align-items: center;
             background: #181825; border: 1px solid #313244;
@@ -156,7 +156,7 @@
             <button class="key-btn" data-key="n">N</button>
         </div>
         <div id="input-bar">
-            <button id="img-btn" class="input-btn">&#x1F4F7;</button>
+            <button id="img-btn" class="input-btn">&#x1F4CE;</button>
             <input id="file-input" type="file" accept="image/*">
             <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
@@ -172,11 +172,17 @@
         var inputHistory = [];
         var historyIndex = -1;
 
+        function autoResize() {
+            textInput.style.height = 'auto';
+            textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+        }
+
         // --- Persist input text across page navigation ---
         var savedInput = sessionStorage.getItem('terminal-input');
         if (savedInput) textInput.value = savedInput;
         textInput.addEventListener('input', function() {
             sessionStorage.setItem('terminal-input', textInput.value);
+            autoResize();
         });
 
         // Snippet color map
@@ -355,21 +361,15 @@
         // --- Input bar ---
         function submitInput() {
             var text = textInput.value;
-            sendText((text || '') + '\r');
+            sendText((text || '').replace(/\n/g, '\r') + '\r');
             if (text) inputHistory.push(text);
             if (inputHistory.length > 50) inputHistory.shift();
             historyIndex = -1;
             textInput.value = '';
-            textInput.style.height = '42px';
+            textInput.style.height = '38px';
             sessionStorage.removeItem('terminal-input');
             textInput.focus();
         }
-
-        function autoResize() {
-            textInput.style.height = 'auto';
-            textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
-        }
-        textInput.addEventListener('input', autoResize);
 
         textInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && e.shiftKey && !e.isComposing) {
@@ -424,6 +424,10 @@
             if (!e.target.closest('#tmux-fab')) {
                 tmuxFabPanel.classList.remove('open');
             }
+        });
+        // Close panel on iframe focus (terminal click)
+        window.addEventListener('blur', function() {
+            tmuxFabPanel.classList.remove('open');
         });
 
         // --- Mobile touch scroll support ---
