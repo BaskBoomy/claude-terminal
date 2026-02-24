@@ -132,6 +132,116 @@
         .scroll-bottom-btn.visible { display: flex; }
         .scroll-bottom-btn:active { background: #A14A2F; }
 
+        /* --- View Tabs (Terminal / Preview) --- */
+        #view-tabs {
+            display: flex; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        .view-tab {
+            padding: 8px 16px; font-size: 14px;
+            background: none; border: none; border-bottom: 2px solid transparent;
+            color: #6a6158; cursor: pointer;
+            font-family: -apple-system, system-ui, sans-serif;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .view-tab.active {
+            color: #e8e6e3; border-bottom-color: #C15F3C;
+        }
+        .view-tab:not(.active):active { color: #a09888; }
+
+        #preview-container {
+            display: none; flex-direction: column;
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+        }
+        /* Browser tab bar */
+        #browser-tabs {
+            display: flex; align-items: center;
+            background: #1a1815; flex-shrink: 0;
+            overflow-x: auto; scrollbar-width: none;
+            border-bottom: 1px solid #2a251d;
+        }
+        #browser-tabs::-webkit-scrollbar { display: none; }
+        .browser-tab {
+            display: flex; align-items: center; gap: 6px;
+            padding: 6px 8px 6px 12px; min-width: 0; max-width: 160px;
+            background: #1a1815; border: none; border-right: 1px solid #2a251d;
+            color: #6a6158; font-size: 12px; cursor: pointer;
+            font-family: -apple-system, system-ui, sans-serif;
+            white-space: nowrap; flex-shrink: 0;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .browser-tab.active { background: #201d18; color: #e8e6e3; }
+        .browser-tab-label {
+            overflow: hidden; text-overflow: ellipsis; min-width: 0;
+        }
+        .browser-tab-close {
+            width: 18px; height: 18px; border-radius: 4px;
+            background: none; border: none; color: #6a6158;
+            font-size: 14px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1;
+        }
+        .browser-tab-close:hover, .browser-tab-close:active { background: #3a352b; color: #ff6b6b; }
+        .browser-tab.active .browser-tab-close { color: #a09888; }
+        #browser-tab-add {
+            width: 30px; height: 30px; background: none; border: none;
+            color: #6a6158; font-size: 18px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        #browser-tab-add:active { color: #e8e6e3; }
+        /* Address bar */
+        #preview-bar {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 8px; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #preview-url {
+            flex: 1; min-width: 0; padding: 6px 10px;
+            background: #2a251d; color: #e8e6e3;
+            border: 1px solid #3a352b; border-radius: 8px;
+            font-size: 13px; outline: none;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        #preview-url:focus { border-color: #C15F3C; }
+        #preview-url::placeholder { color: #6a6158; }
+        .preview-btn {
+            width: 30px; height: 30px; padding: 0;
+            background: #2a251d; color: #a09888;
+            border: 1px solid #3a352b; border-radius: 6px;
+            font-size: 15px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .preview-btn:active { background: #3f3930; color: #e8e6e3; }
+        #preview-frames { position: relative; flex: 1; }
+        .preview-iframe {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; border: none;
+            background: #1a1815; display: none;
+        }
+        .preview-iframe.active { display: block; }
+        /* URL dropdown */
+        #preview-url-dropdown {
+            display: none; position: absolute; top: 100%; left: 8px; right: 8px;
+            background: #1a1815; border: 1px solid #3a352b; border-radius: 8px;
+            max-height: 200px; overflow-y: auto; z-index: 30;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            margin-top: 2px;
+        }
+        #preview-url-dropdown.open { display: block; }
+        .url-dropdown-item {
+            padding: 10px 12px; font-size: 13px; color: #a09888;
+            cursor: pointer; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .url-dropdown-item:active, .url-dropdown-item:hover {
+            background: #2a251d; color: #e8e6e3;
+        }
+
         /* --- Settings Bottom Sheet --- */
         #settings-backdrop {
             position: fixed; inset: 0; z-index: 100;
@@ -418,8 +528,24 @@
 </head>
 <body>
     <div id="app">
+        <div id="view-tabs">
+            <button class="view-tab active" data-view="terminal">Terminal</button>
+            <button class="view-tab" data-view="preview">Preview</button>
+        </div>
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
+            <div id="preview-container">
+                <div id="browser-tabs">
+                    <button id="browser-tab-add">+</button>
+                </div>
+                <div id="preview-bar" style="position:relative">
+                    <input id="preview-url" type="url" placeholder="https://dev.naught.kr" />
+                    <button class="preview-btn" id="preview-reload">&#x21BB;</button>
+                    <button class="preview-btn" id="preview-open">&#x2197;</button>
+                    <div id="preview-url-dropdown"></div>
+                </div>
+                <div id="preview-frames"></div>
+            </div>
             <div id="scroll-indicator"></div>
             <button id="scroll-bottom-btn" class="scroll-bottom-btn">&#x25BC;</button>
             <div class="fab-area bottom-right" id="tmux-fab">
@@ -547,6 +673,270 @@
                 return resp;
             });
         };
+
+        // --- View Tabs (Terminal / Preview) ---
+        var activeView = 'terminal';
+        var viewTabs = document.querySelectorAll('.view-tab');
+        var terminalFrame = document.getElementById('terminal-frame');
+        var previewContainer = document.getElementById('preview-container');
+        var previewUrlInput = document.getElementById('preview-url');
+        var previewReload = document.getElementById('preview-reload');
+        var previewOpen = document.getElementById('preview-open');
+        var previewDropdown = document.getElementById('preview-url-dropdown');
+        var previewFrames = document.getElementById('preview-frames');
+        var browserTabsBar = document.getElementById('browser-tabs');
+        var browserTabAdd = document.getElementById('browser-tab-add');
+        var tmuxFab = document.getElementById('tmux-fab');
+        var scrollIndicatorEl = document.getElementById('scroll-indicator');
+        var scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
+
+        // --- Multi-tab browser state ---
+        var browserTabs = []; // [{id, url, label}]
+        var activeTabId = null;
+        var tabIdCounter = 0;
+
+        // Recent URLs (max 10)
+        var recentUrls = JSON.parse(localStorage.getItem('preview-recent-urls') || '[]');
+
+        function saveRecentUrl(url) {
+            if (!url) return;
+            recentUrls = recentUrls.filter(function(u) { return u !== url; });
+            recentUrls.unshift(url);
+            if (recentUrls.length > 10) recentUrls = recentUrls.slice(0, 10);
+            try { localStorage.setItem('preview-recent-urls', JSON.stringify(recentUrls)); } catch(e) {}
+        }
+
+        function saveBrowserTabs() {
+            var data = browserTabs.map(function(t) { return { url: t.url, label: t.label }; });
+            try {
+                localStorage.setItem('browser-tabs', JSON.stringify(data));
+                localStorage.setItem('browser-active-idx', String(browserTabs.findIndex(function(t) { return t.id === activeTabId; })));
+            } catch(e) {}
+        }
+
+        function ensureProtocol(url) {
+            if (!url) return url;
+            return /^https?:\/\//i.test(url) ? url : 'https://' + url;
+        }
+
+        function labelFromUrl(url) {
+            try {
+                var h = new URL(url).hostname;
+                return h.replace(/^www\./, '') || url;
+            } catch(e) { return url || 'New Tab'; }
+        }
+
+        function createBrowserTab(url, skipSave) {
+            var id = 'btab-' + (++tabIdCounter);
+            var fullUrl = url ? ensureProtocol(url) : '';
+            var tab = { id: id, url: fullUrl, label: labelFromUrl(fullUrl) || 'New Tab' };
+            browserTabs.push(tab);
+
+            // Create iframe
+            var iframe = document.createElement('iframe');
+            iframe.className = 'preview-iframe';
+            iframe.id = id;
+            if (fullUrl) iframe.src = fullUrl;
+            previewFrames.appendChild(iframe);
+
+            if (fullUrl) saveRecentUrl(fullUrl);
+            renderBrowserTabs();
+            activateBrowserTab(id);
+            if (!skipSave) saveBrowserTabs();
+            return tab;
+        }
+
+        function activateBrowserTab(id) {
+            activeTabId = id;
+            // Show/hide iframes
+            previewFrames.querySelectorAll('.preview-iframe').forEach(function(f) {
+                f.classList.toggle('active', f.id === id);
+            });
+            // Update tab bar active state
+            browserTabsBar.querySelectorAll('.browser-tab').forEach(function(t) {
+                t.classList.toggle('active', t.dataset.tabId === id);
+            });
+            // Update address bar
+            var tab = browserTabs.find(function(t) { return t.id === id; });
+            previewUrlInput.value = tab ? tab.url : '';
+            saveBrowserTabs();
+        }
+
+        function closeBrowserTab(id) {
+            var idx = browserTabs.findIndex(function(t) { return t.id === id; });
+            if (idx === -1) return;
+            browserTabs.splice(idx, 1);
+            var iframe = document.getElementById(id);
+            if (iframe) iframe.remove();
+
+            if (browserTabs.length === 0) {
+                // Create a fresh empty tab
+                createBrowserTab('');
+                return;
+            }
+            if (activeTabId === id) {
+                var nextIdx = Math.min(idx, browserTabs.length - 1);
+                activateBrowserTab(browserTabs[nextIdx].id);
+            }
+            renderBrowserTabs();
+            saveBrowserTabs();
+        }
+
+        function renderBrowserTabs() {
+            // Remove existing tab buttons (keep the + button)
+            browserTabsBar.querySelectorAll('.browser-tab').forEach(function(t) { t.remove(); });
+            browserTabs.forEach(function(tab) {
+                var btn = document.createElement('button');
+                btn.className = 'browser-tab' + (tab.id === activeTabId ? ' active' : '');
+                btn.dataset.tabId = tab.id;
+
+                var label = document.createElement('span');
+                label.className = 'browser-tab-label';
+                label.textContent = tab.label || 'New Tab';
+                btn.appendChild(label);
+
+                var closeBtn = document.createElement('span');
+                closeBtn.className = 'browser-tab-close';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    closeBrowserTab(tab.id);
+                });
+                btn.appendChild(closeBtn);
+
+                btn.addEventListener('click', function() {
+                    activateBrowserTab(tab.id);
+                });
+
+                browserTabsBar.insertBefore(btn, browserTabAdd);
+            });
+        }
+
+        function navigateActiveTab(url) {
+            if (!url) return;
+            url = ensureProtocol(url);
+            var tab = browserTabs.find(function(t) { return t.id === activeTabId; });
+            if (!tab) return;
+            tab.url = url;
+            tab.label = labelFromUrl(url);
+            previewUrlInput.value = url;
+            var iframe = document.getElementById(activeTabId);
+            if (iframe) iframe.src = url;
+            saveRecentUrl(url);
+            renderBrowserTabs();
+            saveBrowserTabs();
+            closePreviewDropdown();
+        }
+
+        // Restore saved tabs or create one empty
+        (function restoreBrowserTabs() {
+            var saved = [];
+            try { saved = JSON.parse(localStorage.getItem('browser-tabs') || '[]'); } catch(e) {}
+            var savedIdx = parseInt(localStorage.getItem('browser-active-idx') || '0', 10);
+            if (saved.length === 0) {
+                createBrowserTab('', true);
+            } else {
+                saved.forEach(function(s) { createBrowserTab(s.url, true); });
+                var targetIdx = Math.min(Math.max(savedIdx, 0), browserTabs.length - 1);
+                activateBrowserTab(browserTabs[targetIdx].id);
+            }
+        })();
+
+        // + button
+        browserTabAdd.addEventListener('click', function(e) {
+            e.preventDefault();
+            createBrowserTab('');
+            previewUrlInput.focus();
+        });
+
+        // --- View switching ---
+        var toolbarEl = document.getElementById('toolbar');
+        var keysBarEl = document.getElementById('keys-bar');
+        var inputBarEl = document.getElementById('input-bar');
+
+        function switchView(view) {
+            activeView = view;
+            var isTerm = view === 'terminal';
+            viewTabs.forEach(function(tab) {
+                tab.classList.toggle('active', tab.dataset.view === view);
+            });
+            terminalFrame.style.display = isTerm ? 'block' : 'none';
+            previewContainer.style.display = isTerm ? 'none' : 'flex';
+            // Hide all terminal-only chrome in preview mode
+            tmuxFab.style.display = isTerm ? '' : 'none';
+            scrollIndicatorEl.style.display = isTerm ? '' : 'none';
+            scrollBottomBtnEl.style.display = isTerm ? '' : 'none';
+            toolbarEl.style.display = isTerm ? '' : 'none';
+            keysBarEl.style.display = isTerm ? '' : 'none';
+            inputBarEl.style.display = isTerm ? '' : 'none';
+        }
+
+        viewTabs.forEach(function(tab) {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                switchView(tab.dataset.view);
+            });
+        });
+
+        // Address bar — Enter to navigate
+        previewUrlInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                navigateActiveTab(previewUrlInput.value.trim());
+                previewUrlInput.blur();
+            }
+        });
+
+        // Reload
+        previewReload.addEventListener('click', function(e) {
+            e.preventDefault();
+            var tab = browserTabs.find(function(t) { return t.id === activeTabId; });
+            if (tab && tab.url) {
+                var iframe = document.getElementById(activeTabId);
+                if (iframe) iframe.src = tab.url;
+            }
+        });
+
+        // Open in new window
+        previewOpen.addEventListener('click', function(e) {
+            e.preventDefault();
+            var tab = browserTabs.find(function(t) { return t.id === activeTabId; });
+            if (tab && tab.url) window.open(tab.url, '_blank');
+        });
+
+        // Recent URL dropdown
+        function renderPreviewDropdown() {
+            previewDropdown.innerHTML = '';
+            var current = previewUrlInput.value;
+            var filtered = recentUrls.filter(function(u) { return u !== current; });
+            if (filtered.length === 0) return;
+            filtered.forEach(function(url) {
+                var item = document.createElement('div');
+                item.className = 'url-dropdown-item';
+                item.textContent = url;
+                item.addEventListener('mousedown', function(e) {
+                    e.preventDefault();
+                    navigateActiveTab(url);
+                });
+                previewDropdown.appendChild(item);
+            });
+        }
+
+        function openPreviewDropdown() {
+            renderPreviewDropdown();
+            if (previewDropdown.children.length > 0) {
+                previewDropdown.classList.add('open');
+            }
+        }
+
+        function closePreviewDropdown() {
+            previewDropdown.classList.remove('open');
+        }
+
+        previewUrlInput.addEventListener('focus', openPreviewDropdown);
+        previewUrlInput.addEventListener('blur', function() {
+            setTimeout(closePreviewDropdown, 150);
+        });
 
         var frame = document.getElementById('terminal-frame');
         var textInput = document.getElementById('text-input');
@@ -974,11 +1364,13 @@
 
         // Prevent buttons from stealing focus (keeps virtual keyboard open)
         document.addEventListener('mousedown', function(e) {
-            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog');
+            if (e.target.id === 'preview-url') return;
+            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add');
             if (t && t.id !== 'text-input') e.preventDefault();
         });
         document.addEventListener('touchstart', function(e) {
-            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog');
+            if (e.target.id === 'preview-url') return;
+            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add');
             if (t && t.id !== 'text-input') e.preventDefault();
         });
 
