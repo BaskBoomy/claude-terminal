@@ -20,17 +20,24 @@
     },
     {
       "id": "s1771835850683",
-      "label": "개발서버",
-      "command": "restartNaught",
+      "label": "개발나트",
+      "command": "devNaught",
       "color": "default",
-      "confirm": false
+      "confirm": true
     },
     {
       "id": "s2",
-      "label": "Deploy",
-      "command": "cd ~/dokjaeja && docker compose up -d --build",
-      "color": "red",
+      "label": "개발독재자",
+      "command": "devDokjaeja",
+      "color": "default",
       "confirm": true
+    },
+    {
+      "id": "s1771927224173",
+      "label": "개발김밥",
+      "command": "devKimbap",
+      "color": "default",
+      "confirm": false
     },
     {
       "id": "s3",

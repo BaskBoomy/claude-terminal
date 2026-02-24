@@ -1328,8 +1328,7 @@
         });
 
         // --- Input bar ---
-        function submitInput() {
-            var text = textInput.value;
+        function doSendInput(text) {
             var sent = sendText(text || '');
             if (!sent) {
                 textInput.style.background = '#3a1515';
@@ -1346,6 +1345,27 @@
             textInput.value = '';
             textInput.style.height = '38px';
             sessionStorage.removeItem('terminal-input');
+        }
+
+        function submitInput() {
+            var text = textInput.value;
+
+            // 스크롤이 위에 있으면 copy-mode 종료 + 스크롤 복귀 후 딜레이
+            if (scrollBottomBtnEl.classList.contains('visible')) {
+                sendKey('q', 81); // exit tmux copy-mode
+                try {
+                    var viewport = frame.contentDocument.querySelector('.xterm-viewport');
+                    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+                } catch(e) {}
+                scrollBottomBtnEl.classList.remove('visible');
+                // copy-mode 종료가 pty 왕복 필요하므로 딜레이 후 전송
+                setTimeout(function() {
+                    doSendInput(text);
+                }, 150);
+                return;
+            }
+
+            doSendInput(text);
         }
 
         textInput.addEventListener('keydown', function(e) {
