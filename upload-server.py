@@ -138,6 +138,35 @@ class Handler(BaseHTTPRequestHandler):
                 info = 'disconnected'
             self._json_response(200, json.dumps({'session': info}).encode())
 
+        elif self.path.startswith('/api/notifications'):
+            if not self._require_auth():
+                return
+            import glob as g
+            # Parse ?since=<timestamp_ms>
+            since = 0
+            if '?' in self.path:
+                for param in self.path.split('?')[1].split('&'):
+                    if param.startswith('since='):
+                        try:
+                            since = int(param.split('=')[1])
+                        except ValueError:
+                            pass
+            notify_dir = '/tmp/claude-notify'
+            items = []
+            try:
+                for f in sorted(g.glob(os.path.join(notify_dir, '*.json'))):
+                    basename = os.path.basename(f)
+                    try:
+                        file_ts = int(basename.replace('.json', ''))
+                    except ValueError:
+                        continue
+                    if file_ts > since:
+                        with open(f) as fh:
+                            items.append(json.loads(fh.read()))
+            except Exception:
+                pass
+            self._json_response(200, json.dumps({'notifications': items}).encode())
+
         elif self.path == '/api/claude-usage':
             if not self._require_auth():
                 return

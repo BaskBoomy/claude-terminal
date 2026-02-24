@@ -1,7 +1,8 @@
 {
   "general": {
     "wakeLock": false,
-    "fontSize": 12
+    "fontSize": 12,
+    "notification": true
   },
   "snippets": [
     {
