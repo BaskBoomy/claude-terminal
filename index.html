@@ -1186,7 +1186,15 @@
             'tmux-prev': function() { tmuxCmd('p', 80); },
             'tmux-next': function() { tmuxCmd('n', 78); },
             'tmux-list': function() { tmuxCmd('w', 87); },
-            'tmux-kill': function() { tmuxCmd('&', 55); }
+            'tmux-kill': function() {
+                showConfirm('현재 세션을 종료하시겠습니까?', [
+                    { label: '종료', style: 'primary', action: function() {
+                        tmuxCmd('&', 55);
+                        setTimeout(function() { sendText('y'); }, 200);
+                    }},
+                    { label: '취소', style: 'cancel' }
+                ]);
+            }
         };
 
         // --- Image upload ---
