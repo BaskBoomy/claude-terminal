@@ -684,17 +684,37 @@
     <script>
     (function() {
         // --- iOS edge-swipe back/forward prevention ---
-        // 1) Physical edge barriers (overlay divs on top of iframe, 30px wide)
+        // 1) Physical edge barriers — block swipe gestures, pass through taps
         (function() {
             var EDGE = 30;
+            var TAP_THRESHOLD = 10; // px — movement below this = tap
             ['left', 'right'].forEach(function(side) {
                 var el = document.createElement('div');
                 el.style.cssText = 'position:fixed;top:0;' + side + ':0;width:' + EDGE +
                     'px;height:100%;z-index:9999;touch-action:none;-webkit-touch-callout:none;';
                 document.body.appendChild(el);
-                ['touchstart','touchmove','touchend','touchcancel'].forEach(function(evt) {
-                    el.addEventListener(evt, function(e) { e.preventDefault(); }, { passive: false });
-                });
+                var startX, startY;
+                el.addEventListener('touchstart', function(e) {
+                    e.preventDefault(); // block iOS swipe gesture recognition
+                    var t = e.touches[0];
+                    startX = t.clientX; startY = t.clientY;
+                }, { passive: false });
+                el.addEventListener('touchmove', function(e) {
+                    e.preventDefault();
+                }, { passive: false });
+                el.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    var t = e.changedTouches[0];
+                    var dx = Math.abs(t.clientX - startX);
+                    var dy = Math.abs(t.clientY - startY);
+                    if (dx < TAP_THRESHOLD && dy < TAP_THRESHOLD) {
+                        // It was a tap — find element underneath and click it
+                        el.style.pointerEvents = 'none';
+                        var target = document.elementFromPoint(t.clientX, t.clientY);
+                        el.style.pointerEvents = '';
+                        if (target) target.click();
+                    }
+                }, { passive: false });
             });
         })();
         // 2) Popstate trap — iOS 16+ ignores pushState from page load (no user gesture),
