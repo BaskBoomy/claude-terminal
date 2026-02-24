@@ -124,6 +124,20 @@ class Handler(BaseHTTPRequestHandler):
                 data = json.dumps(DEFAULT_SETTINGS)
             self._json_response(200, data.encode())
 
+        elif self.path == '/api/tmux-session':
+            if not self._require_auth():
+                return
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ['tmux', 'display-message', '-p', '#S:#I.#W'],
+                    capture_output=True, text=True, timeout=2
+                )
+                info = result.stdout.strip() or 'unknown'
+            except Exception:
+                info = 'disconnected'
+            self._json_response(200, json.dumps({'session': info}).encode())
+
         else:
             self.send_error(404)
 
