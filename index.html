@@ -1078,14 +1078,23 @@
                 btn.style.borderColor = colors.border;
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
+                    function runCmd() {
+                        if (sn.newWindow) {
+                            // tmux new-window, then send command after delay
+                            tmuxCmd('c', 67);
+                            setTimeout(function() { sendText(sn.command + '\r'); }, 200);
+                        } else {
+                            sendText(sn.command + '\r');
+                        }
+                    }
                     if (sn.confirm) {
                         showConfirm('Run: ' + sn.command + '?', [
-                            { label: '실행', style: 'primary', action: function() { sendText(sn.command + '\r'); } },
+                            { label: '실행', style: 'primary', action: runCmd },
                             { label: '취소', style: 'cancel' }
                         ]);
                         return;
                     }
-                    sendText(sn.command + '\r');
+                    runCmd();
                 });
                 container.appendChild(btn);
             });
@@ -2017,6 +2026,14 @@
                                 '<div class="mt-thumb"></div>' +
                             '</label>' +
                         '</div>' +
+                        '<div class="sn-confirm-row" style="margin-top:8px">' +
+                            '<span>새 창에서 실행</span>' +
+                            '<label class="sn-mini-toggle">' +
+                                '<input type="checkbox"' + (sn.newWindow ? ' checked' : '') + ' data-field="newWindow">' +
+                                '<div class="mt-track"></div>' +
+                                '<div class="mt-thumb"></div>' +
+                            '</label>' +
+                        '</div>' +
                     '</div>';
 
                 // Auto-resize textarea
@@ -2034,6 +2051,7 @@
                     if (field === 'label') shSettings.snippets[i].label = el.value;
                     else if (field === 'command') shSettings.snippets[i].command = el.value;
                     else if (field === 'confirm') shSettings.snippets[i].confirm = el.checked;
+                    else if (field === 'newWindow') shSettings.snippets[i].newWindow = el.checked;
                 });
 
                 // Click delegation (delete, color)
