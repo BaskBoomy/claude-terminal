@@ -50,7 +50,7 @@
         #input-bar {
             display: flex; gap: 6px; padding: 8px 10px 48px;
             background: #201d18; border-top: 1px solid #2a251d; flex-shrink: 0;
-            align-items: flex-end;
+            align-items: flex-end; position: relative;
         }
         #input-bar:focus-within { padding-bottom: 8px; }
         #text-input {
@@ -330,6 +330,90 @@
         }
         .settings-save-btn:active { background: #A14A2F; }
         .settings-save-btn.saved { background: #4caf50; }
+
+        /* --- Plus Menu (memo + attach) --- */
+        #plus-menu {
+            display: none; position: absolute; bottom: 100%; left: 6px;
+            background: #1a1815; border: 1px solid #3a352b; border-radius: 12px;
+            min-width: 220px; max-height: 300px; overflow-y: auto;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.5); z-index: 50;
+            overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+            margin-bottom: 4px;
+        }
+        #plus-menu.open { display: block; }
+        .pm-item {
+            padding: 12px 16px; font-size: 15px; color: #e8e6e3; cursor: pointer;
+            font-family: -apple-system, system-ui, sans-serif;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .pm-item:active { background: #2a251d; }
+        .pm-divider { height: 1px; background: #2a251d; margin: 0 12px; }
+        .pm-memo-item {
+            display: flex; align-items: center; padding: 10px 16px; cursor: pointer;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .pm-memo-item:active { background: #2a251d; }
+        .pm-memo-text {
+            flex: 1; min-width: 0; font-size: 14px; color: #a09888;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .pm-memo-del {
+            width: 28px; height: 28px; border: none; background: none;
+            color: #6a6158; font-size: 16px; cursor: pointer; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; touch-action: manipulation;
+        }
+        .pm-memo-del:active { background: #2a251d; color: #ff6b6b; }
+        .pm-empty {
+            padding: 12px 16px; font-size: 13px; color: #6a6158;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+
+        /* --- Custom Confirm Dialog --- */
+        #confirm-backdrop {
+            position: fixed; inset: 0; z-index: 200;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        #confirm-backdrop.open { opacity: 1; pointer-events: auto; }
+
+        #confirm-dialog {
+            position: fixed; top: 50%; left: 50%; z-index: 201;
+            transform: translate(-50%, -50%) scale(0.95);
+            background: #1a1815; border-radius: 16px;
+            width: 280px; max-width: calc(100vw - 40px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        #confirm-dialog.open {
+            opacity: 1; pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .confirm-msg {
+            font-size: 15px; color: #e8e6e3; text-align: center;
+            padding: 24px 20px 16px;
+            font-family: -apple-system, system-ui, sans-serif;
+            line-height: 1.4;
+        }
+        .confirm-actions {
+            display: flex; flex-direction: column; gap: 8px;
+            padding: 0 16px 16px;
+        }
+        .confirm-btn {
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            font-family: -apple-system, system-ui, sans-serif;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .confirm-btn.primary { background: #C15F3C; color: #fff; }
+        .confirm-btn.primary:active { background: #A14A2F; }
+        .confirm-btn.secondary { background: #2a251d; color: #e8e6e3; border: 1px solid #3a352b; }
+        .confirm-btn.secondary:active { background: #3a352b; }
+        .confirm-btn.cancel { background: transparent; color: #6a6158; border: none; }
+        .confirm-btn.cancel:active { color: #a09888; }
     </style>
 </head>
 <body>
@@ -375,9 +459,20 @@
         <div id="input-bar">
             <button id="img-btn" class="input-btn" style="font-size:22px;font-weight:300">+</button>
             <input id="file-input" type="file" accept="image/*">
+            <div id="plus-menu">
+                <div class="pm-item" id="pm-attach">&#x1F4F7; 이미지 첨부</div>
+                <div class="pm-item" id="pm-save-memo">&#x1F4DD; 메모로 저장</div>
+                <div class="pm-divider"></div>
+                <div id="pm-memo-list"></div>
+            </div>
             <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
             <button id="toolbar-toggle" class="input-btn">&#x25B2;</button>
+        </div>
+        <div id="confirm-backdrop"></div>
+        <div id="confirm-dialog">
+            <div class="confirm-msg" id="confirm-msg"></div>
+            <div class="confirm-actions" id="confirm-actions"></div>
         </div>
         <div id="settings-backdrop"></div>
         <div id="settings-sheet">
@@ -510,7 +605,13 @@
                 btn.style.borderColor = colors.border;
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    if (sn.confirm && !confirm('Run: ' + sn.command + '?')) return;
+                    if (sn.confirm) {
+                        showConfirm('Run: ' + sn.command + '?', [
+                            { label: '실행', style: 'primary', action: function() { sendText(sn.command + '\r'); } },
+                            { label: '취소', style: 'cancel' }
+                        ]);
+                        return;
+                    }
                     sendText(sn.command + '\r');
                 });
                 container.appendChild(btn);
@@ -627,10 +728,164 @@
             });
         }
 
-        imgBtn.addEventListener('click', function() { fileInput.click(); });
+        // --- Custom Confirm Dialog ---
+        var confirmBackdrop = document.getElementById('confirm-backdrop');
+        var confirmDialog = document.getElementById('confirm-dialog');
+        var confirmMsg = document.getElementById('confirm-msg');
+        var confirmActions = document.getElementById('confirm-actions');
+
+        function showConfirm(msg, buttons) {
+            confirmMsg.textContent = msg;
+            confirmActions.innerHTML = '';
+            buttons.forEach(function(b) {
+                var btn = document.createElement('button');
+                btn.className = 'confirm-btn ' + (b.style || '');
+                btn.textContent = b.label;
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    closeConfirm();
+                    if (b.action) b.action();
+                });
+                confirmActions.appendChild(btn);
+            });
+            confirmBackdrop.classList.add('open');
+            confirmDialog.classList.add('open');
+        }
+
+        function closeConfirm() {
+            confirmBackdrop.classList.remove('open');
+            confirmDialog.classList.remove('open');
+        }
+
+        confirmBackdrop.addEventListener('click', closeConfirm);
+
+        // --- Plus menu (memo + attach) ---
+        var plusMenu = document.getElementById('plus-menu');
+        var pmAttach = document.getElementById('pm-attach');
+        var pmSaveMemo = document.getElementById('pm-save-memo');
+        var pmMemoList = document.getElementById('pm-memo-list');
+        var memos = JSON.parse(localStorage.getItem('terminal-memos') || '[]');
+
+        function saveMemos() {
+            try { localStorage.setItem('terminal-memos', JSON.stringify(memos)); } catch(e) {}
+        }
+
+        function renderMemos() {
+            pmMemoList.innerHTML = '';
+            if (memos.length === 0) {
+                var empty = document.createElement('div');
+                empty.className = 'pm-empty';
+                empty.textContent = '저장된 메모 없음';
+                pmMemoList.appendChild(empty);
+                return;
+            }
+            memos.forEach(function(memo, idx) {
+                var row = document.createElement('div');
+                row.className = 'pm-memo-item';
+                var text = document.createElement('span');
+                text.className = 'pm-memo-text';
+                text.textContent = memo;
+                var del = document.createElement('button');
+                del.className = 'pm-memo-del';
+                del.innerHTML = '&times;';
+                del.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    memos.splice(idx, 1);
+                    saveMemos();
+                    renderMemos();
+                });
+                del.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    memos.splice(idx, 1);
+                    saveMemos();
+                    renderMemos();
+                });
+                row.addEventListener('click', function() {
+                    var currentText = textInput.value.trim();
+                    if (!currentText) {
+                        textInput.value = memo;
+                        autoResize();
+                        sessionStorage.setItem('terminal-input', textInput.value);
+                        closePlusMenu();
+                        textInput.focus();
+                        return;
+                    }
+                    closePlusMenu();
+                    showConfirm('입력창에 내용이 있습니다.', [
+                        { label: '저장 후 덮어쓰기', style: 'primary', action: function() {
+                            if (memos.length >= 20) memos.shift();
+                            memos.push(currentText);
+                            saveMemos();
+                            textInput.value = memo;
+                            autoResize();
+                            sessionStorage.setItem('terminal-input', textInput.value);
+                            textInput.focus();
+                        }},
+                        { label: '그냥 덮어쓰기', style: 'secondary', action: function() {
+                            textInput.value = memo;
+                            autoResize();
+                            sessionStorage.setItem('terminal-input', textInput.value);
+                            textInput.focus();
+                        }},
+                        { label: '취소', style: 'cancel' }
+                    ]);
+                });
+                row.appendChild(text);
+                row.appendChild(del);
+                pmMemoList.appendChild(row);
+            });
+        }
+
+        function openPlusMenu() {
+            renderMemos();
+            plusMenu.classList.add('open');
+        }
+
+        function closePlusMenu() {
+            plusMenu.classList.remove('open');
+        }
+
+        function togglePlusMenu() {
+            if (plusMenu.classList.contains('open')) {
+                closePlusMenu();
+            } else {
+                openPlusMenu();
+            }
+        }
+
+        imgBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            togglePlusMenu();
+        });
         imgBtn.addEventListener('touchend', function(e) {
             e.preventDefault();
+            togglePlusMenu();
+        });
+
+        pmAttach.addEventListener('click', function() {
+            closePlusMenu();
             fileInput.click();
+        });
+
+        pmSaveMemo.addEventListener('click', function() {
+            var text = textInput.value.trim();
+            if (!text) return;
+            if (memos.length >= 20) memos.shift();
+            memos.push(text);
+            saveMemos();
+            renderMemos();
+            closePlusMenu();
+            // Green flash feedback
+            textInput.style.background = '#1a3a1a';
+            setTimeout(function() { textInput.style.background = ''; }, 300);
+        });
+
+        // Close menu on outside click
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#plus-menu') && !e.target.closest('#img-btn')) {
+                closePlusMenu();
+            }
         });
 
         fileInput.addEventListener('change', function() {
@@ -717,11 +972,11 @@
 
         // Prevent buttons from stealing focus (keeps virtual keyboard open)
         document.addEventListener('mousedown', function(e) {
-            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle');
+            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog');
             if (t && t.id !== 'text-input') e.preventDefault();
         });
         document.addEventListener('touchstart', function(e) {
-            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle');
+            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog');
             if (t && t.id !== 'text-input') e.preventDefault();
         });
 
@@ -1268,10 +1523,14 @@
 
         // --- F. Logout ---
         document.getElementById('sh-logout').addEventListener('click', function() {
-            if (!confirm('로그아웃 하시겠습니까?')) return;
-            fetch('/api/auth/logout', { method: 'POST' })
-                .then(function() { onUnauthorized(); })
-                .catch(function() { onUnauthorized(); });
+            showConfirm('로그아웃 하시겠습니까?', [
+                { label: '로그아웃', style: 'primary', action: function() {
+                    fetch('/api/auth/logout', { method: 'POST' })
+                        .then(function() { onUnauthorized(); })
+                        .catch(function() { onUnauthorized(); });
+                }},
+                { label: '취소', style: 'cancel' }
+            ]);
         });
     })();
     </script>
