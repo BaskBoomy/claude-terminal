@@ -1459,17 +1459,27 @@
 
             // 스크롤이 위에 있으면 copy-mode 종료 + 스크롤 복귀 후 딜레이
             if (scrollBottomBtnEl.classList.contains('visible')) {
-                sendKey('q', 81); // exit tmux copy-mode
+                var actuallyScrolledUp = false;
                 try {
                     var viewport = frame.contentDocument.querySelector('.xterm-viewport');
-                    if (viewport) viewport.scrollTop = viewport.scrollHeight;
+                    if (viewport) {
+                        actuallyScrolledUp = viewport.scrollTop < viewport.scrollHeight - viewport.clientHeight - 10;
+                    }
                 } catch(e) {}
+
+                if (actuallyScrolledUp) {
+                    sendKey('q', 81); // exit tmux copy-mode
+                    try {
+                        if (viewport) viewport.scrollTop = viewport.scrollHeight;
+                    } catch(e) {}
+                    scrollBottomBtnEl.classList.remove('visible');
+                    setTimeout(function() {
+                        doSendInput(text);
+                    }, 150);
+                    return;
+                }
+                // 버튼은 보이지만 실제로는 스크롤 하단 — stale 상태, q 안 보냄
                 scrollBottomBtnEl.classList.remove('visible');
-                // copy-mode 종료가 pty 왕복 필요하므로 딜레이 후 전송
-                setTimeout(function() {
-                    doSendInput(text);
-                }, 150);
-                return;
             }
 
             doSendInput(text);
