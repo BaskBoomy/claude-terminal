@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="/icon-192.png">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden; visibility: hidden; }
+        html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden; visibility: hidden; overscroll-behavior: none; }
         #app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
         #terminal-wrap { flex: 1; overflow: hidden; position: relative; }
         #terminal-frame { width: 100%; height: 100%; border: none; background: #1a1815; }
@@ -683,6 +683,38 @@
     <div id="toast"></div>
     <script>
     (function() {
+        // --- iOS edge-swipe back/forward prevention ---
+        // 1) Physical edge barriers (overlay divs on top of iframe, 30px wide)
+        (function() {
+            var EDGE = 30;
+            ['left', 'right'].forEach(function(side) {
+                var el = document.createElement('div');
+                el.style.cssText = 'position:fixed;top:0;' + side + ':0;width:' + EDGE +
+                    'px;height:100%;z-index:9999;touch-action:none;-webkit-touch-callout:none;';
+                document.body.appendChild(el);
+                ['touchstart','touchmove','touchend','touchcancel'].forEach(function(evt) {
+                    el.addEventListener(evt, function(e) { e.preventDefault(); }, { passive: false });
+                });
+            });
+        })();
+        // 2) Popstate trap — iOS 16+ ignores pushState from page load (no user gesture),
+        //    so we push on first real user interaction, then trap popstate.
+        (function() {
+            var pushed = false;
+            function pushGuard() {
+                if (!pushed) {
+                    pushed = true;
+                    history.pushState({ _noBack: 1 }, '', location.href);
+                }
+            }
+            ['touchstart', 'click', 'keydown'].forEach(function(evt) {
+                document.addEventListener(evt, pushGuard, { once: true });
+            });
+            window.addEventListener('popstate', function() {
+                history.pushState({ _noBack: 1 }, '', location.href);
+            });
+        })();
+
         // --- Auth check ---
         function onUnauthorized() { window.location.href = '/login.html'; }
         fetch('/api/auth/check')
