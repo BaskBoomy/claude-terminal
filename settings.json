@@ -23,21 +23,24 @@
       "label": "개발나트",
       "command": "devNaught",
       "color": "default",
-      "confirm": true
+      "confirm": true,
+      "newWindow": true
     },
     {
       "id": "s2",
       "label": "개발독재자",
       "command": "devDokjaeja",
       "color": "default",
-      "confirm": true
+      "confirm": true,
+      "newWindow": true
     },
     {
       "id": "s1771927224173",
       "label": "개발김밥",
       "command": "devKimbap",
       "color": "default",
-      "confirm": false
+      "confirm": true,
+      "newWindow": true
     },
     {
       "id": "s3",
