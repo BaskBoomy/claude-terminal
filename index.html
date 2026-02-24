@@ -443,6 +443,7 @@
         <div class="toolbar-row hidden" id="keys-bar">
             <button class="key-btn accent" data-key="ctrl-c">C-c</button>
             <button class="key-btn" data-key="enter">&#x23CE;</button>
+            <button class="key-btn" data-key="backspace">&#x232B;</button>
             <button class="key-btn" data-key="tab">Tab</button>
             <button class="key-btn" data-key="esc">Esc</button>
             <button class="key-btn" data-key="space">&#x2423;</button>
@@ -690,6 +691,7 @@
             'ctrl-c':    function() { sendKey('c', 67, {ctrl: true}); },
             'ctrl-d':    function() { sendKey('d', 68, {ctrl: true}); },
             'enter':     function() { sendKey('Enter', 13); },
+            'backspace': function() { sendKey('Backspace', 8); },
             'tab':       function() { sendKey('Tab', 9); },
             'up':        function() { sendKey('ArrowUp', 38); },
             'down':      function() { sendKey('ArrowDown', 40); },
