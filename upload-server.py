@@ -138,6 +138,27 @@ class Handler(BaseHTTPRequestHandler):
                 info = 'disconnected'
             self._json_response(200, json.dumps({'session': info}).encode())
 
+        elif self.path == '/api/claude-usage':
+            if not self._require_auth():
+                return
+            import urllib.request
+            try:
+                creds = json.load(open(os.path.expanduser('~/.claude/.credentials.json')))
+                token = creds['claudeAiOauth']['accessToken']
+                req = urllib.request.Request(
+                    'https://api.anthropic.com/api/oauth/usage',
+                    headers={
+                        'Authorization': 'Bearer ' + token,
+                        'anthropic-beta': 'oauth-2025-04-20',
+                        'User-Agent': 'claude-code/1.0'
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = resp.read()
+                self._json_response(200, data)
+            except Exception as e:
+                self._json_response(200, json.dumps({'error': str(e)}).encode())
+
         else:
             self.send_error(404)
 

@@ -536,12 +536,26 @@
         .confirm-btn.secondary:active { background: #3a352b; }
         .confirm-btn.cancel { background: transparent; color: #6a6158; border: none; }
         .confirm-btn.cancel:active { color: #a09888; }
+
+        /* --- Toast --- */
+        #toast {
+            position: fixed; top: 40px; left: 50%; transform: translateX(-50%) translateY(-20px);
+            background: #C15F3C; color: #fff;
+            padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            opacity: 0; pointer-events: none; z-index: 300;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
     </style>
 </head>
 <body>
     <div id="app">
         <div id="status-bar">
             <span id="tmux-session-info">tmux: --</span>
+            <span style="flex:1"></span>
+            <span id="claude-usage-info"></span>
         </div>
         <div id="view-tabs">
             <button class="view-tab active" data-view="terminal">Terminal</button>
@@ -666,6 +680,7 @@
             </div>
         </div>
     </div>
+    <div id="toast"></div>
     <script>
     (function() {
         // --- Auth check ---
@@ -1658,6 +1673,111 @@
                 stopTmuxPolling();
             } else if (activeView === 'terminal') {
                 startTmuxPolling();
+            }
+        });
+
+        // --- Claude usage status bar polling ---
+        var usageEl = document.getElementById('claude-usage-info');
+        var usagePollTimer = null;
+
+        function fetchClaudeUsage() {
+            fetch('/api/claude-usage').then(function(r) {
+                return r.ok ? r.json() : null;
+            }).then(function(data) {
+                if (!data || data.error || !data.five_hour) {
+                    usageEl.textContent = '';
+                    return;
+                }
+                var pct = Math.round(data.five_hour.utilization);
+                var resetAt = new Date(data.five_hour.resets_at);
+                var diffMs = resetAt - Date.now();
+                var timeStr = '';
+                if (diffMs > 0) {
+                    var totalMin = Math.floor(diffMs / 60000);
+                    var h = Math.floor(totalMin / 60);
+                    var m = totalMin % 60;
+                    timeStr = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+                } else {
+                    timeStr = 'soon';
+                }
+                usageEl.textContent = pct + '% \u00B7 ' + timeStr;
+                if (pct >= 80) {
+                    usageEl.style.color = '#ff6b6b';
+                } else if (pct >= 50) {
+                    usageEl.style.color = '#e8b84b';
+                } else {
+                    usageEl.style.color = '#6a6158';
+                }
+            }).catch(function() {
+                usageEl.textContent = '';
+            });
+        }
+
+        function startUsagePolling() {
+            if (usagePollTimer) return;
+            fetchClaudeUsage();
+            usagePollTimer = setInterval(fetchClaudeUsage, 30000);
+        }
+
+        function stopUsagePolling() {
+            if (usagePollTimer) {
+                clearInterval(usagePollTimer);
+                usagePollTimer = null;
+            }
+        }
+
+        startUsagePolling();
+
+        var toastEl = document.getElementById('toast');
+        var toastTimer = null;
+        function showToast(msg, duration) {
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, duration || 2000);
+        }
+
+        usageEl.style.cursor = 'pointer';
+        usageEl.addEventListener('click', function() {
+            stopUsagePolling();
+            usageEl.style.opacity = '0.5';
+            fetch('/api/claude-usage').then(function(r) {
+                return r.ok ? r.json() : null;
+            }).then(function(data) {
+                usageEl.style.opacity = '1';
+                if (!data || data.error || !data.five_hour) {
+                    showToast('Failed to fetch usage');
+                    return;
+                }
+                var pct = Math.round(data.five_hour.utilization);
+                var resetAt = new Date(data.five_hour.resets_at);
+                var diffMs = resetAt - Date.now();
+                var timeStr = '';
+                if (diffMs > 0) {
+                    var totalMin = Math.floor(diffMs / 60000);
+                    var h = Math.floor(totalMin / 60);
+                    var m = totalMin % 60;
+                    timeStr = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+                } else {
+                    timeStr = 'soon';
+                }
+                usageEl.textContent = pct + '% \u00B7 ' + timeStr;
+                if (pct >= 80) { usageEl.style.color = '#ff6b6b'; }
+                else if (pct >= 50) { usageEl.style.color = '#e8b84b'; }
+                else { usageEl.style.color = '#6a6158'; }
+                showToast('5h: ' + pct + '% \u00B7 ' + timeStr + '  |  7d: ' + Math.round(data.seven_day.utilization) + '%');
+            }).catch(function() {
+                usageEl.style.opacity = '1';
+                showToast('Failed to fetch usage');
+            });
+            usagePollTimer = setInterval(fetchClaudeUsage, 30000);
+        });
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                stopUsagePolling();
+            } else {
+                startUsagePolling();
             }
         });
 
