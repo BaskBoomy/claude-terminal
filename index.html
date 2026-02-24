@@ -457,8 +457,12 @@
         var sendBtn = document.getElementById('send-btn');
         var imgBtn = document.getElementById('img-btn');
         var fileInput = document.getElementById('file-input');
-        var inputHistory = [];
+        var inputHistory = JSON.parse(localStorage.getItem('terminal-history') || '[]');
         var historyIndex = -1;
+
+        function saveHistory() {
+            try { localStorage.setItem('terminal-history', JSON.stringify(inputHistory)); } catch(e) {}
+        }
 
         function autoResize() {
             textInput.style.height = 'auto';
@@ -649,12 +653,18 @@
         // --- Input bar ---
         function submitInput() {
             var text = textInput.value;
-            sendText(text || '');
+            var sent = sendText(text || '');
+            if (!sent) {
+                textInput.style.background = '#3a1515';
+                setTimeout(function() { textInput.style.background = ''; }, 600);
+                return;
+            }
             setTimeout(function() {
                 sendKey('Enter', 13);
             }, 50);
             if (text) inputHistory.push(text);
             if (inputHistory.length > 50) inputHistory.shift();
+            saveHistory();
             historyIndex = -1;
             textInput.value = '';
             textInput.style.height = '38px';
@@ -687,12 +697,10 @@
 
         sendBtn.addEventListener('click', function() {
             submitInput();
-            setTimeout(function() { textInput.blur(); }, 100);
         });
         sendBtn.addEventListener('touchend', function(e) {
             e.preventDefault();
             submitInput();
-            setTimeout(function() { textInput.blur(); }, 100);
         });
 
         // --- Toolbar buttons ---
@@ -707,13 +715,14 @@
         }
         bindToolbarButtons();
 
-        // Prevent any button/key-btn from opening keyboard
-        document.addEventListener('touchend', function(e) {
-            var t = e.target;
-            if (t.id === 'send-btn' || t.id === 'img-btn') return;
-            if (t.tagName === 'BUTTON' || t.classList.contains('key-btn') || t.classList.contains('tool-btn') || t.classList.contains('fab-btn') || t.classList.contains('fab-circle')) {
-                document.activeElement && document.activeElement.blur && document.activeElement !== document.body && document.activeElement.blur();
-            }
+        // Prevent buttons from stealing focus (keeps virtual keyboard open)
+        document.addEventListener('mousedown', function(e) {
+            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle');
+            if (t && t.id !== 'text-input') e.preventDefault();
+        });
+        document.addEventListener('touchstart', function(e) {
+            var t = e.target.closest('button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle');
+            if (t && t.id !== 'text-input') e.preventDefault();
         });
 
         // --- Toolbar toggle ---
