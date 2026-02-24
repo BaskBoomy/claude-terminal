@@ -132,6 +132,18 @@
         .scroll-bottom-btn.visible { display: flex; }
         .scroll-bottom-btn:active { background: #A14A2F; }
 
+        /* --- Status Bar (tmux session) --- */
+        #status-bar {
+            display: flex; align-items: center;
+            padding: 4px 12px;
+            background: #1a1815;
+            border-bottom: 1px solid #2a251d;
+            flex-shrink: 0;
+            font-size: 12px; color: #6a6158;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        #tmux-session-info span { color: #e8e6e3; }
+
         /* --- View Tabs (Terminal / Preview) --- */
         #view-tabs {
             display: flex; background: #201d18;
@@ -528,6 +540,9 @@
 </head>
 <body>
     <div id="app">
+        <div id="status-bar">
+            <span id="tmux-session-info">tmux: --</span>
+        </div>
         <div id="view-tabs">
             <button class="view-tab active" data-view="terminal">Terminal</button>
             <button class="view-tab" data-view="preview">Preview</button>
@@ -1581,6 +1596,69 @@
                 frame.src = '/ttyd/';
             }
             hiddenAt = 0;
+        });
+
+        // --- tmux session status bar polling ---
+        var tmuxSessionEl = document.getElementById('tmux-session-info');
+        var tmuxPollTimer = null;
+
+        function fetchTmuxSession() {
+            fetch('/api/tmux-session').then(function(r) {
+                return r.ok ? r.json() : null;
+            }).then(function(data) {
+                if (!data || !data.session) return;
+                var raw = data.session; // e.g. "claude:4.npm"
+                var parts = raw.split(':');
+                var sessionName = parts[0] || raw;
+                var winPart = parts.slice(1).join(':');
+                if (winPart) {
+                    // "4.npm" → "4:npm"
+                    var dotIdx = winPart.indexOf('.');
+                    var winDisplay = dotIdx >= 0
+                        ? winPart.substring(0, dotIdx) + ':' + winPart.substring(dotIdx + 1)
+                        : winPart;
+                    tmuxSessionEl.innerHTML = 'tmux: <span>' + sessionName + '</span> · ' + winDisplay;
+                } else {
+                    tmuxSessionEl.innerHTML = 'tmux: <span>' + sessionName + '</span>';
+                }
+            }).catch(function() {});
+        }
+
+        function startTmuxPolling() {
+            if (tmuxPollTimer) return;
+            fetchTmuxSession();
+            tmuxPollTimer = setInterval(fetchTmuxSession, 2000);
+        }
+
+        function stopTmuxPolling() {
+            if (tmuxPollTimer) {
+                clearInterval(tmuxPollTimer);
+                tmuxPollTimer = null;
+            }
+        }
+
+        // Start polling initially (terminal view is default)
+        startTmuxPolling();
+
+        // Pause/resume on view switch (listen on tab clicks)
+        document.getElementById('view-tabs').addEventListener('click', function() {
+            // activeView is updated by switchView before this fires (bubble)
+            setTimeout(function() {
+                if (activeView === 'terminal') {
+                    startTmuxPolling();
+                } else {
+                    stopTmuxPolling();
+                }
+            }, 0);
+        });
+
+        // Pause/resume on visibility change
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                stopTmuxPolling();
+            } else if (activeView === 'terminal') {
+                startTmuxPolling();
+            }
         });
 
         // --- Keyboard resize handling (iOS Safari fallback) ---
