@@ -119,6 +119,19 @@
         }
         #scroll-indicator.visible { opacity: 1; }
 
+        .scroll-bottom-btn {
+            position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+            z-index: 15; width: 40px; height: 40px; border-radius: 50%;
+            background: #C15F3C; color: #fff;
+            border: none; font-size: 16px;
+            cursor: pointer; display: none;
+            align-items: center; justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .scroll-bottom-btn.visible { display: flex; }
+        .scroll-bottom-btn:active { background: #A14A2F; }
+
         /* --- Settings Bottom Sheet --- */
         #settings-backdrop {
             position: fixed; inset: 0; z-index: 100;
@@ -324,6 +337,7 @@
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
             <div id="scroll-indicator"></div>
+            <button id="scroll-bottom-btn" class="scroll-bottom-btn">&#x25BC;</button>
             <div class="fab-area bottom-right" id="tmux-fab">
                 <div class="fab-panel" id="tmux-fab-panel">
                     <button class="fab-btn kill" data-key="tmux-kill">&#x2715;</button>
@@ -773,7 +787,22 @@
                 }
             }
             showScrollIndicator();
+            if (direction === 'up') {
+                scrollBottomBtn.classList.add('visible');
+            }
         }
+
+        // --- Scroll to bottom button ---
+        var scrollBottomBtn = document.getElementById('scroll-bottom-btn');
+        scrollBottomBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            sendKey('q', 81); // exit tmux copy-mode
+            try {
+                var viewport = frame.contentDocument.querySelector('.xterm-viewport');
+                if (viewport) viewport.scrollTop = viewport.scrollHeight;
+            } catch(e) {}
+            scrollBottomBtn.classList.remove('visible');
+        });
 
         function initTouchScroll() {
             var xtermScreen = null;
@@ -781,6 +810,14 @@
                 xtermScreen = frame.contentDocument.querySelector('.xterm-screen');
             } catch(e) {}
             if (!xtermScreen) return false;
+
+            // Prevent virtual keyboard on terminal touch (mobile)
+            if ('ontouchstart' in window) {
+                try {
+                    var xtermTA = frame.contentDocument.querySelector('.xterm-helper-textarea');
+                    if (xtermTA) xtermTA.setAttribute('inputmode', 'none');
+                } catch(e) {}
+            }
 
             var startX = 0;
             var startY = 0;
@@ -808,6 +845,7 @@
 
             xtermScreen.addEventListener('touchmove', function(e) {
                 if (e.touches.length !== 1) return;
+
                 var currentX = e.touches[0].clientX;
                 var currentY = e.touches[0].clientY;
                 var deltaY = Math.abs(startY - currentY);
