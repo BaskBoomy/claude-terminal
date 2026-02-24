@@ -570,6 +570,7 @@
                 <div id="preview-bar" style="position:relative">
                     <input id="preview-url" type="url" placeholder="https://example.com" />
                     <button class="preview-btn" id="preview-reload">&#x21BB;</button>
+                    <button class="preview-btn" id="preview-clear" title="Clear cookies &amp; reload">&#x1F6AB;</button>
                     <button class="preview-btn" id="preview-open">&#x2197;</button>
                     <div id="preview-url-dropdown"></div>
                 </div>
@@ -666,6 +667,18 @@
                             <span class="font-val" id="sh-fontVal">16</span>
                             <button id="sh-font-plus">+</button>
                         </div>
+                    </div>
+                    <div class="settings-divider"></div>
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Notification</div>
+                            <div class="settings-item-desc">백그라운드 시 Claude 응답 완료 알림</div>
+                        </div>
+                        <label class="ios-toggle">
+                            <input type="checkbox" id="sh-notification">
+                            <div class="tog-track"></div>
+                            <div class="tog-thumb"></div>
+                        </label>
                     </div>
                 </div>
 
@@ -979,6 +992,24 @@
             }
         });
 
+        // Clear cookies & reload — destroy iframe and recreate
+        document.getElementById('preview-clear').addEventListener('click', function(e) {
+            e.preventDefault();
+            var tab = browserTabs.find(function(t) { return t.id === activeTabId; });
+            if (!tab || !tab.url) return;
+            var oldIframe = document.getElementById(activeTabId);
+            if (!oldIframe) return;
+            // Remove old iframe completely (drops all session/cookie state)
+            oldIframe.remove();
+            // Create fresh iframe with a unique name to avoid cache
+            var newIframe = document.createElement('iframe');
+            newIframe.className = 'preview-iframe active';
+            newIframe.id = activeTabId;
+            newIframe.src = tab.url;
+            previewFrames.appendChild(newIframe);
+            showToast('Session cleared');
+        });
+
         // Open in new window
         previewOpen.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1114,6 +1145,13 @@
                         navigator.wakeLock.request('screen').catch(function() {});
                     }
                 });
+            }
+            // Notification
+            if (general.notification && 'Notification' in window && Notification.permission === 'granted') {
+                notifyEnabled = true;
+            } else {
+                notifyEnabled = false;
+                stopNotifyPolling();
             }
         }
 
@@ -1870,6 +1908,91 @@
             }
         });
 
+        // --- Notification polling via Web Worker (immune to background throttling) ---
+        var notifyWorker = null;
+        var notifyLastTs = Date.now();
+        var notifyEnabled = false;
+
+        function createNotifyWorker() {
+            var code = [
+                'var timer = null, since = 0;',
+                'onmessage = function(e) {',
+                '  if (e.data.type === "start") {',
+                '    if (timer) clearInterval(timer);',
+                '    since = e.data.since || 0;',
+                '    var baseUrl = e.data.baseUrl;',
+                '    function poll() {',
+                '      fetch(baseUrl + "?since=" + since, { credentials: "same-origin" })',
+                '        .then(function(r) { return r.ok ? r.json() : null; })',
+                '        .then(function(d) {',
+                '          if (d && d.notifications) {',
+                '            d.notifications.forEach(function(n) {',
+                '              if (n.ts > since) since = n.ts;',
+                '            });',
+                '            if (d.notifications.length > 0) postMessage(d);',
+                '          }',
+                '        })',
+                '        .catch(function() {});',
+                '    }',
+                '    poll();',
+                '    timer = setInterval(poll, e.data.interval || 3000);',
+                '  } else if (e.data.type === "stop") {',
+                '    if (timer) { clearInterval(timer); timer = null; }',
+                '  }',
+                '};'
+            ].join('\n');
+            var blob = new Blob([code], { type: 'application/javascript' });
+            var w = new Worker(URL.createObjectURL(blob));
+            w.onmessage = function(e) {
+                var data = e.data;
+                if (!data || !data.notifications || data.notifications.length === 0) return;
+                var latest = data.notifications[data.notifications.length - 1];
+                var sessionLabel = latest.session || '';
+                if (latest.window) sessionLabel += ':' + latest.window;
+                var body = '[' + sessionLabel + '] ' + (latest.message || 'Done');
+                try {
+                    var notif = new Notification('Claude Terminal', {
+                        body: body,
+                        icon: '/icon-192.png',
+                        tag: 'claude-notify-' + latest.ts,
+                        renotify: true
+                    });
+                    notif.onclick = function() {
+                        window.focus();
+                        notif.close();
+                    };
+                } catch(e) {}
+            };
+            return w;
+        }
+
+        function startNotifyPolling() {
+            if (!notifyEnabled) return;
+            notifyLastTs = Date.now();
+            if (!notifyWorker) notifyWorker = createNotifyWorker();
+            notifyWorker.postMessage({
+                type: 'start',
+                baseUrl: '/api/notifications',
+                since: notifyLastTs,
+                interval: 3000
+            });
+        }
+
+        function stopNotifyPolling() {
+            if (notifyWorker) {
+                notifyWorker.postMessage({ type: 'stop' });
+            }
+        }
+
+        // Activate/deactivate based on visibility
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden' && notifyEnabled) {
+                startNotifyPolling();
+            } else {
+                stopNotifyPolling();
+            }
+        });
+
         // --- Keyboard resize handling (iOS Safari fallback) ---
         var app = document.getElementById('app');
         if (window.visualViewport) {
@@ -1890,7 +2013,7 @@
         var shBody = document.getElementById('sheet-body');
         var shClose = document.getElementById('sheet-close');
         var settingsBtn = document.getElementById('settings-btn');
-        var shSettings = { general: { wakeLock: false, fontSize: 16 }, snippets: [] };
+        var shSettings = { general: { wakeLock: false, fontSize: 16, notification: false }, snippets: [] };
 
         // Color map for snippet cards (same as settings.html, Claude theme)
         var SH_COLORS = {
@@ -1979,6 +2102,7 @@
         function applySettingsToSheet() {
             document.getElementById('sh-wakeLock').checked = shSettings.general.wakeLock;
             document.getElementById('sh-fontVal').textContent = shSettings.general.fontSize || 16;
+            document.getElementById('sh-notification').checked = !!shSettings.general.notification;
         }
 
         document.getElementById('sh-font-minus').addEventListener('click', function() {
@@ -1991,6 +2115,28 @@
         });
         document.getElementById('sh-wakeLock').addEventListener('change', function() {
             shSettings.general.wakeLock = this.checked;
+        });
+        document.getElementById('sh-notification').addEventListener('change', function() {
+            var toggle = this;
+            if (toggle.checked) {
+                if (!('Notification' in window)) {
+                    toggle.checked = false;
+                    showToast('이 브라우저는 알림을 지원하지 않습니다');
+                    return;
+                }
+                Notification.requestPermission().then(function(perm) {
+                    if (perm === 'granted') {
+                        shSettings.general.notification = true;
+                        showToast('알림이 활성화되었습니다');
+                    } else {
+                        toggle.checked = false;
+                        shSettings.general.notification = false;
+                        showToast('알림 권한이 거부되었습니다');
+                    }
+                });
+            } else {
+                shSettings.general.notification = false;
+            }
         });
 
         // --- D. Snippet management ---
