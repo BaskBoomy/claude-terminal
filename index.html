@@ -14,7 +14,7 @@
         html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden; visibility: hidden; overscroll-behavior: none; }
         #app { display: flex; flex-direction: column; height: 100%; height: 100dvh; }
         #terminal-wrap { flex: 1; overflow: hidden; position: relative; }
-        #terminal-frame { width: 100%; height: 100%; border: none; background: #1a1815; }
+        #terminal-frame { width: 100%; height: 100%; border: none; background: #1a1815; will-change: transform; }
         .toolbar-row {
             display: flex; gap: 4px; padding: 4px 8px;
             background: #201d18; border-top: 1px solid #2a251d;
@@ -1667,6 +1667,25 @@
             var STEP = 30;        // px per scroll line
             var SWIPE_MIN = 60;   // min px for swipe trigger
 
+            function animateSwipeTransition(direction) {
+                var slideOut = direction === 'left' ? '-100%' : '100%';
+                var slideIn  = direction === 'left' ? '60%' : '-60%';
+                frame.style.transition = 'transform 150ms ease-in, opacity 100ms ease-in';
+                frame.style.transform = 'translateX(' + slideOut + ')';
+                frame.style.opacity = '0.3';
+                setTimeout(function() {
+                    if (direction === 'left') tmuxCmd('n', 78);
+                    else tmuxCmd('p', 80);
+                    frame.style.transition = 'none';
+                    frame.style.transform = 'translateX(' + slideIn + ')';
+                    requestAnimationFrame(function() {
+                        frame.style.transition = 'transform 200ms ease-out, opacity 150ms ease-out';
+                        frame.style.transform = 'translateX(0)';
+                        frame.style.opacity = '1';
+                    });
+                }, 150);
+            }
+
             xtermScreen.addEventListener('touchstart', function(e) {
                 if (e.touches.length !== 1) return;
                 startX = e.touches[0].clientX;
@@ -1715,18 +1734,20 @@
                 // Horizontal swipe → tmux session switch
                 if (isSwiping && !swipeHandled) {
                     var swipeDist = currentX - startX;
+                    frame.style.transition = 'none';
+                    frame.style.transform = 'translateX(' + (swipeDist * 0.4) + 'px)';
                     if (Math.abs(swipeDist) >= SWIPE_MIN) {
                         swipeHandled = true;
-                        if (swipeDist < 0) {
-                            tmuxCmd('n', 78); // swipe left → next
-                        } else {
-                            tmuxCmd('p', 80); // swipe right → prev
-                        }
+                        animateSwipeTransition(swipeDist < 0 ? 'left' : 'right');
                     }
                 }
             }, { passive: false });
 
             xtermScreen.addEventListener('touchend', function() {
+                if (isSwiping && !swipeHandled) {
+                    frame.style.transition = 'transform 200ms ease-out';
+                    frame.style.transform = 'translateX(0)';
+                }
                 isScrolling = false;
                 isSwiping = false;
                 swipeHandled = false;
