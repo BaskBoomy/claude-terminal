@@ -9,14 +9,14 @@
       "id": "s1",
       "label": "Claude",
       "command": "cd ~ && claude --dangerously-skip-permissions",
-      "color": "green",
+      "color": "blue",
       "confirm": false
     },
     {
       "id": "s1771838793646",
       "label": "Resume",
       "command": "/resume",
-      "color": "red",
+      "color": "default",
       "confirm": false
     },
     {
@@ -48,7 +48,8 @@
       "label": "Logs",
       "command": "cd ~/dokjaeja && docker compose logs -f --tail 100",
       "color": "default",
-      "confirm": false
+      "confirm": false,
+      "newWindow": true
     },
     {
       "id": "s4",
