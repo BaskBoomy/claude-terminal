@@ -135,13 +135,15 @@
         /* --- Status Bar (tmux session) --- */
         #status-bar {
             display: flex; align-items: center;
-            padding: 4px 12px;
+            padding: 4px 12px; gap: 8px;
             background: #1a1815;
             border-bottom: 1px solid #2a251d;
             flex-shrink: 0;
             font-size: 12px; color: #6a6158;
             font-family: 'SF Mono', 'Cascadia Code', monospace;
+            white-space: nowrap; overflow: hidden;
         }
+        #tmux-session-info { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
         #tmux-session-info span { color: #e8e6e3; }
 
         /* --- View Tabs (Terminal / Preview) --- */
@@ -537,6 +539,14 @@
         .confirm-btn.cancel { background: transparent; color: #6a6158; border: none; }
         .confirm-btn.cancel:active { color: #a09888; }
 
+        /* --- Server Status --- */
+        #server-status-info {
+            color: #6a6158;
+            white-space: nowrap; flex-shrink: 0;
+            cursor: pointer;
+        }
+        #claude-usage-info { white-space: nowrap; flex-shrink: 0; }
+
         /* --- Toast --- */
         #toast {
             position: fixed; top: 40px; left: 50%; transform: translateX(-50%) translateY(-20px);
@@ -555,6 +565,7 @@
         <div id="status-bar">
             <span id="tmux-session-info">tmux: --</span>
             <span style="flex:1"></span>
+            <span id="server-status-info"></span>
             <span id="claude-usage-info"></span>
         </div>
         <div id="view-tabs">
@@ -1915,6 +1926,77 @@
                 stopUsagePolling();
             } else {
                 startUsagePolling();
+            }
+        });
+
+        // --- Server status polling ---
+        var serverStatusEl = document.getElementById('server-status-info');
+        var serverPollTimer = null;
+        var lastServerData = null;
+
+        function colorForPct(pct) {
+            if (pct >= 80) return '#ff6b6b';
+            if (pct >= 60) return '#e8b84b';
+            return '#6a6158';
+        }
+
+        function colorForTemp(t) {
+            if (t >= 70) return '#ff6b6b';
+            if (t >= 60) return '#e8b84b';
+            return '#6a6158';
+        }
+
+        function fetchServerStatus() {
+            fetch('/api/server-status').then(function(r) {
+                return r.ok ? r.json() : null;
+            }).then(function(data) {
+                if (!data) { serverStatusEl.textContent = ''; return; }
+                lastServerData = data;
+                var parts = [];
+                if (data.cpu != null) {
+                    parts.push('<span style="color:' + colorForPct(data.cpu) + '">C' + data.cpu + '</span>');
+                }
+                if (data.mem != null) {
+                    parts.push('<span style="color:' + colorForPct(data.mem) + '">M' + data.mem + '</span>');
+                }
+                if (data.temp != null) {
+                    parts.push('<span style="color:' + colorForTemp(data.temp) + '">' + data.temp + '\u00B0</span>');
+                }
+                serverStatusEl.innerHTML = parts.join('\u00B7');
+            }).catch(function() {});
+        }
+
+        function startServerPolling() {
+            if (serverPollTimer) return;
+            fetchServerStatus();
+            serverPollTimer = setInterval(fetchServerStatus, 10000);
+        }
+
+        function stopServerPolling() {
+            if (serverPollTimer) {
+                clearInterval(serverPollTimer);
+                serverPollTimer = null;
+            }
+        }
+
+        startServerPolling();
+
+        serverStatusEl.addEventListener('click', function() {
+            if (!lastServerData) return;
+            var d = lastServerData;
+            var parts = [];
+            if (d.cpu != null) parts.push('CPU ' + d.cpu + '%' + (d.loadAvg != null ? ' (load ' + d.loadAvg.toFixed(2) + ')' : ''));
+            if (d.mem != null) parts.push('MEM ' + d.mem + '%' + (d.memUsedGB != null ? ' (' + d.memUsedGB + '/' + d.memTotalGB + 'G)' : ''));
+            if (d.disk != null) parts.push('Disk ' + d.disk + '%');
+            if (d.temp != null) parts.push(d.temp + '\u00B0C');
+            showToast(parts.join(' \u00B7 '), 3000);
+        });
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') {
+                stopServerPolling();
+            } else {
+                startServerPolling();
             }
         });
 
