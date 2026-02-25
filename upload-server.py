@@ -167,6 +167,56 @@ class Handler(BaseHTTPRequestHandler):
                 pass
             self._json_response(200, json.dumps({'notifications': items}).encode())
 
+        elif self.path == '/api/server-status':
+            if not self._require_auth():
+                return
+            status = {}
+            # CPU: load average → percentage (4 cores)
+            try:
+                with open('/proc/loadavg') as f:
+                    load1 = float(f.read().split()[0])
+                status['cpu'] = min(round(load1 / 4 * 100), 100)
+            except Exception:
+                status['cpu'] = None
+            # Memory
+            try:
+                meminfo = {}
+                with open('/proc/meminfo') as f:
+                    for line in f:
+                        parts = line.split()
+                        if parts[0] in ('MemTotal:', 'MemAvailable:'):
+                            meminfo[parts[0][:-1]] = int(parts[1])
+                total = meminfo['MemTotal']
+                avail = meminfo['MemAvailable']
+                status['mem'] = round((total - avail) / total * 100)
+                status['memUsedGB'] = round((total - avail) / 1048576, 1)
+                status['memTotalGB'] = round(total / 1048576, 1)
+            except Exception:
+                status['mem'] = None
+                status['memUsedGB'] = None
+                status['memTotalGB'] = None
+            # Disk
+            try:
+                st = os.statvfs('/')
+                total_d = st.f_blocks * st.f_frsize
+                free_d = st.f_bavail * st.f_frsize
+                status['disk'] = round((total_d - free_d) / total_d * 100)
+            except Exception:
+                status['disk'] = None
+            # Temperature
+            try:
+                with open('/sys/class/thermal/thermal_zone0/temp') as f:
+                    status['temp'] = round(int(f.read().strip()) / 1000)
+            except Exception:
+                status['temp'] = None
+            # Load average (raw)
+            try:
+                with open('/proc/loadavg') as f:
+                    status['loadAvg'] = float(f.read().split()[0])
+            except Exception:
+                status['loadAvg'] = None
+            self._json_response(200, json.dumps(status).encode())
+
         elif self.path == '/api/claude-usage':
             if not self._require_auth():
                 return
