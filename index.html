@@ -554,14 +554,19 @@
         /* --- Toast --- */
         #toast {
             position: fixed; top: 40px; left: 50%; transform: translateX(-50%) translateY(-20px);
-            background: #C15F3C; color: #fff;
-            padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+            background: #2a251d; color: #e8e6e3;
+            padding: 12px 16px; border-radius: 12px; font-size: 13px;
             font-family: 'SF Mono', 'Cascadia Code', monospace;
             box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            border: 1px solid #3a352b;
             opacity: 0; pointer-events: none; z-index: 300;
             transition: opacity 0.2s, transform 0.2s;
+            white-space: pre-line; text-align: left;
+            min-width: 180px; max-width: 90vw;
         }
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+        .toast-label { color: #6a6158; font-size: 11px; }
+        .toast-value { color: #e8e6e3; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -1904,7 +1909,8 @@
         var toastEl = document.getElementById('toast');
         var toastTimer = null;
         function showToast(msg, duration) {
-            toastEl.textContent = msg;
+            if (msg.indexOf('<') !== -1) toastEl.innerHTML = msg;
+            else toastEl.textContent = msg;
             toastEl.classList.add('show');
             clearTimeout(toastTimer);
             toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, duration || 2000);
@@ -2009,12 +2015,12 @@
         serverStatusEl.addEventListener('click', function() {
             if (!lastServerData) return;
             var d = lastServerData;
-            var parts = [];
-            if (d.cpu != null) parts.push('CPU ' + d.cpu + '%' + (d.loadAvg != null ? ' (load ' + d.loadAvg.toFixed(2) + ')' : ''));
-            if (d.mem != null) parts.push('MEM ' + d.mem + '%' + (d.memUsedGB != null ? ' (' + d.memUsedGB + '/' + d.memTotalGB + 'G)' : ''));
-            if (d.disk != null) parts.push('Disk ' + d.disk + '%');
-            if (d.temp != null) parts.push(d.temp + '\u00B0C');
-            showToast(parts.join(' \u00B7 '), 3000);
+            var lines = [];
+            if (d.cpu != null) lines.push('<span class="toast-label">CPU</span>  <span class="toast-value">' + d.cpu + '%</span>' + (d.loadAvg != null ? '  <span class="toast-label">load</span> ' + d.loadAvg.toFixed(2) : ''));
+            if (d.mem != null) lines.push('<span class="toast-label">MEM</span>  <span class="toast-value">' + d.mem + '%</span>' + (d.memUsedGB != null ? '  <span class="toast-label">' + d.memUsedGB + '/' + d.memTotalGB + 'G</span>' : ''));
+            if (d.disk != null) lines.push('<span class="toast-label">DISK</span> <span class="toast-value">' + d.disk + '%</span>');
+            if (d.temp != null) lines.push('<span class="toast-label">TEMP</span> <span class="toast-value">' + d.temp + '\u00B0C</span>');
+            showToast(lines.join('\n'), 3000);
         });
 
         document.addEventListener('visibilitychange', function() {
