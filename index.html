@@ -107,22 +107,24 @@
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
             flex-shrink: 0;
         }
-        .fab-circle.green { background: #4caf50; color: #fff; }
-        .fab-circle.green:active { background: #388e3c; }
+        .fab-circle.green { background: #C15F3C; color: #fff; }
+        .fab-circle.green:active { background: #A14A2F; }
         .fab-panel {
-            display: none; gap: 4px; align-items: center;
+            display: flex; gap: 4px; align-items: center;
             background: #201d18; border: 1px solid #2a251d;
             border-radius: 8px; padding: 4px 6px;
             box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+            opacity: 0; transform: translateX(10px); pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
         }
-        .fab-panel.open { display: flex; }
+        .fab-panel.open { opacity: 1; transform: translateX(0); pointer-events: auto; }
         .fab-panel .fab-btn {
             padding: 8px 10px; border-radius: 6px; border: 1px solid #3a352b;
             font-size: 13px; cursor: pointer; white-space: nowrap;
-            background: #4caf50; color: #fff; border-color: #4caf50;
+            background: #C15F3C; color: #fff; border-color: #C15F3C;
             touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        .fab-panel .fab-btn:active { background: #388e3c; }
+        .fab-panel .fab-btn:active { background: #A14A2F; }
         .fab-sep { width: 1px; background: #3a352b; align-self: stretch; }
         .fab-panel .fab-btn.kill {
             background: #ff6b6b; color: #fff; border-color: #ff6b6b;
