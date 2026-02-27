@@ -79,7 +79,7 @@
         }
         .input-btn.primary:active { background: #A14A2F; }
         .input-btn.uploading { opacity: 0.5; pointer-events: none; }
-        #file-input { display: none; }
+        #file-input, #file-input-any { display: none; }
         .fab-area {
             position: absolute; z-index: 20;
             display: flex; align-items: center; gap: 6px;
@@ -636,8 +636,10 @@
         <div id="input-bar">
             <button id="img-btn" class="input-btn" style="font-size:22px;font-weight:300">+</button>
             <input id="file-input" type="file" accept="image/*">
+            <input id="file-input-any" type="file">
             <div id="plus-menu">
                 <div class="pm-item" id="pm-attach">&#x1F4F7; 이미지 첨부</div>
+                <div class="pm-item" id="pm-attach-file">&#x1F4CE; 파일 첨부</div>
                 <div class="pm-item" id="pm-save-memo">&#x1F4DD; 메모로 저장</div>
                 <div class="pm-divider"></div>
                 <div id="pm-memo-list"></div>
@@ -1255,12 +1257,12 @@
             }
         };
 
-        // --- Image upload ---
+        // --- File upload ---
         function uploadImage(file) {
             imgBtn.classList.add('uploading');
             fetch('/upload', {
                 method: 'POST',
-                headers: { 'Content-Type': file.type || 'image/png' },
+                headers: { 'Content-Type': file.type || 'application/octet-stream' },
                 body: file
             })
             .then(function(r) { return r.json(); })
@@ -1415,6 +1417,17 @@
         pmAttach.addEventListener('click', function() {
             closePlusMenu();
             fileInput.click();
+        });
+
+        var fileInputAny = document.getElementById('file-input-any');
+        var pmAttachFile = document.getElementById('pm-attach-file');
+        pmAttachFile.addEventListener('click', function() {
+            closePlusMenu();
+            fileInputAny.click();
+        });
+        fileInputAny.addEventListener('change', function() {
+            if (fileInputAny.files[0]) uploadImage(fileInputAny.files[0]);
+            fileInputAny.value = '';
         });
 
         pmSaveMemo.addEventListener('click', function() {
@@ -1641,7 +1654,8 @@
         var scrollBottomBtn = document.getElementById('scroll-bottom-btn');
         scrollBottomBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            sendKey('q', 81); // exit tmux copy-mode
+            e.stopPropagation();
+            sendKey('Escape', 27); // exit tmux copy-mode (safe: no-op outside copy-mode)
             try {
                 var viewport = frame.contentDocument.querySelector('.xterm-viewport');
                 if (viewport) viewport.scrollTop = viewport.scrollHeight;
