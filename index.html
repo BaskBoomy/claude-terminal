@@ -57,14 +57,26 @@
             align-items: flex-end; position: relative;
         }
         #input-bar:focus-within { padding-bottom: 8px; }
+        .input-wrap { position: relative; flex: 1; min-width: 0; }
         #text-input {
-            flex: 1; min-width: 0; padding: 8px 12px; background: #2a251d; color: #e8e6e3;
+            width: 100%; padding: 8px 32px 8px 12px; background: #2a251d; color: #e8e6e3;
             border: 1px solid #3a352b; border-radius: 12px;
             font-size: 15px; outline: none; font-family: -apple-system, system-ui, sans-serif;
             resize: none; height: 38px; max-height: 120px; line-height: 1.5;
         }
         #text-input:focus { border-color: #C15F3C; }
         #text-input::placeholder { color: #6a6158; }
+        #clear-input {
+            position: absolute; right: 6px; top: 7px;
+            width: 22px; height: 22px; border-radius: 50%;
+            background: #3a352b; border: none; color: #6a6158;
+            font-size: 13px; cursor: pointer; padding: 0;
+            display: none; align-items: center; justify-content: center;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+            line-height: 1;
+        }
+        #clear-input.visible { display: flex; }
+        #clear-input:active { background: #4a4538; color: #e8e6e3; }
         .input-btn {
             width: 38px; height: 38px; padding: 0;
             background: #2a251d; color: #6a6158;
@@ -644,7 +656,10 @@
                 <div class="pm-divider"></div>
                 <div id="pm-memo-list"></div>
             </div>
-            <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+            <div class="input-wrap">
+                <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                <button id="clear-input">&times;</button>
+            </div>
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
             <button id="toolbar-toggle" class="input-btn">&#x25B2;</button>
         </div>
@@ -1093,10 +1108,24 @@
         // --- Persist input text across page navigation ---
         var savedInput = sessionStorage.getItem('terminal-input');
         if (savedInput) textInput.value = savedInput;
+        var clearInputBtn = document.getElementById('clear-input');
+        function updateClearBtn() {
+            clearInputBtn.classList.toggle('visible', textInput.value.length > 0);
+        }
         textInput.addEventListener('input', function() {
             sessionStorage.setItem('terminal-input', textInput.value);
             autoResize();
+            updateClearBtn();
         });
+        clearInputBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            textInput.value = '';
+            sessionStorage.removeItem('terminal-input');
+            autoResize();
+            updateClearBtn();
+            textInput.focus();
+        });
+        updateClearBtn();
 
         // Snippet color map
         var SNIPPET_COLORS = {
