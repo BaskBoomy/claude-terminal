@@ -317,6 +317,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def log_message(self, format, *args):
-        pass
+        if '/api/notifications' in (args[0] if args else ''):
+            import sys
+            sys.stderr.write('[NOTIFY] %s\n' % (format % args))
+            sys.stderr.flush()
 
 HTTPServer(('0.0.0.0', 7682), Handler).serve_forever()

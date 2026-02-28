@@ -1199,9 +1199,11 @@
                     }
                 });
             }
-            // Notification
-            if (general.notification && 'Notification' in window && Notification.permission === 'granted') {
+            // Notification — polling is always enabled if setting is on
+            // Push notifications need permission, but in-app toasts don't
+            if (general.notification) {
                 notifyEnabled = true;
+                startNotifyPolling();
             } else {
                 notifyEnabled = false;
                 stopNotifyPolling();
@@ -2077,90 +2079,58 @@
             }
         });
 
-        // --- Notification polling via Web Worker (immune to background throttling) ---
-        var notifyWorker = null;
-        var notifyLastTs = Date.now();
+        // --- Notification polling (main thread) ---
+        var notifyPollTimer = null;
+        var notifySince = Date.now();
         var notifyEnabled = false;
 
-        function createNotifyWorker() {
-            var code = [
-                'var timer = null, since = 0;',
-                'onmessage = function(e) {',
-                '  if (e.data.type === "start") {',
-                '    if (timer) clearInterval(timer);',
-                '    since = e.data.since || 0;',
-                '    var baseUrl = e.data.baseUrl;',
-                '    function poll() {',
-                '      fetch(baseUrl + "?since=" + since, { credentials: "same-origin" })',
-                '        .then(function(r) { return r.ok ? r.json() : null; })',
-                '        .then(function(d) {',
-                '          if (d && d.notifications) {',
-                '            d.notifications.forEach(function(n) {',
-                '              if (n.ts > since) since = n.ts;',
-                '            });',
-                '            if (d.notifications.length > 0) postMessage(d);',
-                '          }',
-                '        })',
-                '        .catch(function() {});',
-                '    }',
-                '    poll();',
-                '    timer = setInterval(poll, e.data.interval || 3000);',
-                '  } else if (e.data.type === "stop") {',
-                '    if (timer) { clearInterval(timer); timer = null; }',
-                '  }',
-                '};'
-            ].join('\n');
-            var blob = new Blob([code], { type: 'application/javascript' });
-            var w = new Worker(URL.createObjectURL(blob));
-            w.onmessage = function(e) {
-                var data = e.data;
-                if (!data || !data.notifications || data.notifications.length === 0) return;
-                var latest = data.notifications[data.notifications.length - 1];
-                var sessionLabel = latest.session || '';
-                if (latest.window) sessionLabel += ':' + latest.window;
-                var body = '[' + sessionLabel + '] ' + (latest.message || 'Done');
-                try {
-                    var notif = new Notification('Claude Terminal', {
-                        body: body,
-                        icon: '/icon-192.png',
-                        tag: 'claude-notify-' + latest.ts,
-                        renotify: true
+        function notifyPoll() {
+            fetch('/api/notifications?since=' + notifySince, { credentials: 'same-origin' })
+                .then(function(r) { return r.ok ? r.json() : null; })
+                .then(function(d) {
+                    if (!d || !d.notifications || d.notifications.length === 0) return;
+                    d.notifications.forEach(function(n) {
+                        if (n.ts > notifySince) notifySince = n.ts;
                     });
-                    notif.onclick = function() {
-                        window.focus();
-                        notif.close();
-                    };
-                } catch(e) {}
-            };
-            return w;
+                    var latest = d.notifications[d.notifications.length - 1];
+                    var sessionLabel = latest.session || '';
+                    if (latest.window) sessionLabel += ':' + latest.window;
+                    var body = '[' + sessionLabel + '] ' + (latest.message || 'Done');
+                    if (document.visibilityState === 'hidden') {
+                        if ('Notification' in window && Notification.permission === 'granted') {
+                            try {
+                                var notif = new Notification('Claude Terminal', {
+                                    body: body,
+                                    icon: '/icon-192.png',
+                                    tag: 'claude-notify-' + latest.ts,
+                                    renotify: true
+                                });
+                                notif.onclick = function() {
+                                    window.focus();
+                                    notif.close();
+                                };
+                            } catch(e) {}
+                        }
+                    } else {
+                        showToast(body, 2000);
+                    }
+                })
+                .catch(function() {});
         }
 
         function startNotifyPolling() {
-            if (!notifyEnabled) return;
-            notifyLastTs = Date.now();
-            if (!notifyWorker) notifyWorker = createNotifyWorker();
-            notifyWorker.postMessage({
-                type: 'start',
-                baseUrl: '/api/notifications',
-                since: notifyLastTs,
-                interval: 3000
-            });
+            if (!notifyEnabled || notifyPollTimer) return;
+            notifySince = Date.now();
+            notifyPoll();
+            notifyPollTimer = setInterval(notifyPoll, 3000);
         }
 
         function stopNotifyPolling() {
-            if (notifyWorker) {
-                notifyWorker.postMessage({ type: 'stop' });
+            if (notifyPollTimer) {
+                clearInterval(notifyPollTimer);
+                notifyPollTimer = null;
             }
         }
-
-        // Activate/deactivate based on visibility
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'hidden' && notifyEnabled) {
-                startNotifyPolling();
-            } else {
-                stopNotifyPolling();
-            }
-        });
 
         // --- Keyboard resize handling (iOS Safari fallback) ---
         var app = document.getElementById('app');
