@@ -2058,6 +2058,7 @@
         startServerPolling();
 
         serverStatusEl.addEventListener('click', function() {
+            fetchServerStatus();
             if (!lastServerData) return;
             var d = lastServerData;
             var lines = [];
