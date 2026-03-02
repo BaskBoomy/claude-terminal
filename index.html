@@ -187,6 +187,94 @@
             width: 100%; height: 100%;
             position: absolute; top: 0; left: 0;
         }
+        #notes-container {
+            display: none; flex-direction: column;
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            background: #1a1714;
+        }
+        /* Notes list view */
+        #notes-list-view { display: flex; flex-direction: column; height: 100%; }
+        #notes-list-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #notes-list-header h3 {
+            flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: #e8e6e3;
+        }
+        .notes-header-btn {
+            background: none; border: 1px solid #3a352b; border-radius: 6px;
+            color: #a09888; cursor: pointer; padding: 5px 10px; font-size: 13px;
+            font-family: -apple-system, system-ui, sans-serif;
+            transition: background 0.15s, color 0.15s;
+        }
+        .notes-header-btn:active { background: #2a251d; color: #e8e6e3; }
+        #notes-items {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .note-item {
+            display: flex; flex-direction: column; padding: 12px 16px;
+            border-bottom: 1px solid #2a251d; cursor: pointer;
+            transition: background 0.1s;
+        }
+        .note-item:active { background: #2a251d; }
+        .note-item-title {
+            font-size: 15px; font-weight: 500; color: #e8e6e3;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .note-item-preview {
+            font-size: 12px; color: #6a6158; margin-top: 3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .note-item-date {
+            font-size: 11px; color: #4a4538; margin-top: 4px;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .note-item-empty {
+            padding: 40px 16px; text-align: center;
+            color: #4a4538; font-size: 14px;
+        }
+        /* Notes editor view */
+        #notes-editor-view { display: none; flex-direction: column; height: 100%; }
+        #notes-editor-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #notes-back-btn {
+            background: none; border: none; color: #C15F3C; cursor: pointer;
+            font-size: 14px; padding: 4px 8px;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        #notes-title-input {
+            flex: 1; background: none; border: none; outline: none;
+            color: #e8e6e3; font-size: 15px; font-weight: 600;
+            font-family: -apple-system, system-ui, sans-serif;
+            padding: 4px 0;
+        }
+        #notes-title-input::placeholder { color: #4a4538; }
+        #notes-delete-btn {
+            background: none; border: none; color: #6a6158; cursor: pointer;
+            font-size: 16px; padding: 4px 8px;
+        }
+        #notes-delete-btn:active { color: #e85535; }
+        #notes-editor-textarea {
+            flex: 1; width: 100%; border: none; outline: none; resize: none;
+            background: #1a1714; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 14px; line-height: 1.6; padding: 12px 16px;
+            box-sizing: border-box;
+        }
+        #notes-editor-textarea::placeholder { color: #4a4538; }
+        #notes-editor-status {
+            display: flex; align-items: center; justify-content: flex-end;
+            padding: 4px 12px; font-size: 11px; color: #6a6158;
+            background: #201d18; border-top: 1px solid #2a251d;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+            flex-shrink: 0;
+        }
+        #notes-editor-status.saved { color: #8ab563; }
         /* Browser tab bar */
         #browser-tabs {
             display: flex; align-items: center;
@@ -594,6 +682,7 @@
         <div id="view-tabs">
             <button class="view-tab active" data-view="terminal">Terminal</button>
             <button class="view-tab" data-view="preview">Preview</button>
+            <button class="view-tab" data-view="notes">Notes</button>
         </div>
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
@@ -609,6 +698,24 @@
                     <div id="preview-url-dropdown"></div>
                 </div>
                 <div id="preview-frames"></div>
+            </div>
+            <div id="notes-container">
+                <div id="notes-list-view">
+                    <div id="notes-list-header">
+                        <h3>Notes</h3>
+                        <button class="notes-header-btn" id="notes-new-btn">+ 새 메모</button>
+                    </div>
+                    <div id="notes-items"></div>
+                </div>
+                <div id="notes-editor-view">
+                    <div id="notes-editor-header">
+                        <button id="notes-back-btn">&#x25C0; 목록</button>
+                        <input id="notes-title-input" type="text" placeholder="제목 없음" />
+                        <button id="notes-delete-btn" title="삭제">&#x1F5D1;</button>
+                    </div>
+                    <textarea id="notes-editor-textarea" placeholder="내용을 입력하세요..."></textarea>
+                    <div id="notes-editor-status">저장됨</div>
+                </div>
             </div>
             <div id="scroll-indicator"></div>
             <button id="scroll-bottom-btn" class="scroll-bottom-btn">&#x25BC;</button>
@@ -988,21 +1095,173 @@
         var keysBarEl = document.getElementById('keys-bar');
         var inputBarEl = document.getElementById('input-bar');
 
+        var notesContainer = document.getElementById('notes-container');
+        var notesListView = document.getElementById('notes-list-view');
+        var notesEditorView = document.getElementById('notes-editor-view');
+        var notesItems = document.getElementById('notes-items');
+        var notesNewBtn = document.getElementById('notes-new-btn');
+        var notesBackBtn = document.getElementById('notes-back-btn');
+        var notesTitleInput = document.getElementById('notes-title-input');
+        var notesEditorTextarea = document.getElementById('notes-editor-textarea');
+        var notesEditorStatus = document.getElementById('notes-editor-status');
+        var notesDeleteBtn = document.getElementById('notes-delete-btn');
+        var notesSaveTimer = null;
+        var notesListLoaded = false;
+        var currentNoteId = null;
+
+        function formatNoteDate(ts) {
+            var d = new Date(ts);
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            var hh = String(d.getHours()).padStart(2, '0');
+            var mi = String(d.getMinutes()).padStart(2, '0');
+            return mm + '/' + dd + ' ' + hh + ':' + mi;
+        }
+
+        function loadNotesList() {
+            fetch('/api/notes', { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    notesListLoaded = true;
+                    renderNotesList(data.notes || []);
+                })
+                .catch(function() { notesListLoaded = true; });
+        }
+
+        function renderNotesList(notes) {
+            if (!notes.length) {
+                notesItems.innerHTML = '<div class="note-item-empty">메모가 없습니다</div>';
+                return;
+            }
+            notesItems.innerHTML = '';
+            notes.forEach(function(n) {
+                var el = document.createElement('div');
+                el.className = 'note-item';
+                el.innerHTML =
+                    '<div class="note-item-title">' + escapeHtml(n.title || '제목 없음') + '</div>' +
+                    '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
+                    '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>';
+                el.addEventListener('click', function() { openNote(n.id); });
+                notesItems.appendChild(el);
+            });
+        }
+
+        function escapeHtml(s) {
+            var div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
+        }
+
+        function openNote(id) {
+            fetch('/api/notes/' + id, { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    currentNoteId = id;
+                    notesTitleInput.value = data.title || '';
+                    notesEditorTextarea.value = data.content || '';
+                    notesEditorStatus.textContent = '저장됨';
+                    notesEditorStatus.classList.add('saved');
+                    notesListView.style.display = 'none';
+                    notesEditorView.style.display = 'flex';
+                });
+        }
+
+        function saveCurrentNote() {
+            if (!currentNoteId) return;
+            notesEditorStatus.textContent = '저장 중...';
+            notesEditorStatus.classList.remove('saved');
+            fetch('/api/notes/' + currentNoteId, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: notesTitleInput.value,
+                    content: notesEditorTextarea.value
+                })
+            }).then(function(r) {
+                if (r.ok) {
+                    notesEditorStatus.textContent = '저장됨';
+                    notesEditorStatus.classList.add('saved');
+                } else {
+                    notesEditorStatus.textContent = '저장 실패';
+                    notesEditorStatus.classList.remove('saved');
+                }
+            }).catch(function() {
+                notesEditorStatus.textContent = '저장 실패';
+                notesEditorStatus.classList.remove('saved');
+            });
+        }
+
+        function scheduleNoteSave() {
+            notesEditorStatus.textContent = '수정됨';
+            notesEditorStatus.classList.remove('saved');
+            clearTimeout(notesSaveTimer);
+            notesSaveTimer = setTimeout(saveCurrentNote, 1000);
+        }
+
+        notesEditorTextarea.addEventListener('input', scheduleNoteSave);
+        notesTitleInput.addEventListener('input', scheduleNoteSave);
+
+        notesBackBtn.addEventListener('click', function() {
+            clearTimeout(notesSaveTimer);
+            if (currentNoteId && notesEditorStatus.textContent !== '저장됨') {
+                saveCurrentNote();
+            }
+            currentNoteId = null;
+            notesEditorView.style.display = 'none';
+            notesListView.style.display = 'flex';
+            loadNotesList();
+        });
+
+        notesNewBtn.addEventListener('click', function() {
+            fetch('/api/notes', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: '', content: '' })
+            }).then(function(r) { return r.json(); })
+              .then(function(data) {
+                  if (data.id) openNote(data.id);
+              });
+        });
+
+        notesDeleteBtn.addEventListener('click', function() {
+            if (!currentNoteId) return;
+            if (!confirm('이 메모를 삭제하시겠습니까?')) return;
+            fetch('/api/notes/' + currentNoteId, {
+                method: 'DELETE',
+                credentials: 'same-origin'
+            }).then(function() {
+                currentNoteId = null;
+                notesEditorView.style.display = 'none';
+                notesListView.style.display = 'flex';
+                loadNotesList();
+            });
+        });
+
         function switchView(view) {
             activeView = view;
             var isTerm = view === 'terminal';
+            var isNotes = view === 'notes';
             viewTabs.forEach(function(tab) {
                 tab.classList.toggle('active', tab.dataset.view === view);
             });
             terminalFrame.style.display = isTerm ? 'block' : 'none';
-            previewContainer.style.display = isTerm ? 'none' : 'flex';
-            // Hide all terminal-only chrome in preview mode
+            previewContainer.style.display = view === 'preview' ? 'flex' : 'none';
+            notesContainer.style.display = isNotes ? 'flex' : 'none';
+            // Hide all terminal-only chrome in non-terminal mode
             tmuxFab.style.display = isTerm ? '' : 'none';
             scrollIndicatorEl.style.display = isTerm ? '' : 'none';
             scrollBottomBtnEl.style.display = isTerm ? '' : 'none';
             toolbarEl.style.display = isTerm ? '' : 'none';
             keysBarEl.style.display = isTerm ? '' : 'none';
             inputBarEl.style.display = isTerm ? '' : 'none';
+            if (isNotes) {
+                // Reset to list view when switching to notes
+                notesEditorView.style.display = 'none';
+                notesListView.style.display = 'flex';
+                loadNotesList();
+            }
         }
 
         viewTabs.forEach(function(tab) {
@@ -1348,72 +1607,107 @@
         var pmAttach = document.getElementById('pm-attach');
         var pmSaveMemo = document.getElementById('pm-save-memo');
         var pmMemoList = document.getElementById('pm-memo-list');
-        var memos = JSON.parse(localStorage.getItem('terminal-memos') || '[]');
+        var pmMemoCache = []; // {id, title, preview}
 
-        function saveMemos() {
-            try { localStorage.setItem('terminal-memos', JSON.stringify(memos)); } catch(e) {}
+        // Migrate localStorage memos → Notes API (one-time)
+        (function migrateLocalMemos() {
+            var old = [];
+            try { old = JSON.parse(localStorage.getItem('terminal-memos') || '[]'); } catch(e) {}
+            if (!old.length) return;
+            var pending = old.length;
+            old.forEach(function(text) {
+                var title = text.split('\n')[0].substring(0, 50) || '메모';
+                fetch('/api/notes', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: title, content: text })
+                }).then(function() {
+                    pending--;
+                    if (pending <= 0) {
+                        localStorage.removeItem('terminal-memos');
+                        notesListLoaded = false; // refresh if notes tab is open
+                    }
+                }).catch(function() { pending--; });
+            });
+        })();
+
+        function fetchMemoList(cb) {
+            fetch('/api/notes', { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    pmMemoCache = data.notes || [];
+                    if (cb) cb();
+                })
+                .catch(function() { if (cb) cb(); });
         }
 
         function renderMemos() {
             pmMemoList.innerHTML = '';
-            if (memos.length === 0) {
+            if (pmMemoCache.length === 0) {
                 var empty = document.createElement('div');
                 empty.className = 'pm-empty';
                 empty.textContent = '저장된 메모 없음';
                 pmMemoList.appendChild(empty);
                 return;
             }
-            memos.forEach(function(memo, idx) {
+            pmMemoCache.forEach(function(note) {
                 var row = document.createElement('div');
                 row.className = 'pm-memo-item';
                 var text = document.createElement('span');
                 text.className = 'pm-memo-text';
-                text.textContent = memo;
+                text.textContent = note.title || note.preview || '제목 없음';
                 var del = document.createElement('button');
                 del.className = 'pm-memo-del';
                 del.innerHTML = '&times;';
                 del.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    memos.splice(idx, 1);
-                    saveMemos();
-                    renderMemos();
+                    fetch('/api/notes/' + note.id, { method: 'DELETE', credentials: 'same-origin' })
+                        .then(function() { fetchMemoList(renderMemos); notesListLoaded = false; });
                 });
                 del.addEventListener('touchend', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    memos.splice(idx, 1);
-                    saveMemos();
-                    renderMemos();
+                    fetch('/api/notes/' + note.id, { method: 'DELETE', credentials: 'same-origin' })
+                        .then(function() { fetchMemoList(renderMemos); notesListLoaded = false; });
                 });
                 row.addEventListener('click', function() {
-                    var currentText = textInput.value.trim();
-                    if (!currentText) {
-                        textInput.value = memo;
-                        autoResize();
-                        sessionStorage.setItem('terminal-input', textInput.value);
-                        closePlusMenu();
-                        textInput.focus();
-                        return;
-                    }
-                    closePlusMenu();
-                    showConfirm('입력창에 내용이 있습니다.', [
-                        { label: '저장 후 덮어쓰기', style: 'primary', action: function() {
-                            if (memos.length >= 20) memos.shift();
-                            memos.push(currentText);
-                            saveMemos();
-                            textInput.value = memo;
-                            autoResize();
-                            sessionStorage.setItem('terminal-input', textInput.value);
-                            textInput.focus();
-                        }},
-                        { label: '그냥 덮어쓰기', style: 'secondary', action: function() {
-                            textInput.value = memo;
-                            autoResize();
-                            sessionStorage.setItem('terminal-input', textInput.value);
-                            textInput.focus();
-                        }},
-                        { label: '취소', style: 'cancel' }
-                    ]);
+                    // Fetch full content, then paste into input
+                    fetch('/api/notes/' + note.id, { credentials: 'same-origin' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            var memoContent = data.content || '';
+                            var currentText = textInput.value.trim();
+                            if (!currentText) {
+                                textInput.value = memoContent;
+                                autoResize();
+                                sessionStorage.setItem('terminal-input', textInput.value);
+                                closePlusMenu();
+                                textInput.focus();
+                                return;
+                            }
+                            closePlusMenu();
+                            showConfirm('입력창에 내용이 있습니다.', [
+                                { label: '저장 후 덮어쓰기', style: 'primary', action: function() {
+                                    var saveTitle = currentText.split('\n')[0].substring(0, 50) || '메모';
+                                    fetch('/api/notes', {
+                                        method: 'POST', credentials: 'same-origin',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ title: saveTitle, content: currentText })
+                                    }).then(function() { notesListLoaded = false; });
+                                    textInput.value = memoContent;
+                                    autoResize();
+                                    sessionStorage.setItem('terminal-input', textInput.value);
+                                    textInput.focus();
+                                }},
+                                { label: '그냥 덮어쓰기', style: 'secondary', action: function() {
+                                    textInput.value = memoContent;
+                                    autoResize();
+                                    sessionStorage.setItem('terminal-input', textInput.value);
+                                    textInput.focus();
+                                }},
+                                { label: '취소', style: 'cancel' }
+                            ]);
+                        });
                 });
                 row.appendChild(text);
                 row.appendChild(del);
@@ -1422,8 +1716,9 @@
         }
 
         function openPlusMenu() {
-            renderMemos();
+            pmMemoList.innerHTML = '<div class="pm-empty">불러오는 중...</div>';
             plusMenu.classList.add('open');
+            fetchMemoList(renderMemos);
         }
 
         function closePlusMenu() {
@@ -1466,10 +1761,15 @@
         pmSaveMemo.addEventListener('click', function() {
             var text = textInput.value.trim();
             if (!text) return;
-            if (memos.length >= 20) memos.shift();
-            memos.push(text);
-            saveMemos();
-            renderMemos();
+            var title = text.split('\n')[0].substring(0, 50) || '메모';
+            fetch('/api/notes', {
+                method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: title, content: text })
+            }).then(function() {
+                fetchMemoList(renderMemos);
+                notesListLoaded = false; // sync Notes tab
+            });
             closePlusMenu();
             // Green flash feedback
             textInput.style.background = '#1a3a1a';
