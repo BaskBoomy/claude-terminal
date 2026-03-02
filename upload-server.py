@@ -4,6 +4,7 @@ import os, uuid, json, mimetypes, secrets, hashlib, time
 
 UPLOAD_DIR = '/tmp/claude-uploads'
 SETTINGS_FILE = '/home/jack/claude-terminal/settings.json'
+NOTES_DIR = '/home/jack/claude-terminal/notes'
 
 DEFAULT_SETTINGS = {
     "general": {"wakeLock": False, "fontSize": 16},
@@ -60,6 +61,58 @@ def record_failed_attempt(ip):
 
 def reset_attempts(ip):
     login_attempts.pop(ip, None)
+
+
+# --- Notes helpers ---
+import re
+
+def _safe_note_id(note_id):
+    return bool(re.match(r'^[a-f0-9]{8}$', note_id or ''))
+
+def _note_path(note_id):
+    return os.path.join(NOTES_DIR, note_id + '.json')
+
+def _list_notes():
+    os.makedirs(NOTES_DIR, exist_ok=True)
+    notes = []
+    for fname in os.listdir(NOTES_DIR):
+        if not fname.endswith('.json'):
+            continue
+        try:
+            with open(os.path.join(NOTES_DIR, fname), 'r') as f:
+                data = json.load(f)
+            content = data.get('content', '')
+            preview = content.split('\n')[0][:80] if content else ''
+            notes.append({
+                'id': fname[:-5],
+                'title': data.get('title', ''),
+                'preview': preview,
+                'updatedAt': data.get('updatedAt', data.get('createdAt', 0)),
+                'createdAt': data.get('createdAt', 0),
+            })
+        except Exception:
+            continue
+    notes.sort(key=lambda n: n['updatedAt'], reverse=True)
+    return notes
+
+def _read_note(note_id):
+    try:
+        with open(_note_path(note_id), 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+
+def _write_note(note_id, data):
+    os.makedirs(NOTES_DIR, exist_ok=True)
+    with open(_note_path(note_id), 'w') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def _delete_note(note_id):
+    try:
+        os.remove(_note_path(note_id))
+        return True
+    except FileNotFoundError:
+        return False
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -238,6 +291,24 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self._json_response(200, json.dumps({'error': str(e)}).encode())
 
+        elif self.path == '/api/notes':
+            if not self._require_auth():
+                return
+            self._json_response(200, json.dumps({'notes': _list_notes()}).encode())
+
+        elif self.path.startswith('/api/notes/'):
+            if not self._require_auth():
+                return
+            note_id = self.path.split('/api/notes/')[1].split('?')[0]
+            if not _safe_note_id(note_id):
+                self.send_error(400, 'Invalid note ID')
+                return
+            note = _read_note(note_id)
+            if not note:
+                self.send_error(404, 'Note not found')
+                return
+            self._json_response(200, json.dumps(note).encode())
+
         else:
             self.send_error(404)
 
@@ -254,6 +325,30 @@ class Handler(BaseHTTPRequestHandler):
                 self._json_response(200, json.dumps({'ok': True}).encode())
             except json.JSONDecodeError:
                 self.send_error(400, 'Invalid JSON')
+
+        elif self.path.startswith('/api/notes/'):
+            if not self._require_auth():
+                return
+            note_id = self.path.split('/api/notes/')[1].split('?')[0]
+            if not _safe_note_id(note_id):
+                self.send_error(400, 'Invalid note ID')
+                return
+            existing = _read_note(note_id)
+            if not existing:
+                self.send_error(404, 'Note not found')
+                return
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+                existing['title'] = data.get('title', existing.get('title', ''))
+                existing['content'] = data.get('content', existing.get('content', ''))
+                existing['updatedAt'] = int(time.time() * 1000)
+                _write_note(note_id, existing)
+                self._json_response(200, json.dumps({'ok': True}).encode())
+            except json.JSONDecodeError:
+                self.send_error(400, 'Invalid JSON')
+
         else:
             self.send_error(404)
 
@@ -298,6 +393,26 @@ class Handler(BaseHTTPRequestHandler):
             self._json_response(200, json.dumps({'ok': True}).encode(),
                 extra_headers=lambda: self._clear_session_cookie())
 
+        elif self.path == '/api/notes':
+            if not self._require_auth():
+                return
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body) if length > 0 else {}
+            except json.JSONDecodeError:
+                data = {}
+            note_id = uuid.uuid4().hex[:8]
+            now = int(time.time() * 1000)
+            note = {
+                'title': data.get('title', ''),
+                'content': data.get('content', ''),
+                'createdAt': now,
+                'updatedAt': now,
+            }
+            _write_note(note_id, note)
+            self._json_response(200, json.dumps({'id': note_id}).encode())
+
         elif self.path == '/upload':
             if not self._require_auth():
                 return
@@ -313,6 +428,21 @@ class Handler(BaseHTTPRequestHandler):
                 f.write(body)
             self._json_response(200, json.dumps({'path': filepath}).encode())
 
+        else:
+            self.send_error(404)
+
+    def do_DELETE(self):
+        if self.path.startswith('/api/notes/'):
+            if not self._require_auth():
+                return
+            note_id = self.path.split('/api/notes/')[1].split('?')[0]
+            if not _safe_note_id(note_id):
+                self.send_error(400, 'Invalid note ID')
+                return
+            if _delete_note(note_id):
+                self._json_response(200, json.dumps({'ok': True}).encode())
+            else:
+                self.send_error(404, 'Note not found')
         else:
             self.send_error(404)
 

@@ -10,7 +10,8 @@
       "label": "Claude",
       "command": "cd ~ && claude --dangerously-skip-permissions",
       "color": "blue",
-      "confirm": false
+      "confirm": false,
+      "newWindow": true
     },
     {
       "id": "s1771838793646",
