@@ -5,6 +5,7 @@ import os, uuid, json, mimetypes, secrets, hashlib, time
 UPLOAD_DIR = '/tmp/claude-uploads'
 SETTINGS_FILE = '/home/jack/claude-terminal/settings.json'
 NOTES_DIR = '/home/jack/claude-terminal/notes'
+TMUX_SOCKET = '/tmp/tmux-1000/default'
 
 DEFAULT_SETTINGS = {
     "general": {"wakeLock": False, "fontSize": 16},
@@ -183,13 +184,34 @@ class Handler(BaseHTTPRequestHandler):
             import subprocess
             try:
                 result = subprocess.run(
-                    ['tmux', 'display-message', '-p', '#S:#I.#W'],
+                    ['tmux', '-S', TMUX_SOCKET, 'display-message', '-p', '#S:#I.#W'],
                     capture_output=True, text=True, timeout=2
                 )
                 info = result.stdout.strip() or 'unknown'
             except Exception:
                 info = 'disconnected'
             self._json_response(200, json.dumps({'session': info}).encode())
+
+        elif self.path.startswith('/api/tmux-capture'):
+            if not self._require_auth():
+                return
+            import subprocess
+            # Parse ?lines=N (default: visible pane only)
+            start = '-'  # visible pane start
+            history = False
+            if '?' in self.path:
+                for param in self.path.split('?')[1].split('&'):
+                    if param.startswith('history=1'):
+                        history = True
+            try:
+                cmd = ['tmux', '-S', TMUX_SOCKET, 'capture-pane', '-p']
+                if history:
+                    cmd.extend(['-S', '-500'])  # last 500 lines of scrollback
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+                text = result.stdout
+            except Exception as e:
+                text = f'Error: {e}'
+            self._json_response(200, json.dumps({'text': text}).encode())
 
         elif self.path.startswith('/api/notifications'):
             if not self._require_auth():
@@ -290,6 +312,38 @@ class Handler(BaseHTTPRequestHandler):
                 self._json_response(200, data)
             except Exception as e:
                 self._json_response(200, json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/api/claude-sessions':
+            if not self._require_auth():
+                return
+            import subprocess
+            sessions_list = []
+            try:
+                result = subprocess.run(
+                    ['tmux', '-S', TMUX_SOCKET, 'list-panes', '-a', '-F',
+                     '#{session_name}:#{window_index}.#{pane_index}|#{pane_current_command}|#{pane_title}'],
+                    capture_output=True, text=True, timeout=3
+                )
+                for line in result.stdout.strip().split('\n'):
+                    if not line:
+                        continue
+                    parts = line.split('|', 2)
+                    if len(parts) < 3:
+                        continue
+                    target, cmd, title = parts
+                    if cmd == 'claude':
+                        # Clean spinner chars from title
+                        clean_title = title.strip()
+                        for ch in '⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏⠐⠂✳':
+                            clean_title = clean_title.replace(ch, '').strip()
+                        sessions_list.append({
+                            'target': target,
+                            'title': clean_title or 'Claude Code',
+                            'rawTitle': title,
+                        })
+            except Exception:
+                pass
+            self._json_response(200, json.dumps({'sessions': sessions_list}).encode())
 
         elif self.path == '/api/notes':
             if not self._require_auth():
@@ -412,6 +466,81 @@ class Handler(BaseHTTPRequestHandler):
             }
             _write_note(note_id, note)
             self._json_response(200, json.dumps({'id': note_id}).encode())
+
+        elif self.path == '/api/claude-send':
+            if not self._require_auth():
+                return
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                self.send_error(400, 'Invalid JSON')
+                return
+            target = data.get('target', '')
+            text = data.get('text', '')
+            if not target or not text:
+                self.send_error(400, 'Missing target or text')
+                return
+            # Validate target format (session:window.pane)
+            if not re.match(r'^[\w-]+:\d+\.\d+$', target):
+                self.send_error(400, 'Invalid target format')
+                return
+            import subprocess
+            try:
+                # Write text to a temp file to avoid shell escaping issues
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tf:
+                    tf.write(text)
+                    tf_path = tf.name
+                # Use tmux load-buffer + paste-buffer for safe text transfer
+                subprocess.run(['tmux', '-S', TMUX_SOCKET, 'load-buffer', tf_path], check=True, timeout=3)
+                subprocess.run(['tmux', '-S', TMUX_SOCKET, 'paste-buffer', '-t', target], check=True, timeout=3)
+                os.unlink(tf_path)
+                self._json_response(200, json.dumps({'ok': True}).encode())
+            except Exception as e:
+                try:
+                    os.unlink(tf_path)
+                except Exception:
+                    pass
+                self._json_response(500, json.dumps({'error': str(e)}).encode())
+
+        elif self.path == '/api/claude-new':
+            if not self._require_auth():
+                return
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body) if length > 0 else {}
+            except json.JSONDecodeError:
+                data = {}
+            text = data.get('text', '')
+            import subprocess, tempfile
+            try:
+                # Write content to temp file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tf:
+                    tf.write(text)
+                    tf_path = tf.name
+                # Create new tmux window and run claude with piped input
+                cmd = "cat '{}' | claude --dangerously-skip-permissions -p; rm -f '{}'".format(tf_path, tf_path)
+                # -P prints the new window target (e.g. "main:3")
+                result = subprocess.run(
+                    ['tmux', '-S', TMUX_SOCKET, 'new-window', '-P', '-F', '#{window_index}', '-n', 'claude', cmd],
+                    check=True, timeout=3, capture_output=True, text=True
+                )
+                win_index = result.stdout.strip()
+                # Switch the attached client to the new window
+                subprocess.run(
+                    ['tmux', '-S', TMUX_SOCKET, 'select-window', '-t', ':{}'.format(win_index)],
+                    check=True, timeout=3
+                )
+                self._json_response(200, json.dumps({'ok': True, 'window': win_index}).encode())
+            except Exception as e:
+                try:
+                    os.unlink(tf_path)
+                except Exception:
+                    pass
+                self._json_response(500, json.dumps({'error': str(e)}).encode())
 
         elif self.path == '/upload':
             if not self._require_auth():
