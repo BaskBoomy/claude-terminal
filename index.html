@@ -244,11 +244,11 @@
         }
         #notes-back-btn {
             background: none; border: none; color: #C15F3C; cursor: pointer;
-            font-size: 14px; padding: 4px 8px;
+            font-size: 14px; padding: 4px 8px; flex-shrink: 0;
             font-family: -apple-system, system-ui, sans-serif;
         }
         #notes-title-input {
-            flex: 1; background: none; border: none; outline: none;
+            flex: 1; min-width: 0; background: none; border: none; outline: none;
             color: #e8e6e3; font-size: 15px; font-weight: 600;
             font-family: -apple-system, system-ui, sans-serif;
             padding: 4px 0;
@@ -256,7 +256,7 @@
         #notes-title-input::placeholder { color: #4a4538; }
         #notes-delete-btn {
             background: none; border: none; color: #6a6158; cursor: pointer;
-            font-size: 16px; padding: 4px 8px;
+            font-size: 16px; padding: 4px 8px; flex-shrink: 0;
         }
         #notes-delete-btn:active { color: #e85535; }
         #notes-editor-textarea {
@@ -267,12 +267,23 @@
             box-sizing: border-box;
         }
         #notes-editor-textarea::placeholder { color: #4a4538; }
+        #notes-editor-footer {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; background: #201d18;
+            border-top: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #notes-send-claude-btn {
+            background: #C15F3C; border: none; color: #fff; cursor: pointer;
+            font-size: 13px; padding: 7px 14px; border-radius: 8px;
+            font-family: -apple-system, system-ui, sans-serif; font-weight: 600;
+            white-space: nowrap; touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #notes-send-claude-btn:active { background: #A14A2F; }
         #notes-editor-status {
-            display: flex; align-items: center; justify-content: flex-end;
-            padding: 4px 12px; font-size: 11px; color: #6a6158;
-            background: #201d18; border-top: 1px solid #2a251d;
+            flex: 1; text-align: right;
+            font-size: 11px; color: #6a6158;
             font-family: 'SF Mono', 'Cascadia Code', monospace;
-            flex-shrink: 0;
         }
         #notes-editor-status.saved { color: #8ab563; }
         /* Browser tab bar */
@@ -361,6 +372,51 @@
         .url-dropdown-item:active, .url-dropdown-item:hover {
             background: #2a251d; color: #e8e6e3;
         }
+
+        /* --- Copy Mode Overlay --- */
+        #copy-overlay {
+            position: fixed; inset: 0; z-index: 200;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            display: none; flex-direction: column;
+        }
+        #copy-overlay.open { display: flex; }
+        #copy-overlay-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #copy-overlay-header h3 {
+            flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: #e8e6e3;
+        }
+        .copy-header-btn {
+            background: none; border: 1px solid #3a352b; border-radius: 6px;
+            color: #a09888; cursor: pointer; padding: 5px 10px; font-size: 13px;
+            font-family: -apple-system, system-ui, sans-serif;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+        }
+        .copy-header-btn:active { background: #2a251d; color: #e8e6e3; }
+        .copy-header-btn.primary {
+            background: #C15F3C; color: #fff; border-color: #C15F3C; font-weight: 600;
+        }
+        .copy-header-btn.primary:active { background: #A14A2F; }
+        #copy-text-area {
+            flex: 1; width: 100%; border: none; outline: none; resize: none;
+            background: #1a1714; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 13px; line-height: 1.5; padding: 12px 16px;
+            box-sizing: border-box;
+            -webkit-user-select: text; user-select: text;
+        }
+        #copy-status {
+            padding: 8px 12px; background: #201d18;
+            border-top: 1px solid #2a251d; flex-shrink: 0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        #copy-status-text {
+            flex: 1; font-size: 12px; color: #6a6158;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        #copy-status-text.success { color: #8ab563; }
 
         /* --- Settings Bottom Sheet --- */
         #settings-backdrop {
@@ -631,6 +687,8 @@
         .confirm-actions {
             display: flex; flex-direction: column; gap: 8px;
             padding: 0 16px 16px;
+            max-height: 50vh; overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
         .confirm-btn {
             width: 100%; padding: 14px; border: none; border-radius: 10px;
@@ -714,7 +772,10 @@
                         <button id="notes-delete-btn" title="삭제">&#x1F5D1;</button>
                     </div>
                     <textarea id="notes-editor-textarea" placeholder="내용을 입력하세요..."></textarea>
-                    <div id="notes-editor-status">저장됨</div>
+                    <div id="notes-editor-footer">
+                        <button id="notes-send-claude-btn">Claude 전송</button>
+                        <div id="notes-editor-status">저장됨</div>
+                    </div>
                 </div>
             </div>
             <div id="scroll-indicator"></div>
@@ -728,6 +789,7 @@
                     <button class="fab-btn" data-key="tmux-next">&#x25B6;</button>
                     <button class="fab-btn" data-key="tmux-list">List</button>
                     <div class="fab-sep"></div>
+                    <button class="fab-btn" id="copy-mode-btn">&#x1F4CB;</button>
                     <button class="fab-btn" onclick="location.reload()">&#x21BB;</button>
                 </div>
                 <button class="fab-circle green" id="tmux-fab-toggle">&#x2261;</button>
@@ -771,6 +833,18 @@
             </div>
             <button id="send-btn" class="input-btn primary">&#x23CE;</button>
             <button id="toolbar-toggle" class="input-btn">&#x25B2;</button>
+        </div>
+        <div id="copy-overlay">
+            <div id="copy-overlay-header">
+                <button class="copy-header-btn" id="copy-close-btn">&#x25C0; 닫기</button>
+                <h3>터미널 복사</h3>
+                <button class="copy-header-btn" id="copy-history-btn">스크롤백</button>
+                <button class="copy-header-btn primary" id="copy-all-btn">전체 복사</button>
+            </div>
+            <textarea id="copy-text-area" readonly placeholder="로딩 중..."></textarea>
+            <div id="copy-status">
+                <span id="copy-status-text">텍스트를 선택한 후 복사하세요</span>
+            </div>
         </div>
         <div id="confirm-backdrop"></div>
         <div id="confirm-dialog">
@@ -1227,16 +1301,96 @@
 
         notesDeleteBtn.addEventListener('click', function() {
             if (!currentNoteId) return;
-            if (!confirm('이 메모를 삭제하시겠습니까?')) return;
-            fetch('/api/notes/' + currentNoteId, {
-                method: 'DELETE',
-                credentials: 'same-origin'
-            }).then(function() {
-                currentNoteId = null;
-                notesEditorView.style.display = 'none';
-                notesListView.style.display = 'flex';
-                loadNotesList();
-            });
+            showConfirm('이 메모를 삭제하시겠습니까?', [
+                { label: '삭제', style: 'primary', action: function() {
+                    fetch('/api/notes/' + currentNoteId, {
+                        method: 'DELETE',
+                        credentials: 'same-origin'
+                    }).then(function() {
+                        currentNoteId = null;
+                        notesEditorView.style.display = 'none';
+                        notesListView.style.display = 'flex';
+                        loadNotesList();
+                    });
+                }},
+                { label: '취소', style: 'cancel' }
+            ]);
+        });
+
+        // --- Send note content to Claude via terminal ---
+        var notesSendClaudeBtn = document.getElementById('notes-send-claude-btn');
+        notesSendClaudeBtn.addEventListener('click', function() {
+            var content = notesEditorTextarea.value.trim();
+            if (!content) return;
+
+            // Save before sending
+            if (notesEditorStatus.textContent !== '저장됨') {
+                clearTimeout(notesSaveTimer);
+                saveCurrentNote();
+            }
+
+            // Fetch running Claude sessions
+            fetch('/api/claude-sessions', { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var sessions = data.sessions || [];
+                    var buttons = [];
+
+                    // Option for each running session
+                    sessions.forEach(function(s) {
+                        buttons.push({
+                            label: s.title,
+                            style: 'secondary',
+                            action: function() {
+                                fetch('/api/claude-send', {
+                                    method: 'POST', credentials: 'same-origin',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ target: s.target, text: content })
+                                }).then(function(r) {
+                                    if (r.ok) {
+                                        switchView('terminal');
+                                    }
+                                });
+                            }
+                        });
+                    });
+
+                    // New session option
+                    buttons.push({
+                        label: '+ 새 세션',
+                        style: 'primary',
+                        action: function() {
+                            fetch('/api/claude-new', {
+                                method: 'POST', credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text: content })
+                            }).then(function(r) {
+                                if (r.ok) switchView('terminal');
+                            });
+                        }
+                    });
+
+                    buttons.push({ label: '취소', style: 'cancel' });
+
+                    var title = sessions.length > 0
+                        ? '전송할 Claude 세션 선택 (' + sessions.length + '개 실행 중)'
+                        : '실행 중인 Claude 세션이 없습니다';
+                    showConfirm(title, buttons);
+                })
+                .catch(function() {
+                    showConfirm('Claude Code에 전송', [
+                        { label: '새 세션으로 실행', style: 'primary', action: function() {
+                            fetch('/api/claude-new', {
+                                method: 'POST', credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text: content })
+                            }).then(function(r) {
+                                if (r.ok) switchView('terminal');
+                            });
+                        }},
+                        { label: '취소', style: 'cancel' }
+                    ]);
+                });
         });
 
         function switchView(view) {
@@ -1659,17 +1813,20 @@
                 var del = document.createElement('button');
                 del.className = 'pm-memo-del';
                 del.innerHTML = '&times;';
-                del.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    fetch('/api/notes/' + note.id, { method: 'DELETE', credentials: 'same-origin' })
-                        .then(function() { fetchMemoList(renderMemos); notesListLoaded = false; });
-                });
-                del.addEventListener('touchend', function(e) {
+                function deleteMemo(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    fetch('/api/notes/' + note.id, { method: 'DELETE', credentials: 'same-origin' })
-                        .then(function() { fetchMemoList(renderMemos); notesListLoaded = false; });
-                });
+                    closePlusMenu();
+                    showConfirm('이 메모를 삭제하시겠습니까?', [
+                        { label: '삭제', style: 'primary', action: function() {
+                            fetch('/api/notes/' + note.id, { method: 'DELETE', credentials: 'same-origin' })
+                                .then(function() { fetchMemoList(renderMemos); notesListLoaded = false; });
+                        }},
+                        { label: '취소', style: 'cancel' }
+                    ]);
+                }
+                del.addEventListener('click', deleteMemo);
+                del.addEventListener('touchend', deleteMemo);
                 row.addEventListener('click', function() {
                     // Fetch full content, then paste into input
                     fetch('/api/notes/' + note.id, { credentials: 'same-origin' })
@@ -2806,6 +2963,96 @@
                 }},
                 { label: '취소', style: 'cancel' }
             ]);
+        });
+    })();
+
+    // --- Copy Mode ---
+    (function() {
+        var overlay = document.getElementById('copy-overlay');
+        var textArea = document.getElementById('copy-text-area');
+        var statusText = document.getElementById('copy-status-text');
+        var copyAllBtn = document.getElementById('copy-all-btn');
+        var copyCloseBtn = document.getElementById('copy-close-btn');
+        var copyHistoryBtn = document.getElementById('copy-history-btn');
+        var copyModeBtn = document.getElementById('copy-mode-btn');
+        var showingHistory = false;
+
+        function openCopyMode(history) {
+            showingHistory = !!history;
+            overlay.classList.add('open');
+            textArea.value = '로딩 중...';
+            statusText.textContent = '터미널 내용을 가져오는 중...';
+            statusText.className = '';
+            copyHistoryBtn.textContent = showingHistory ? '현재 화면' : '스크롤백';
+
+            var url = '/api/tmux-capture' + (history ? '?history=1' : '');
+            fetch(url, { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    textArea.value = data.text || '(빈 화면)';
+                    statusText.textContent = '텍스트를 선택한 후 복사하세요 (전체 복사 버튼도 가능)';
+                    // Auto-scroll to bottom for history mode
+                    if (history) {
+                        textArea.scrollTop = textArea.scrollHeight;
+                    }
+                })
+                .catch(function(e) {
+                    textArea.value = 'Error: ' + e.message;
+                    statusText.textContent = '오류 발생';
+                });
+        }
+
+        function closeCopyMode() {
+            overlay.classList.remove('open');
+            textArea.value = '';
+        }
+
+        copyModeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openCopyMode(false);
+        });
+
+        copyCloseBtn.addEventListener('click', closeCopyMode);
+
+        copyHistoryBtn.addEventListener('click', function() {
+            openCopyMode(!showingHistory);
+        });
+
+        copyAllBtn.addEventListener('click', function() {
+            var text = textArea.value;
+            if (!text) return;
+
+            // Try Clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    statusText.textContent = '클립보드에 복사됨!';
+                    statusText.className = 'success';
+                }).catch(function() {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        });
+
+        function fallbackCopy(text) {
+            textArea.readOnly = false;
+            textArea.select();
+            textArea.setSelectionRange(0, text.length);
+            try {
+                document.execCommand('copy');
+                statusText.textContent = '클립보드에 복사됨!';
+                statusText.className = 'success';
+            } catch (e) {
+                statusText.textContent = '자동 복사 실패 — 텍스트를 길게 눌러서 직접 복사하세요';
+                statusText.className = '';
+            }
+            textArea.readOnly = true;
+        }
+
+        // Close on Escape
+        overlay.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeCopyMode();
         });
     })();
     </script>
