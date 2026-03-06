@@ -174,8 +174,21 @@
             background: none; border: none; border-bottom: 2px solid transparent;
             color: #6a6158; cursor: pointer;
             font-family: -apple-system, system-ui, sans-serif;
-            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-            transition: color 0.15s, border-color 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.15s, border-color 0.15s, transform 0.15s, opacity 0.15s;
+            user-select: none; -webkit-user-select: none;
+        }
+        .view-tab.dragging { opacity: 0.3; }
+        .view-tab.tab-shifting { transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1); }
+        .view-tab-ghost {
+            position: fixed; z-index: 500; pointer-events: none;
+            padding: 8px 16px; font-size: 14px;
+            background: #C15F3C; color: #fff; border-radius: 8px;
+            font-family: -apple-system, system-ui, sans-serif;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            white-space: nowrap;
+            transition: transform 0.05s, opacity 0.15s;
+            opacity: 0.95;
         }
         .view-tab.active {
             color: #e8e6e3; border-bottom-color: #C15F3C;
@@ -1790,6 +1803,164 @@
             });
         });
 
+        // --- Tab order D&D ---
+        var viewTabsBar = document.getElementById('view-tabs');
+
+        function applyTabOrder(order) {
+            if (!order || !order.length) return;
+            var tabs = Array.from(viewTabsBar.querySelectorAll('.view-tab'));
+            var tabMap = {};
+            tabs.forEach(function(t) { tabMap[t.dataset.view] = t; });
+            order.forEach(function(viewName) {
+                if (tabMap[viewName]) viewTabsBar.appendChild(tabMap[viewName]);
+            });
+            // Append any tabs not in order (new tabs)
+            tabs.forEach(function(t) {
+                if (order.indexOf(t.dataset.view) === -1) viewTabsBar.appendChild(t);
+            });
+        }
+
+        function saveTabOrder() {
+            var order = Array.from(viewTabsBar.querySelectorAll('.view-tab')).map(function(t) {
+                return t.dataset.view;
+            });
+            // Read current settings, update tabOrder, save
+            fetch('/api/settings', { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(settings) {
+                    settings.general = settings.general || {};
+                    settings.general.tabOrder = order;
+                    return fetch('/api/settings', {
+                        method: 'PUT', credentials: 'same-origin',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                });
+        }
+
+        // Touch-based drag & drop for tabs
+        (function() {
+            var dragTab = null, ghost = null;
+            var startX = 0, startY = 0, holdTimer = null;
+            var HOLD_MS = 250;
+            var origOrder = []; // snapshot before drag
+
+            function getTabs() {
+                return Array.from(viewTabsBar.querySelectorAll('.view-tab'));
+            }
+
+            function createGhost(tab, x, y) {
+                ghost = document.createElement('div');
+                ghost.className = 'view-tab-ghost';
+                ghost.textContent = tab.textContent;
+                document.body.appendChild(ghost);
+                moveGhost(x, y);
+            }
+
+            function moveGhost(x, y) {
+                if (!ghost) return;
+                ghost.style.left = (x - ghost.offsetWidth / 2) + 'px';
+                ghost.style.top = (y - ghost.offsetHeight - 12) + 'px';
+            }
+
+            function removeGhost() {
+                if (ghost) { ghost.remove(); ghost = null; }
+            }
+
+            function getDropIndex(x) {
+                var tabs = getTabs();
+                for (var i = 0; i < tabs.length; i++) {
+                    var r = tabs[i].getBoundingClientRect();
+                    if (x < r.left + r.width / 2) return i;
+                }
+                return tabs.length;
+            }
+
+            function reorderToIndex(tab, newIdx) {
+                var tabs = getTabs();
+                var curIdx = tabs.indexOf(tab);
+                if (curIdx === newIdx || curIdx === newIdx - 1) return;
+                // Snapshot positions before move
+                var rects = tabs.map(function(t) { return t.getBoundingClientRect(); });
+                // Perform DOM move
+                if (newIdx >= tabs.length) {
+                    viewTabsBar.appendChild(tab);
+                } else {
+                    var ref = tabs[newIdx];
+                    if (curIdx < newIdx) ref = tabs[newIdx]; // insert before this
+                    viewTabsBar.insertBefore(tab, ref);
+                }
+                // FLIP animation for shifted tabs
+                var newTabs = getTabs();
+                newTabs.forEach(function(t, i) {
+                    if (t === tab) return;
+                    var oldI = tabs.indexOf(t);
+                    if (oldI === -1) return;
+                    var dx = rects[oldI].left - t.getBoundingClientRect().left;
+                    if (Math.abs(dx) < 1) return;
+                    t.style.transform = 'translateX(' + dx + 'px)';
+                    t.classList.remove('tab-shifting');
+                    // Force reflow
+                    t.offsetWidth;
+                    t.classList.add('tab-shifting');
+                    t.style.transform = '';
+                });
+            }
+
+            viewTabsBar.addEventListener('touchstart', function(e) {
+                var tab = e.target.closest('.view-tab');
+                if (!tab) return;
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                holdTimer = setTimeout(function() {
+                    dragTab = tab;
+                    tab.classList.add('dragging');
+                    origOrder = getTabs().map(function(t) { return t.dataset.view; });
+                    createGhost(tab, startX, startY);
+                    if (navigator.vibrate) navigator.vibrate(30);
+                }, HOLD_MS);
+            }, { passive: true });
+
+            viewTabsBar.addEventListener('touchmove', function(e) {
+                if (!dragTab) {
+                    var dx = Math.abs(e.touches[0].clientX - startX);
+                    var dy = Math.abs(e.touches[0].clientY - startY);
+                    if (dx > 8 || dy > 8) clearTimeout(holdTimer);
+                    return;
+                }
+                e.preventDefault();
+                var touch = e.touches[0];
+                moveGhost(touch.clientX, touch.clientY);
+                var dropIdx = getDropIndex(touch.clientX);
+                reorderToIndex(dragTab, dropIdx);
+            }, { passive: false });
+
+            viewTabsBar.addEventListener('touchend', function() {
+                clearTimeout(holdTimer);
+                if (!dragTab) return;
+                dragTab.classList.remove('dragging');
+                removeGhost();
+                // Check if order actually changed
+                var newOrder = getTabs().map(function(t) { return t.dataset.view; });
+                if (newOrder.join(',') !== origOrder.join(',')) {
+                    saveTabOrder();
+                }
+                dragTab = null;
+                // Clean up shifting class
+                getTabs().forEach(function(t) { t.classList.remove('tab-shifting'); });
+            }, { passive: true });
+
+            // Cancel on touch leaving the bar area
+            viewTabsBar.addEventListener('touchcancel', function() {
+                clearTimeout(holdTimer);
+                if (dragTab) {
+                    dragTab.classList.remove('dragging');
+                    removeGhost();
+                    dragTab = null;
+                }
+            }, { passive: true });
+        })();
+
         // Address bar — Enter to navigate
         previewUrlInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -1924,6 +2095,9 @@
             .then(function(settings) {
                 renderSnippets(settings.snippets || []);
                 applyGeneral(settings.general || {});
+                if (settings.general && settings.general.tabOrder) {
+                    applyTabOrder(settings.general.tabOrder);
+                }
             })
             .catch(function() {});
 
