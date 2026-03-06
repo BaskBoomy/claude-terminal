@@ -727,6 +727,330 @@
         #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
         .toast-label { color: #6a6158; font-size: 11px; }
         .toast-value { color: #e8e6e3; font-weight: 600; }
+
+        /* --- Brain View --- */
+        #brain-container {
+            display: none; flex-direction: column;
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            background: #1a1714;
+        }
+        /* Brain tree view */
+        #brain-tree-view { display: flex; flex-direction: column; height: 100%; }
+        #brain-tree-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 12px; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #brain-tree-header h3 {
+            flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: #e8e6e3;
+        }
+        #brain-tree-items {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain; padding: 8px 0;
+        }
+        .brain-scope-label {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.6px; color: #C15F3C; padding: 12px 16px 4px;
+        }
+        .brain-cat {
+            cursor: pointer; padding: 10px 16px;
+            display: flex; align-items: center; gap: 8px;
+            border-bottom: 1px solid #1a1815;
+        }
+        .brain-cat:active { background: #2a251d; }
+        .brain-cat-icon {
+            width: 20px; text-align: center; font-size: 14px; flex-shrink: 0;
+        }
+        .brain-cat-name {
+            flex: 1; font-size: 14px; font-weight: 600; color: #e8e6e3;
+            text-transform: capitalize;
+        }
+        .brain-cat-count {
+            font-size: 12px; color: #6a6158;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .brain-cat-arrow { color: #4a4538; font-size: 12px; flex-shrink: 0; }
+        .brain-files { display: none; background: #161310; }
+        .brain-files.open { display: block; }
+        .brain-file-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 9px 16px 9px 44px; cursor: pointer;
+            border-bottom: 1px solid #1a1714;
+        }
+        .brain-file-item:active { background: #2a251d; }
+        .brain-file-name {
+            flex: 1; font-size: 13px; color: #a09888;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .brain-file-size {
+            font-size: 11px; color: #4a4538; flex-shrink: 0;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        /* Brain editor view */
+        #brain-editor-view { display: none; flex-direction: column; height: 100%; }
+        #brain-editor-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; background: #201d18;
+            border-bottom: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #brain-back-btn {
+            background: none; border: none; color: #C15F3C; cursor: pointer;
+            font-size: 14px; padding: 4px 8px; flex-shrink: 0;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        #brain-file-title {
+            flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: #e8e6e3;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        #brain-edit-toggle {
+            background: none; border: 1px solid #3a352b; border-radius: 6px;
+            color: #a09888; cursor: pointer; padding: 5px 10px; font-size: 12px;
+            font-family: -apple-system, system-ui, sans-serif;
+            flex-shrink: 0;
+        }
+        #brain-edit-toggle:active { background: #2a251d; color: #e8e6e3; }
+        #brain-edit-toggle.editing { background: #C15F3C; color: #fff; border-color: #C15F3C; }
+        #brain-editor-content {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            position: relative;
+        }
+        #brain-rendered {
+            padding: 16px; font-size: 14px; line-height: 1.7; color: #e8e6e3;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        #brain-rendered h1 { font-size: 20px; color: #e8e6e3; margin: 16px 0 8px; border-bottom: 1px solid #2a251d; padding-bottom: 6px; }
+        #brain-rendered h2 { font-size: 17px; color: #e8e6e3; margin: 14px 0 6px; }
+        #brain-rendered h3 { font-size: 15px; color: #C15F3C; margin: 12px 0 4px; }
+        #brain-rendered h4, #brain-rendered h5, #brain-rendered h6 { font-size: 14px; color: #a09888; margin: 10px 0 4px; }
+        #brain-rendered p { margin: 8px 0; }
+        #brain-rendered ul, #brain-rendered ol { margin: 6px 0; padding-left: 24px; }
+        #brain-rendered li { margin: 3px 0; }
+        #brain-rendered code {
+            background: #2a251d; padding: 2px 6px; border-radius: 4px;
+            font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 13px;
+            color: #C15F3C;
+        }
+        #brain-rendered pre {
+            background: #201d18; border: 1px solid #2a251d; border-radius: 8px;
+            padding: 12px; overflow-x: auto; margin: 8px 0;
+        }
+        #brain-rendered pre code {
+            background: none; padding: 0; color: #a09888; font-size: 12px;
+        }
+        #brain-rendered table {
+            width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px;
+        }
+        #brain-rendered th {
+            text-align: left; padding: 8px; background: #201d18;
+            border: 1px solid #2a251d; color: #C15F3C; font-weight: 600;
+        }
+        #brain-rendered td {
+            padding: 6px 8px; border: 1px solid #2a251d; color: #a09888;
+        }
+        #brain-rendered blockquote {
+            border-left: 3px solid #C15F3C; margin: 8px 0; padding: 4px 12px; color: #a09888;
+        }
+        #brain-rendered a { color: #C15F3C; text-decoration: none; }
+        #brain-rendered strong { color: #e8e6e3; }
+        #brain-rendered hr { border: none; border-top: 1px solid #2a251d; margin: 12px 0; }
+        #brain-textarea {
+            display: none; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; border: none; outline: none; resize: none;
+            background: #1a1714; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 14px; line-height: 1.6; padding: 12px 16px;
+            box-sizing: border-box;
+        }
+        #brain-textarea::placeholder { color: #4a4538; }
+        #brain-editor-footer {
+            display: none; align-items: center; gap: 8px;
+            padding: 6px 12px; background: #201d18;
+            border-top: 1px solid #2a251d; flex-shrink: 0;
+        }
+        #brain-send-claude-btn {
+            background: #C15F3C; border: none; color: #fff; cursor: pointer;
+            font-size: 13px; padding: 7px 14px; border-radius: 8px;
+            font-family: -apple-system, system-ui, sans-serif; font-weight: 600;
+            white-space: nowrap; touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #brain-send-claude-btn:active { background: #A14A2F; }
+        #brain-editor-status {
+            flex: 1; text-align: right;
+            font-size: 11px; color: #6a6158;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        #brain-editor-status.saved { color: #8ab563; }
+
+        /* --- Dash View --- */
+        #dash-container {
+            display: none; flex-direction: column;
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            background: #1a1714;
+        }
+        #dash-scroll {
+            flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+        }
+        .dash-section {
+            padding: 16px; border-bottom: 1px solid #2a251d;
+        }
+        .dash-section-title {
+            font-size: 12px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.6px; color: #C15F3C; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .dash-section-title span { font-size: 14px; }
+        /* Usage card */
+        .usage-card {
+            background: #201d18; border-radius: 12px; border: 1px solid #2a251d;
+            padding: 16px; margin-bottom: 12px;
+        }
+        .usage-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .usage-pct {
+            font-size: 28px; font-weight: 700; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .usage-pct small { font-size: 14px; color: #6a6158; font-weight: 400; }
+        .usage-reset {
+            font-size: 12px; color: #6a6158;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .usage-bar-bg {
+            height: 8px; background: #2a251d; border-radius: 4px; overflow: hidden;
+        }
+        .usage-bar-fill {
+            height: 100%; border-radius: 4px;
+            transition: width 0.5s ease, background 0.3s;
+        }
+        .usage-daily-row {
+            display: flex; gap: 8px; margin-top: 12px;
+        }
+        .usage-daily-item {
+            flex: 1; text-align: center; padding: 8px 4px;
+            background: #1a1714; border-radius: 8px;
+        }
+        .usage-daily-label {
+            font-size: 10px; color: #6a6158; margin-bottom: 4px;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .usage-daily-val {
+            font-size: 14px; font-weight: 600; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        /* Git card */
+        .git-card {
+            background: #201d18; border-radius: 12px; border: 1px solid #2a251d;
+            overflow: hidden;
+        }
+        .git-branch-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 12px 16px; border-bottom: 1px solid #2a251d;
+        }
+        .git-branch-icon { font-size: 16px; }
+        .git-branch-name {
+            font-size: 15px; font-weight: 600; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .git-badge {
+            font-size: 11px; padding: 2px 8px; border-radius: 10px;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+            font-weight: 600;
+        }
+        .git-badge.ahead { background: #2d4a1a; color: #8ab563; }
+        .git-badge.behind { background: #4a2a1a; color: #ff6b6b; }
+        .git-badge.clean { background: #1a3a2a; color: #4caf50; }
+        .git-changes-row {
+            display: flex; gap: 0; border-bottom: 1px solid #2a251d;
+        }
+        .git-change-item {
+            flex: 1; text-align: center; padding: 10px 4px;
+            border-right: 1px solid #2a251d;
+        }
+        .git-change-item:last-child { border-right: none; }
+        .git-change-num {
+            font-size: 20px; font-weight: 700; color: #e8e6e3;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .git-change-label {
+            font-size: 10px; color: #6a6158; margin-top: 2px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .git-files-section {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .git-files-section.open { max-height: 400px; overflow-y: auto; }
+        .git-file-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 16px; font-size: 12px;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+            border-bottom: 1px solid #1a1714;
+        }
+        .git-file-status {
+            width: 20px; text-align: center; font-weight: 700; flex-shrink: 0;
+        }
+        .git-file-status.M { color: #e8b84b; }
+        .git-file-status.A { color: #8ab563; }
+        .git-file-status.D { color: #ff6b6b; }
+        .git-file-status.U { color: #6a6158; }
+        .git-file-name {
+            flex: 1; color: #a09888; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .git-files-toggle {
+            width: 100%; padding: 8px; background: none; border: none;
+            color: #6a6158; font-size: 12px; cursor: pointer;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .git-files-toggle:active { color: #a09888; }
+        .git-commit-list { padding: 0; }
+        .git-commit-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 16px; border-bottom: 1px solid #1a1714;
+        }
+        .git-commit-hash {
+            font-size: 12px; color: #C15F3C; flex-shrink: 0;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+            font-weight: 600;
+        }
+        .git-commit-msg {
+            flex: 1; font-size: 13px; color: #a09888;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .git-commit-ago {
+            font-size: 11px; color: #4a4538; flex-shrink: 0;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
+        }
+        .dash-empty {
+            padding: 40px 16px; text-align: center; color: #4a4538; font-size: 14px;
+        }
+        /* Pull to refresh */
+        .ptr-indicator {
+            text-align: center; overflow: hidden;
+            height: 0; transition: height 0.2s ease;
+            display: flex; align-items: center; justify-content: center;
+            color: #6a6158; font-size: 13px;
+            font-family: -apple-system, system-ui, sans-serif;
+        }
+        .ptr-indicator.pulling { transition: none; }
+        .ptr-indicator.refreshing {
+            height: 44px;
+        }
+        .ptr-spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 2px solid #3a352b; border-top-color: #C15F3C;
+            border-radius: 50%; margin-right: 8px;
+            animation: ptr-spin 0.6s linear infinite;
+        }
+        @keyframes ptr-spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -741,6 +1065,8 @@
             <button class="view-tab active" data-view="terminal">Terminal</button>
             <button class="view-tab" data-view="preview">Preview</button>
             <button class="view-tab" data-view="notes">Notes</button>
+            <button class="view-tab" data-view="brain">Brain</button>
+            <button class="view-tab" data-view="dash">Dash</button>
         </div>
         <div id="terminal-wrap">
             <iframe id="terminal-frame" src="/ttyd/"></iframe>
@@ -775,6 +1101,31 @@
                     <div id="notes-editor-footer">
                         <button id="notes-send-claude-btn">Claude 전송</button>
                         <div id="notes-editor-status">저장됨</div>
+                    </div>
+                </div>
+            </div>
+            <div id="dash-container"><div id="dash-scroll"><div id="dash-content"></div></div></div>
+            <div id="brain-container">
+                <div id="brain-tree-view">
+                    <div id="brain-tree-header">
+                        <h3>Brain</h3>
+                        <button class="notes-header-btn" id="brain-refresh-btn">&#x21BB; 새로고침</button>
+                    </div>
+                    <div id="brain-tree-items"></div>
+                </div>
+                <div id="brain-editor-view">
+                    <div id="brain-editor-header">
+                        <button id="brain-back-btn">&#x25C0; 목록</button>
+                        <span id="brain-file-title"></span>
+                        <button id="brain-edit-toggle">편집</button>
+                    </div>
+                    <div id="brain-editor-content">
+                        <div id="brain-rendered"></div>
+                        <textarea id="brain-textarea" placeholder="내용을 입력하세요..."></textarea>
+                    </div>
+                    <div id="brain-editor-footer">
+                        <button id="brain-send-claude-btn">Claude 전송</button>
+                        <div id="brain-editor-status"></div>
                     </div>
                 </div>
             </div>
@@ -1393,16 +1744,23 @@
                 });
         });
 
+        var brainContainer = document.getElementById('brain-container');
+        var dashContainer = document.getElementById('dash-container');
+
         function switchView(view) {
             activeView = view;
             var isTerm = view === 'terminal';
             var isNotes = view === 'notes';
+            var isBrain = view === 'brain';
+            var isDash = view === 'dash';
             viewTabs.forEach(function(tab) {
                 tab.classList.toggle('active', tab.dataset.view === view);
             });
             terminalFrame.style.display = isTerm ? 'block' : 'none';
             previewContainer.style.display = view === 'preview' ? 'flex' : 'none';
             notesContainer.style.display = isNotes ? 'flex' : 'none';
+            brainContainer.style.display = isBrain ? 'flex' : 'none';
+            dashContainer.style.display = isDash ? 'flex' : 'none';
             // Hide all terminal-only chrome in non-terminal mode
             tmuxFab.style.display = isTerm ? '' : 'none';
             scrollIndicatorEl.style.display = isTerm ? '' : 'none';
@@ -1411,10 +1769,17 @@
             keysBarEl.style.display = isTerm ? '' : 'none';
             inputBarEl.style.display = isTerm ? '' : 'none';
             if (isNotes) {
-                // Reset to list view when switching to notes
                 notesEditorView.style.display = 'none';
                 notesListView.style.display = 'flex';
                 loadNotesList();
+            }
+            if (isBrain) {
+                brainEditorView.style.display = 'none';
+                brainTreeView.style.display = 'flex';
+                loadBrainTree();
+            }
+            if (isDash) {
+                loadDashboard();
             }
         }
 
@@ -2361,14 +2726,30 @@
         // --- Claude usage status bar polling ---
         var usageEl = document.getElementById('claude-usage-info');
         var usagePollTimer = null;
+        window._cachedUsageData = null;
+
+        var usageBackoff = 60000; // start at 60s
 
         function fetchClaudeUsage() {
             fetch('/api/claude-usage').then(function(r) {
                 return r.ok ? r.json() : null;
             }).then(function(data) {
+                window._cachedUsageData = data;
                 if (!data || data.error || !data.five_hour) {
                     usageEl.textContent = '';
+                    // Back off on error — slow down polling
+                    if (data && data.error) {
+                        usageBackoff = Math.min(usageBackoff * 2, 300000); // max 5min
+                        stopUsagePolling();
+                        usagePollTimer = setInterval(fetchClaudeUsage, usageBackoff);
+                    }
                     return;
+                }
+                // Success — reset to normal interval
+                if (usageBackoff > 60000) {
+                    usageBackoff = 60000;
+                    stopUsagePolling();
+                    startUsagePolling();
                 }
                 var pct = Math.round(data.five_hour.utilization);
                 var resetAt = new Date(data.five_hour.resets_at);
@@ -2398,7 +2779,7 @@
         function startUsagePolling() {
             if (usagePollTimer) return;
             fetchClaudeUsage();
-            usagePollTimer = setInterval(fetchClaudeUsage, 30000);
+            usagePollTimer = setInterval(fetchClaudeUsage, 60000);
         }
 
         function stopUsagePolling() {
@@ -2453,7 +2834,7 @@
                 usageEl.style.opacity = '1';
                 showToast('Failed to fetch usage');
             });
-            usagePollTimer = setInterval(fetchClaudeUsage, 30000);
+            usagePollTimer = setInterval(fetchClaudeUsage, 60000);
         });
 
         document.addEventListener('visibilitychange', function() {
@@ -3054,6 +3435,541 @@
         overlay.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeCopyMode();
         });
+    })();
+
+    // ===================== Pull to Refresh =====================
+    function setupPullToRefresh(scrollEl, onRefresh) {
+        var indicator = document.createElement('div');
+        indicator.className = 'ptr-indicator';
+        indicator.setAttribute('data-ptr', '1');
+        scrollEl.insertBefore(indicator, scrollEl.firstChild);
+
+        var startY = 0, active = false, pulling = false, refreshing = false, threshold = 55;
+
+        scrollEl.addEventListener('touchstart', function(e) {
+            if (refreshing) return;
+            if (scrollEl.scrollTop <= 0) {
+                startY = e.touches[0].clientY;
+                active = true;
+                pulling = false;
+            }
+        }, { passive: true });
+
+        // Non-passive: allows preventDefault to block native overscroll
+        scrollEl.addEventListener('touchmove', function(e) {
+            if (!active || refreshing) return;
+            var dy = e.touches[0].clientY - startY;
+            if (dy <= 5) {
+                // Scrolling up or barely moved — let native handle
+                if (pulling) {
+                    indicator.style.height = '0';
+                    pulling = false;
+                }
+                return;
+            }
+            // Only intercept if at the very top
+            if (scrollEl.scrollTop > 0) {
+                active = false;
+                return;
+            }
+            // We're pulling down from the top — prevent native scroll
+            e.preventDefault();
+            pulling = true;
+            var h = Math.min(Math.pow(dy, 0.7), 80);
+            indicator.style.height = h + 'px';
+            indicator.classList.add('pulling');
+            indicator.textContent = h >= threshold ? '놓으면 새로고침' : '↓ 당겨서 새로고침';
+        }, { passive: false });
+
+        scrollEl.addEventListener('touchend', function() {
+            if (!active && !pulling) return;
+            active = false;
+            if (!pulling) return;
+            pulling = false;
+            indicator.classList.remove('pulling');
+            var h = parseFloat(indicator.style.height) || 0;
+            if (h >= threshold) {
+                refreshing = true;
+                indicator.innerHTML = '<span class="ptr-spinner"></span>새로고침 중...';
+                indicator.classList.add('refreshing');
+                onRefresh(function() {
+                    refreshing = false;
+                    indicator.classList.remove('refreshing');
+                    indicator.style.height = '0';
+                    indicator.innerHTML = '';
+                });
+            } else {
+                indicator.style.height = '0';
+                indicator.innerHTML = '';
+            }
+        }, { passive: true });
+    }
+
+    // ===================== Dashboard =====================
+    (function() {
+        var scrollEl = document.getElementById('dash-scroll');
+        var contentEl = document.getElementById('dash-content');
+        var lastDashLoad = 0;
+
+        window.loadDashboard = function(done) {
+            if (!done && Date.now() - lastDashLoad < 3000 && contentEl.innerHTML) {
+                return;
+            }
+            lastDashLoad = Date.now();
+            Promise.all([
+                fetch('/api/git-status', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; }),
+                fetch('/api/server-status', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; })
+            ]).then(function(results) {
+                var usage = window._cachedUsageData || null;
+                var git = results[0];
+                var server = results[1];
+                contentEl.innerHTML = renderUsageSection(usage) + renderGitSection(git) + renderServerSection(server);
+                var toggleBtn = contentEl.querySelector('.git-files-toggle');
+                if (toggleBtn) {
+                    toggleBtn.addEventListener('click', function() {
+                        var sec = contentEl.querySelector('.git-files-section');
+                        if (sec) {
+                            var open = sec.classList.toggle('open');
+                            toggleBtn.textContent = open ? '▲ 파일 숨기기' : '▼ 변경 파일 보기';
+                        }
+                    });
+                }
+                if (done) done();
+            });
+        };
+
+        // Pull to refresh for Dash
+        setupPullToRefresh(scrollEl, function(done) {
+            lastDashLoad = 0;
+            loadDashboard(done);
+        });
+
+        function renderUsageSection(data) {
+            var html = '<div class="dash-section">';
+            html += '<div class="dash-section-title"><span>⚡</span> Claude Usage</div>';
+            if (!data || data.error || !data.five_hour) {
+                var errMsg = (data && data.error && data.error.indexOf('429') !== -1)
+                    ? 'Rate limited — 잠시 후 자동 갱신됩니다'
+                    : '사용량 정보 대기 중...';
+                html += '<div class="dash-empty">' + errMsg + '</div>';
+                return html + '</div>';
+            }
+            var pct = Math.round(data.five_hour.utilization);
+            var resetAt = new Date(data.five_hour.resets_at);
+            var diffMs = resetAt - Date.now();
+            var timeStr = '';
+            if (diffMs > 0) {
+                var totalMin = Math.floor(diffMs / 60000);
+                var h = Math.floor(totalMin / 60);
+                var m = totalMin % 60;
+                timeStr = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+            } else {
+                timeStr = 'resetting...';
+            }
+            var barColor = pct >= 80 ? '#ff6b6b' : pct >= 50 ? '#e8b84b' : '#8ab563';
+
+            html += '<div class="usage-card">';
+            html += '<div class="usage-header">';
+            html += '<div class="usage-pct">' + pct + '%<small> used</small></div>';
+            html += '<div class="usage-reset">리셋 ' + timeStr + '</div>';
+            html += '</div>';
+            html += '<div class="usage-bar-bg"><div class="usage-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
+
+            // Daily/monthly if available
+            if (data.daily) {
+                var dPct = Math.round(data.daily.utilization);
+                html += '<div class="usage-daily-row">';
+                html += '<div class="usage-daily-item"><div class="usage-daily-label">5H WINDOW</div><div class="usage-daily-val">' + pct + '%</div></div>';
+                html += '<div class="usage-daily-item"><div class="usage-daily-label">DAILY</div><div class="usage-daily-val">' + dPct + '%</div></div>';
+                if (data.weekly) {
+                    var wPct = Math.round(data.weekly.utilization);
+                    html += '<div class="usage-daily-item"><div class="usage-daily-label">WEEKLY</div><div class="usage-daily-val">' + wPct + '%</div></div>';
+                }
+                html += '</div>';
+            }
+            html += '</div></div>';
+            return html;
+        }
+
+        function esc(s) {
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function renderGitSection(git) {
+            var html = '<div class="dash-section">';
+            html += '<div class="dash-section-title"><span>📦</span> Git Status</div>';
+            if (!git || git.error) {
+                html += '<div class="dash-empty">Git 정보를 불러올 수 없습니다</div>';
+                return html + '</div>';
+            }
+            html += '<div class="git-card">';
+            // Branch row
+            html += '<div class="git-branch-row">';
+            html += '<span class="git-branch-icon">🌿</span>';
+            html += '<span class="git-branch-name">' + esc(git.branch || 'detached') + '</span>';
+            if (git.ahead > 0) html += '<span class="git-badge ahead">↑' + git.ahead + '</span>';
+            if (git.behind > 0) html += '<span class="git-badge behind">↓' + git.behind + '</span>';
+            if (git.changes && git.changes.total === 0) html += '<span class="git-badge clean">✓ clean</span>';
+            html += '</div>';
+
+            // Changes summary
+            if (git.changes && git.changes.total > 0) {
+                var c = git.changes;
+                html += '<div class="git-changes-row">';
+                html += '<div class="git-change-item"><div class="git-change-num" style="color:#8ab563">' + c.staged + '</div><div class="git-change-label">Staged</div></div>';
+                html += '<div class="git-change-item"><div class="git-change-num" style="color:#e8b84b">' + c.unstaged + '</div><div class="git-change-label">Modified</div></div>';
+                html += '<div class="git-change-item"><div class="git-change-num" style="color:#6a6158">' + c.untracked + '</div><div class="git-change-label">Untracked</div></div>';
+                html += '</div>';
+
+                // File list (collapsed)
+                if (git.files && git.files.length > 0) {
+                    html += '<div class="git-files-section">';
+                    git.files.forEach(function(line) {
+                        var st = line.substring(0, 2).trim() || '?';
+                        var fname = line.substring(3);
+                        var stClass = st.replace(/[^A-Z?]/g, '').charAt(0);
+                        if (stClass === '?') stClass = 'U';
+                        html += '<div class="git-file-row"><span class="git-file-status ' + stClass + '">' + esc(st) + '</span><span class="git-file-name">' + esc(fname) + '</span></div>';
+                    });
+                    html += '</div>';
+                    html += '<button class="git-files-toggle">▼ 변경 파일 보기</button>';
+                }
+            }
+
+            // Recent commits
+            if (git.commits && git.commits.length > 0) {
+                html += '<div class="git-commit-list">';
+                git.commits.forEach(function(c) {
+                    html += '<div class="git-commit-item">';
+                    html += '<span class="git-commit-hash">' + esc(c.hash) + '</span>';
+                    html += '<span class="git-commit-msg">' + esc(c.message) + '</span>';
+                    html += '<span class="git-commit-ago">' + esc(c.ago) + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+            html += '</div></div>';
+            return html;
+        }
+
+        function renderServerSection(s) {
+            if (!s) return '';
+            var html = '<div class="dash-section">';
+            html += '<div class="dash-section-title"><span>🖥</span> Server</div>';
+            html += '<div class="usage-card"><div class="usage-daily-row">';
+            if (s.cpu != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">CPU</div><div class="usage-daily-val" style="color:' + (s.cpu >= 80 ? '#ff6b6b' : '#e8e6e3') + '">' + s.cpu + '%</div></div>';
+            if (s.mem != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">MEM</div><div class="usage-daily-val" style="color:' + (s.mem >= 80 ? '#ff6b6b' : '#e8e6e3') + '">' + s.memUsedGB + '/' + s.memTotalGB + 'G</div></div>';
+            if (s.disk != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">DISK</div><div class="usage-daily-val">' + s.disk + '%</div></div>';
+            if (s.temp != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">TEMP</div><div class="usage-daily-val" style="color:' + (s.temp >= 70 ? '#ff6b6b' : s.temp >= 55 ? '#e8b84b' : '#e8e6e3') + '">' + s.temp + '°C</div></div>';
+            html += '</div></div></div>';
+            return html;
+        }
+    })();
+
+    // ===================== Brain (Claude Code Memory) =====================
+    (function() {
+        var treeView = document.getElementById('brain-tree-view');
+        var editorView = document.getElementById('brain-editor-view');
+        var treeItems = document.getElementById('brain-tree-items');
+        var refreshBtn = document.getElementById('brain-refresh-btn');
+        var backBtn = document.getElementById('brain-back-btn');
+        var fileTitle = document.getElementById('brain-file-title');
+        var editToggle = document.getElementById('brain-edit-toggle');
+        var rendered = document.getElementById('brain-rendered');
+        var textarea = document.getElementById('brain-textarea');
+        var editorFooter = document.getElementById('brain-editor-footer');
+        var editorStatus = document.getElementById('brain-editor-status');
+        var sendClaudeBtn = document.getElementById('brain-send-claude-btn');
+
+        // Expose for switchView
+        window.brainTreeView = treeView;
+        window.brainEditorView = editorView;
+
+        var brainData = null;
+        var currentFile = null; // {dir, file, writable}
+        var isEditing = false;
+        var saveTimer = null;
+
+        var CAT_ICONS = {
+            memory: '🧠', skills: '⚡', agents: '🤖', rules: '📏', hooks: '🪝'
+        };
+
+        window.loadBrainTree = function(done) {
+            fetch('/api/brain', { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    brainData = data.scopes || [];
+                    renderTree();
+                    if (done) done();
+                })
+                .catch(function() {
+                    var p = treeItems.querySelector('[data-ptr]');
+                    treeItems.innerHTML = '<div style="padding:40px 16px;text-align:center;color:#4a4538">로드 실패</div>';
+                    if (p) treeItems.insertBefore(p, treeItems.firstChild);
+                    if (done) done();
+                });
+        };
+
+        refreshBtn.addEventListener('click', function() { loadBrainTree(); });
+
+        setupPullToRefresh(treeItems, function(done) {
+            loadBrainTree(done);
+        });
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + 'B';
+            return (bytes / 1024).toFixed(1) + 'KB';
+        }
+
+        function renderTree() {
+            // Preserve PTR indicator before clearing
+            var ptr = treeItems.querySelector('[data-ptr]');
+            treeItems.innerHTML = '';
+            if (ptr) treeItems.insertBefore(ptr, treeItems.firstChild);
+            brainData.forEach(function(scope) {
+                if (!scope.categories.length) return;
+                var label = document.createElement('div');
+                label.className = 'brain-scope-label';
+                label.textContent = scope.label;
+                treeItems.appendChild(label);
+
+                scope.categories.forEach(function(cat) {
+                    var catEl = document.createElement('div');
+                    catEl.className = 'brain-cat';
+                    catEl.innerHTML =
+                        '<span class="brain-cat-icon">' + (CAT_ICONS[cat.name] || '📄') + '</span>' +
+                        '<span class="brain-cat-name">' + cat.name + '</span>' +
+                        '<span class="brain-cat-count">' + cat.files.length + '</span>' +
+                        '<span class="brain-cat-arrow">▶</span>';
+                    treeItems.appendChild(catEl);
+
+                    var filesEl = document.createElement('div');
+                    filesEl.className = 'brain-files';
+                    cat.files.forEach(function(f) {
+                        var item = document.createElement('div');
+                        item.className = 'brain-file-item';
+                        item.innerHTML =
+                            '<span class="brain-file-name">' + escapeHtml(f.name) + '</span>' +
+                            '<span class="brain-file-size">' + formatSize(f.size) + '</span>';
+                        item.addEventListener('click', function() {
+                            openBrainFile(cat.dir, f.name);
+                        });
+                        filesEl.appendChild(item);
+                    });
+                    treeItems.appendChild(filesEl);
+
+                    catEl.addEventListener('click', function() {
+                        var open = filesEl.classList.toggle('open');
+                        catEl.querySelector('.brain-cat-arrow').textContent = open ? '▼' : '▶';
+                    });
+                });
+            });
+        }
+
+        function openBrainFile(dir, file) {
+            var url = '/api/brain/read?dir=' + encodeURIComponent(dir) + '&file=' + encodeURIComponent(file);
+            fetch(url, { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    currentFile = { dir: dir, file: file, writable: data.writable };
+                    fileTitle.textContent = file;
+                    textarea.value = data.content || '';
+                    rendered.innerHTML = renderMarkdown(data.content || '');
+                    // Reset to view mode
+                    isEditing = false;
+                    editToggle.textContent = '편집';
+                    editToggle.classList.remove('editing');
+                    editToggle.style.display = data.writable ? '' : 'none';
+                    rendered.style.display = '';
+                    textarea.style.display = 'none';
+                    editorFooter.style.display = 'none';
+                    editorStatus.textContent = '';
+                    // Switch views
+                    treeView.style.display = 'none';
+                    editorView.style.display = 'flex';
+                });
+        }
+
+        editToggle.addEventListener('click', function() {
+            isEditing = !isEditing;
+            if (isEditing) {
+                editToggle.textContent = '미리보기';
+                editToggle.classList.add('editing');
+                rendered.style.display = 'none';
+                textarea.style.display = 'block';
+                editorFooter.style.display = 'flex';
+                textarea.focus();
+            } else {
+                editToggle.textContent = '편집';
+                editToggle.classList.remove('editing');
+                rendered.innerHTML = renderMarkdown(textarea.value);
+                rendered.style.display = '';
+                textarea.style.display = 'none';
+                editorFooter.style.display = 'none';
+            }
+        });
+
+        textarea.addEventListener('input', function() {
+            editorStatus.textContent = '수정됨';
+            editorStatus.classList.remove('saved');
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(saveBrainFile, 1500);
+        });
+
+        function saveBrainFile() {
+            if (!currentFile) return;
+            editorStatus.textContent = '저장 중...';
+            fetch('/api/brain/write', {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dir: currentFile.dir,
+                    file: currentFile.file,
+                    content: textarea.value
+                })
+            }).then(function(r) {
+                if (r.ok) {
+                    editorStatus.textContent = '저장됨';
+                    editorStatus.classList.add('saved');
+                } else {
+                    editorStatus.textContent = '저장 실패';
+                }
+            }).catch(function() {
+                editorStatus.textContent = '저장 실패';
+            });
+        }
+
+        backBtn.addEventListener('click', function() {
+            clearTimeout(saveTimer);
+            if (isEditing && editorStatus.textContent === '수정됨') {
+                saveBrainFile();
+            }
+            currentFile = null;
+            isEditing = false;
+            editorView.style.display = 'none';
+            treeView.style.display = 'flex';
+        });
+
+        // Send to Claude
+        sendClaudeBtn.addEventListener('click', function() {
+            var content = textarea.value.trim();
+            if (!content) return;
+            if (isEditing && editorStatus.textContent !== '저장됨') {
+                clearTimeout(saveTimer);
+                saveBrainFile();
+            }
+            fetch('/api/claude-sessions', { credentials: 'same-origin' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var sessions = data.sessions || [];
+                    var buttons = [];
+                    sessions.forEach(function(s) {
+                        buttons.push({
+                            label: s.title,
+                            style: 'secondary',
+                            action: function() {
+                                fetch('/api/claude-send', {
+                                    method: 'POST', credentials: 'same-origin',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ target: s.target, text: content })
+                                }).then(function(r) { if (r.ok) switchView('terminal'); });
+                            }
+                        });
+                    });
+                    buttons.push({
+                        label: '+ 새 세션', style: 'primary',
+                        action: function() {
+                            fetch('/api/claude-new', {
+                                method: 'POST', credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ text: content })
+                            }).then(function(r) { if (r.ok) switchView('terminal'); });
+                        }
+                    });
+                    buttons.push({ label: '취소', style: 'cancel' });
+                    showConfirm(sessions.length ? '전송할 Claude 세션 (' + sessions.length + '개)' : '실행 중인 세션 없음', buttons);
+                });
+        });
+
+        // --- Simple Markdown renderer ---
+        function renderMarkdown(md) {
+            if (!md) return '';
+            var html = md
+                // Escape HTML
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                // Code blocks (``` ... ```)
+                .replace(/```(\w*)\n([\s\S]*?)```/g, function(_, lang, code) {
+                    return '<pre><code>' + code.replace(/\n$/, '') + '</code></pre>';
+                })
+                // Inline code
+                .replace(/`([^`]+)`/g, '<code>$1</code>')
+                // Headers
+                .replace(/^######\s+(.+)$/gm, '<h6>$1</h6>')
+                .replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>')
+                .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>')
+                .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+                .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+                .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+                // Bold & italic
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                // Horizontal rule
+                .replace(/^---+$/gm, '<hr>')
+                // Blockquote
+                .replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>')
+                // Links
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+
+            // Tables
+            html = html.replace(/((?:^\|.+\|$\n?)+)/gm, function(tableBlock) {
+                var rows = tableBlock.trim().split('\n').filter(function(r) { return r.trim(); });
+                if (rows.length < 2) return tableBlock;
+                // Check if second row is separator
+                if (!/^\|[\s\-:|]+\|$/.test(rows[1])) return tableBlock;
+                var headerCells = rows[0].split('|').filter(function(c) { return c.trim() !== ''; });
+                var out = '<table><thead><tr>';
+                headerCells.forEach(function(c) { out += '<th>' + c.trim() + '</th>'; });
+                out += '</tr></thead><tbody>';
+                for (var i = 2; i < rows.length; i++) {
+                    var cells = rows[i].split('|').filter(function(c) { return c.trim() !== ''; });
+                    out += '<tr>';
+                    cells.forEach(function(c) { out += '<td>' + c.trim() + '</td>'; });
+                    out += '</tr>';
+                }
+                out += '</tbody></table>';
+                return out;
+            });
+
+            // Lists (simple)
+            html = html.replace(/((?:^[\t ]*[-*]\s+.+$\n?)+)/gm, function(block) {
+                var items = block.trim().split('\n');
+                var out = '<ul>';
+                items.forEach(function(item) {
+                    out += '<li>' + item.replace(/^[\t ]*[-*]\s+/, '') + '</li>';
+                });
+                return out + '</ul>';
+            });
+
+            // Checkbox lists
+            html = html.replace(/<li>\[x\]\s*/gi, '<li style="list-style:none">☑ ');
+            html = html.replace(/<li>\[ \]\s*/gi, '<li style="list-style:none">☐ ');
+
+            // Paragraphs — wrap remaining loose lines
+            html = html.replace(/^(?!<[a-z/])((?!^\s*$).+)$/gm, '<p>$1</p>');
+            // Clean up empty paragraphs
+            html = html.replace(/<p>\s*<\/p>/g, '');
+
+            return html;
+        }
+
+        function escapeHtml(s) {
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
     })();
     </script>
 </body>
