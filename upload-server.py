@@ -7,6 +7,27 @@ SETTINGS_FILE = '/home/jack/claude-terminal/settings.json'
 NOTES_DIR = '/home/jack/claude-terminal/notes'
 TMUX_SOCKET = '/tmp/tmux-1000/default'
 
+# --- Brain (Claude Code memory) config ---
+BRAIN_DIRS = [
+    {
+        'id': 'global',
+        'label': 'Global (~/.claude/)',
+        'memory': os.path.expanduser('~/.claude/projects/-home-jack/memory'),
+        'skills': os.path.expanduser('~/.claude/skills'),
+        'agents': os.path.expanduser('~/.claude/agents'),
+        'hooks': os.path.expanduser('~/.claude/hooks'),
+    },
+    {
+        'id': 'dokjaeja',
+        'label': 'Dokjaeja Project',
+        'memory': None,
+        'skills': os.path.expanduser('~/dokjaeja/.claude/skills'),
+        'agents': os.path.expanduser('~/dokjaeja/.claude/agents'),
+        'hooks': None,
+        'rules': os.path.expanduser('~/dokjaeja/.claude/rules'),
+    },
+]
+
 DEFAULT_SETTINGS = {
     "general": {"wakeLock": False, "fontSize": 16},
     "snippets": []
@@ -114,6 +135,47 @@ def _delete_note(note_id):
         return True
     except FileNotFoundError:
         return False
+
+
+# --- Brain helpers ---
+def _brain_scan():
+    """Scan all brain directories and return structured tree."""
+    result = []
+    for conf in BRAIN_DIRS:
+        scope = {'id': conf['id'], 'label': conf['label'], 'categories': []}
+        for cat in ('memory', 'skills', 'agents', 'rules', 'hooks'):
+            dirpath = conf.get(cat)
+            if not dirpath or not os.path.isdir(dirpath):
+                continue
+            files = []
+            for root, dirs, fnames in os.walk(dirpath):
+                for fname in sorted(fnames):
+                    if not fname.endswith(('.md', '.sh')):
+                        continue
+                    full = os.path.join(root, fname)
+                    rel = os.path.relpath(full, dirpath)
+                    try:
+                        stat = os.stat(full)
+                        size = stat.st_size
+                        mtime = int(stat.st_mtime * 1000)
+                    except Exception:
+                        size = 0
+                        mtime = 0
+                    files.append({'name': rel, 'size': size, 'mtime': mtime})
+            if files:
+                scope['categories'].append({'name': cat, 'dir': dirpath, 'files': files})
+        result.append(scope)
+    return result
+
+def _brain_resolve_path(dirpath, filename):
+    """Safely resolve a brain file path, preventing directory traversal."""
+    base = os.path.realpath(dirpath)
+    full = os.path.realpath(os.path.join(dirpath, filename))
+    if not full.startswith(base + os.sep) and full != base:
+        return None
+    if not full.endswith(('.md', '.sh')):
+        return None
+    return full
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -296,6 +358,12 @@ class Handler(BaseHTTPRequestHandler):
             if not self._require_auth():
                 return
             import urllib.request
+            # Server-side cache: 60s success, 300s on error (avoid hammering on 429)
+            now = time.time()
+            cache_ttl = 60 if getattr(Handler, '_usage_ok', True) else 300
+            if hasattr(Handler, '_usage_cache') and Handler._usage_cache and now - Handler._usage_cache_ts < cache_ttl:
+                self._json_response(200, Handler._usage_cache)
+                return
             try:
                 creds = json.load(open(os.path.expanduser('~/.claude/.credentials.json')))
                 token = creds['claudeAiOauth']['accessToken']
@@ -309,9 +377,16 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
                     data = resp.read()
+                Handler._usage_cache = data
+                Handler._usage_cache_ts = now
+                Handler._usage_ok = True
                 self._json_response(200, data)
             except Exception as e:
-                self._json_response(200, json.dumps({'error': str(e)}).encode())
+                err_data = json.dumps({'error': str(e)}).encode()
+                Handler._usage_cache = err_data
+                Handler._usage_cache_ts = now
+                Handler._usage_ok = False
+                self._json_response(200, err_data)
 
         elif self.path == '/api/claude-sessions':
             if not self._require_auth():
@@ -363,6 +438,94 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._json_response(200, json.dumps(note).encode())
 
+        elif self.path.startswith('/api/git-status'):
+            if not self._require_auth():
+                return
+            import subprocess
+            # Parse ?dir=<path> (default: ~/dokjaeja)
+            git_dir = os.path.expanduser('~/dokjaeja')
+            if '?' in self.path:
+                import urllib.parse as up
+                params = up.parse_qs(self.path.split('?', 1)[1])
+                d = params.get('dir', [''])[0]
+                if d:
+                    git_dir = d
+            result = {}
+            try:
+                def git(*args):
+                    r = subprocess.run(
+                        ['git'] + list(args),
+                        cwd=git_dir, capture_output=True, text=True, timeout=5
+                    )
+                    return r.stdout.strip()
+                result['branch'] = git('branch', '--show-current')
+                # Status summary
+                status_raw = git('status', '--porcelain')
+                lines = [l for l in status_raw.split('\n') if l.strip()] if status_raw else []
+                staged = sum(1 for l in lines if l[0] not in (' ', '?'))
+                unstaged = sum(1 for l in lines if len(l) > 1 and l[1] in ('M', 'D'))
+                untracked = sum(1 for l in lines if l.startswith('??'))
+                result['changes'] = {
+                    'total': len(lines), 'staged': staged,
+                    'unstaged': unstaged, 'untracked': untracked
+                }
+                result['files'] = lines[:30]  # max 30 lines
+                # Recent commits
+                log_raw = git('log', '--oneline', '--no-merges', '-10',
+                              '--format=%h|%s|%ar|%an')
+                commits = []
+                for line in (log_raw.split('\n') if log_raw else []):
+                    parts = line.split('|', 3)
+                    if len(parts) == 4:
+                        commits.append({
+                            'hash': parts[0], 'message': parts[1],
+                            'ago': parts[2], 'author': parts[3]
+                        })
+                result['commits'] = commits
+                # Ahead/behind
+                try:
+                    ab = git('rev-list', '--left-right', '--count', '@{u}...HEAD')
+                    behind, ahead = ab.split('\t')
+                    result['ahead'] = int(ahead)
+                    result['behind'] = int(behind)
+                except Exception:
+                    result['ahead'] = 0
+                    result['behind'] = 0
+            except Exception as e:
+                result['error'] = str(e)
+            self._json_response(200, json.dumps(result).encode())
+
+        elif self.path == '/api/brain':
+            if not self._require_auth():
+                return
+            self._json_response(200, json.dumps({'scopes': _brain_scan()}).encode())
+
+        elif self.path.startswith('/api/brain/read?'):
+            if not self._require_auth():
+                return
+            import urllib.parse
+            params = urllib.parse.parse_qs(self.path.split('?', 1)[1])
+            dirpath = params.get('dir', [''])[0]
+            filename = params.get('file', [''])[0]
+            if not dirpath or not filename:
+                self.send_error(400, 'Missing dir or file')
+                return
+            full = _brain_resolve_path(dirpath, filename)
+            if not full or not os.path.isfile(full):
+                self.send_error(404, 'File not found')
+                return
+            try:
+                with open(full, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self._json_response(200, json.dumps({
+                    'content': content,
+                    'path': full,
+                    'size': len(content),
+                    'writable': os.access(full, os.W_OK)
+                }).encode())
+            except Exception as e:
+                self._json_response(500, json.dumps({'error': str(e)}).encode())
+
         else:
             self.send_error(404)
 
@@ -402,6 +565,39 @@ class Handler(BaseHTTPRequestHandler):
                 self._json_response(200, json.dumps({'ok': True}).encode())
             except json.JSONDecodeError:
                 self.send_error(400, 'Invalid JSON')
+
+        elif self.path == '/api/brain/write':
+            if not self._require_auth():
+                return
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            try:
+                data = json.loads(body)
+            except json.JSONDecodeError:
+                self.send_error(400, 'Invalid JSON')
+                return
+            dirpath = data.get('dir', '')
+            filename = data.get('file', '')
+            content = data.get('content', '')
+            if not dirpath or not filename:
+                self.send_error(400, 'Missing dir or file')
+                return
+            full = _brain_resolve_path(dirpath, filename)
+            if not full:
+                self.send_error(400, 'Invalid path')
+                return
+            if not os.path.isfile(full):
+                self.send_error(404, 'File not found')
+                return
+            if not os.access(full, os.W_OK):
+                self.send_error(403, 'File not writable')
+                return
+            try:
+                with open(full, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                self._json_response(200, json.dumps({'ok': True}).encode())
+            except Exception as e:
+                self._json_response(500, json.dumps({'error': str(e)}).encode())
 
         else:
             self.send_error(404)
