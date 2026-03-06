@@ -1243,7 +1243,19 @@
                     <div class="settings-divider"></div>
                     <div class="settings-item">
                         <div>
-                            <div class="settings-item-label">Font Size</div>
+                            <div class="settings-item-label">Terminal Font</div>
+                            <div class="settings-item-desc">터미널 글자 크기 (기본 15)</div>
+                        </div>
+                        <div class="font-ctrl">
+                            <button id="sh-termfont-minus">&minus;</button>
+                            <span class="font-val" id="sh-termFontVal">15</span>
+                            <button id="sh-termfont-plus">+</button>
+                        </div>
+                    </div>
+                    <div class="settings-divider"></div>
+                    <div class="settings-item">
+                        <div>
+                            <div class="settings-item-label">Input Font</div>
                             <div class="settings-item-desc">입력창 글자 크기</div>
                         </div>
                         <div class="font-ctrl">
@@ -2093,6 +2105,7 @@
         fetch('/api/settings')
             .then(function(r) { return r.json(); })
             .then(function(settings) {
+                shSettings = settings;
                 renderSnippets(settings.snippets || []);
                 applyGeneral(settings.general || {});
                 if (settings.general && settings.general.tabOrder) {
@@ -2137,9 +2150,13 @@
         }
 
         function applyGeneral(general) {
-            // Font size
+            // Input font size
             if (general.fontSize && general.fontSize !== 16) {
                 textInput.style.fontSize = general.fontSize + 'px';
+            }
+            // Terminal font size
+            if (general.termFontSize && general.termFontSize !== 15) {
+                applyTermFontSize(general.termFontSize);
             }
             // Wake Lock
             if (general.wakeLock && 'wakeLock' in navigator) {
@@ -2870,7 +2887,7 @@
             }
             // Reload iframe if away for 5+ seconds
             if (hiddenAt && Date.now() - hiddenAt > 5000) {
-                frame.src = '/ttyd/';
+                frame.src = getTtydUrl();
             }
             hiddenAt = 0;
         });
@@ -3294,8 +3311,32 @@
         function applySettingsToSheet() {
             document.getElementById('sh-wakeLock').checked = shSettings.general.wakeLock;
             document.getElementById('sh-fontVal').textContent = shSettings.general.fontSize || 16;
+            document.getElementById('sh-termFontVal').textContent = shSettings.general.termFontSize || 15;
             document.getElementById('sh-notification').checked = !!shSettings.general.notification;
         }
+
+        function getTtydUrl() {
+            var s = (shSettings.general && shSettings.general.termFontSize) || 15;
+            return s !== 15 ? '/ttyd/?fontSize=' + s : '/ttyd/';
+        }
+
+        function applyTermFontSize(size) {
+            var f = document.getElementById('terminal-frame');
+            if (!f) return;
+            var url = '/ttyd/?fontSize=' + size;
+            if (f.src.indexOf('fontSize=' + size) === -1) {
+                f.src = url;
+            }
+        }
+
+        document.getElementById('sh-termfont-minus').addEventListener('click', function() {
+            var v = (shSettings.general.termFontSize || 15) - 1;
+            if (v >= 8) { shSettings.general.termFontSize = v; document.getElementById('sh-termFontVal').textContent = v; }
+        });
+        document.getElementById('sh-termfont-plus').addEventListener('click', function() {
+            var v = (shSettings.general.termFontSize || 15) + 1;
+            if (v <= 24) { shSettings.general.termFontSize = v; document.getElementById('sh-termFontVal').textContent = v; }
+        });
 
         document.getElementById('sh-font-minus').addEventListener('click', function() {
             var v = (shSettings.general.fontSize || 16) - 1;
