@@ -334,8 +334,23 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     transform-origin: top left;
 }
 .preview-iframe.active { display: block; }
-#viewport-toggle { font-size: 11px; width: auto; padding: 0 6px; font-family: -apple-system, system-ui, sans-serif; }
-#viewport-toggle.active { background: var(--accent); color: var(--white); border-color: var(--accent); }
+
+/* More menu */
+#preview-more-menu {
+    display: none; position: absolute; top: 100%; right: 4px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 31;
+    margin-top: 2px; min-width: 160px; padding: 4px 0;
+}
+#preview-more-menu.open { display: block; }
+.preview-menu-item {
+    display: block; width: 100%; padding: 10px 14px;
+    background: none; border: none; color: var(--text-muted);
+    font-size: 13px; text-align: left; cursor: pointer;
+    font-family: -apple-system, system-ui, sans-serif;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.preview-menu-item:active { background: var(--bg-raised); color: var(--text); }
 
 /* URL dropdown */
 #preview-url-dropdown {
