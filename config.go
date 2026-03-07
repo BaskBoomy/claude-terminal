@@ -68,7 +68,7 @@ func LoadConfig(flagPort int, flagPassword string) *Config {
 		NotifyDir:       envStr("NOTIFY_DIR", "/tmp/claude-notify"),
 		TtydPort:        envInt("TTYD_PORT", 7681),
 		TmuxSession:     envStr("TMUX_SESSION", "claude"),
-		ClaudeCmd:       envStr("CLAUDE_CMD", "claude --dangerously-skip-permissions"),
+		ClaudeCmd:       envStr("CLAUDE_CMD", "claude"),
 		CookieName:      CookieName,
 		SessionMaxAge:   envInt("SESSION_MAX_AGE", 86400),
 		RateLimitMax:    envInt("RATE_LIMIT_MAX", 5),
