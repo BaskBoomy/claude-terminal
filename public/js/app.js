@@ -2,7 +2,7 @@
 // Orchestrates all modules, view switching, event bindings, and initialization.
 
 import { initAuth } from './auth.js';
-import { initTerminal, getTA, sendText, sendKey, tmuxCmd, uploadImage, submitInput, getTtydUrl, updateSettings as updateTermSettings } from './terminal.js';
+import { initTerminal, getTA, sendText, sendKey, tmuxCmd, uploadImage, submitInput, getTtydUrl, updateSettings as updateTermSettings, openSendHistory, closeSendHistory } from './terminal.js';
 import { initPolling, startUsagePolling, stopUsagePolling, startServerPolling, stopServerPolling, startNotifyPolling, stopNotifyPolling, fetchClaudeUsage, fetchServerStatus, fetchTmuxSession, setNotifyEnabled } from './polling.js';
 import { initPreview } from './preview.js';
 import { initNotes, loadNotesList, setViewSwitcher as setNotesViewSwitcher } from './notes.js';
@@ -482,7 +482,7 @@ function setupScrollControls() {
 // Prevent focus stealing (keep virtual keyboard open)
 // ========================================
 function setupFocusPrevention() {
-    var SELECTOR = 'button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add';
+    var SELECTOR = 'button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add, .send-history-item, .send-history-copy';
 
     document.addEventListener('mousedown', function(e) {
         if (e.target.id === 'preview-url') return;
@@ -673,6 +673,22 @@ function setupTouchScroll() {
 
     // 12. Bind toolbar key buttons
     bindToolbarButtons();
+
+    // 12b. Send history button
+    var historyBtn = document.getElementById('history-btn');
+    if (historyBtn) {
+        historyBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            openSendHistory();
+        });
+    }
+    var historyClose = document.getElementById('send-history-close');
+    if (historyClose) {
+        historyClose.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeSendHistory();
+        });
+    }
 
     // 13. Setup UI features
     setupPlusMenu();
