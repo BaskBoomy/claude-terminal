@@ -387,6 +387,43 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 /* =============================================
    Copy Mode Overlay
    ============================================= */
+/* --- Send History Panel --- */
+#send-history-panel {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg); border-top: 1px solid var(--border);
+    z-index: 150; max-height: 60vh;
+    flex-direction: column;
+}
+#send-history-panel.open { display: flex; }
+#send-history-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--text);
+}
+#send-history-header button {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 18px; cursor: pointer; padding: 0 4px;
+}
+#send-history-list {
+    flex: 1; overflow-y: auto; padding: 4px 0;
+}
+.send-history-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; cursor: pointer;
+    font-size: 13px; color: var(--text-muted);
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    border-bottom: 1px solid var(--border-light);
+}
+.send-history-item:active { background: var(--bg-raised); }
+.send-history-text {
+    flex: 1; min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+}
+.send-history-copy {
+    flex-shrink: 0; background: none; border: none;
+    color: var(--text-subtle); font-size: 14px; cursor: pointer; padding: 2px 6px;
+}
+
 /* --- Copy Mode Overlay --- */
 #copy-overlay {
     position: fixed; inset: 0; z-index: 200;

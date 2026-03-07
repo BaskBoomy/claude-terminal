@@ -30,6 +30,56 @@ export function getInputHistory() {
     return inputHistory;
 }
 
+export function openSendHistory() {
+    var panel = document.getElementById('send-history-panel');
+    var list = document.getElementById('send-history-list');
+    if (!panel || !list) return;
+    list.innerHTML = '';
+    if (inputHistory.length === 0) {
+        list.innerHTML = '<div style="padding:20px 14px;color:var(--text-subtle);font-size:13px;">이력 없음</div>';
+    } else {
+        // Show most recent first
+        for (var i = inputHistory.length - 1; i >= 0; i--) {
+            (function(text) {
+                var item = document.createElement('div');
+                item.className = 'send-history-item';
+                var span = document.createElement('span');
+                span.className = 'send-history-text';
+                span.textContent = text;
+                item.appendChild(span);
+                var copyBtn = document.createElement('button');
+                copyBtn.className = 'send-history-copy';
+                copyBtn.innerHTML = '&#x1F4CB;';
+                copyBtn.title = '입력창에 붙여넣기';
+                copyBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    textInput.value = text;
+                    sessionStorage.setItem('terminal-input', text);
+                    updateClearBtn();
+                    closeSendHistory();
+                    textInput.focus();
+                });
+                item.appendChild(copyBtn);
+                // Tap item = paste + close
+                item.addEventListener('click', function() {
+                    textInput.value = text;
+                    sessionStorage.setItem('terminal-input', text);
+                    updateClearBtn();
+                    closeSendHistory();
+                    textInput.focus();
+                });
+                list.appendChild(item);
+            })(inputHistory[i]);
+        }
+    }
+    panel.classList.add('open');
+}
+
+export function closeSendHistory() {
+    var panel = document.getElementById('send-history-panel');
+    if (panel) panel.classList.remove('open');
+}
+
 // --- Auto-resize textarea ---
 function autoResize() {
     // Switch to multi-line mode for measurement
@@ -126,19 +176,34 @@ export function uploadImage(file) {
 function doSendInput(text) {
     var ta = getTA();
     if (!ta) {
-        // Retry once after 200ms (iframe may be temporarily inaccessible)
-        setTimeout(function () {
+        // Retry up to 3 times (iframe may be temporarily inaccessible)
+        var retries = 0;
+        var retryTimer = setInterval(function () {
+            retries++;
             var ta2 = getTA();
-            if (!ta2) {
+            if (ta2) {
+                clearInterval(retryTimer);
+                actualSend(text, ta2);
+            } else if (retries >= 3) {
+                clearInterval(retryTimer);
+                showToast('전송 실패 — 텍스트 보존됨', 2000);
                 textInput.style.background = '#3a1515';
                 setTimeout(function () { textInput.style.background = ''; }, 600);
-                return;
+                // Don't clear input — user can retry
             }
-            actualSend(text, ta2);
         }, 200);
         return;
     }
     actualSend(text, ta);
+}
+
+function clearInput() {
+    textInput.value = '';
+    textInput.style.height = '';
+    textInput.style.lineHeight = '';
+    textInput.style.padding = '';
+    sessionStorage.removeItem('terminal-input');
+    updateClearBtn();
 }
 
 function actualSend(text, ta) {
@@ -152,7 +217,7 @@ function actualSend(text, ta) {
         }
         ta.value = '';
     }
-    // Enter after text is processed
+    // Enter after text is processed, clear input only after Enter is sent
     setTimeout(function () {
         var ta2 = getTA();
         if (ta2) {
@@ -160,18 +225,19 @@ function actualSend(text, ta) {
                 key: 'Enter', keyCode: 13, which: 13,
                 bubbles: true, cancelable: true
             }));
+            // Success — now safe to clear
+            if (text) {
+                inputHistory.push(text);
+                if (inputHistory.length > 50) inputHistory.shift();
+                saveHistory();
+            }
+            historyIndex = -1;
+            clearInput();
+        } else {
+            // Enter failed — keep text in input
+            showToast('전송 실패 — 텍스트 보존됨', 2000);
         }
     }, 80);
-    if (text) inputHistory.push(text);
-    if (inputHistory.length > 50) inputHistory.shift();
-    saveHistory();
-    historyIndex = -1;
-    textInput.value = '';
-    textInput.style.height = '';
-    textInput.style.lineHeight = '';
-    textInput.style.padding = '';
-    sessionStorage.removeItem('terminal-input');
-    updateClearBtn();
 }
 
 // --- Main submit function ---
@@ -281,12 +347,7 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             document.body.removeChild(ta);
         }
         function doClear() {
-            textInput.value = '';
-            textInput.style.height = '';
-            textInput.style.lineHeight = '';
-            textInput.style.padding = '';
-            sessionStorage.removeItem('terminal-input');
-            updateClearBtn();
+            clearInput();
             textInput.focus();
         }
 
