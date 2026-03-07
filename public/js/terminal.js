@@ -1,4 +1,5 @@
 // terminal.js — ES module for terminal/xterm integration
+import { showToast } from './utils.js';
 
 let frame = null;
 let textInput = null;
@@ -248,26 +249,20 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
 
         function doCopy() {
             if (!textInput.value) return;
-            // Try modern clipboard API first, fallback to execCommand
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(textInput.value)
-                        .then(function() { window.showToast && window.showToast('복사됨', 1500); })
-                        .catch(function() { execCopy(); });
-                    return;
+                    navigator.clipboard.writeText(textInput.value).catch(function() {});
+                } else {
+                    var ta = document.createElement('textarea');
+                    ta.value = textInput.value;
+                    ta.style.cssText = 'position:fixed;left:-9999px';
+                    document.body.appendChild(ta);
+                    ta.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(ta);
                 }
             } catch(e) {}
-            execCopy();
-        }
-        function execCopy() {
-            var ta = document.createElement('textarea');
-            ta.value = textInput.value;
-            ta.style.cssText = 'position:fixed;left:-9999px';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            window.showToast && window.showToast('복사됨', 1500);
+            showToast('복사됨', 1500);
         }
         function doClear() {
             textInput.value = '';
