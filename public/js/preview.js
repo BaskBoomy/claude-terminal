@@ -13,6 +13,7 @@ var currentViewport = 'mobile';
 // DOM refs
 let previewUrlInput, previewReload, previewOpen, previewClear;
 let previewBack, previewForward, viewportToggle, previewBookmark;
+let previewMore, previewMoreMenu;
 let previewDropdown, previewFrames, browserTabsBar, browserTabAdd;
 
 function ensureProtocol(url) {
@@ -176,6 +177,28 @@ export function createBrowserTab(url, skipSave) {
   iframe.className = 'preview-iframe';
   iframe.id = id;
   if (fullUrl) iframe.src = fullUrl;
+  iframe.addEventListener('load', function () {
+    var t = browserTabs.find(function (bt) { return bt.id === id; });
+    if (!t) return;
+    try {
+      var newUrl = iframe.contentWindow.location.href;
+      if (newUrl && newUrl !== 'about:blank' && newUrl !== t.url) {
+        t.url = newUrl;
+        t.label = labelFromUrl(newUrl);
+        // Push to history if navigated within iframe
+        t.history = t.history.slice(0, t.historyIndex + 1);
+        t.history.push(newUrl);
+        t.historyIndex = t.history.length - 1;
+        if (id === activeTabId) {
+          previewUrlInput.value = newUrl;
+          updateNavButtons();
+          updateBookmarkBtn();
+        }
+        renderBrowserTabs();
+        saveBrowserTabs();
+      }
+    } catch (e) { /* cross-origin — ignore */ }
+  });
   previewFrames.appendChild(iframe);
 
   if (fullUrl) saveRecentUrl(fullUrl);
@@ -269,12 +292,11 @@ function makeDropdownItem(url, removable, onRemove) {
   return item;
 }
 
-function renderPreviewDropdown() {
+function renderStaticDropdown() {
   previewDropdown.innerHTML = '';
   var current = previewUrlInput.value;
   var bm = bookmarks.filter(function (u) { return u !== current; });
   var recent = recentUrls.filter(function (u) { return u !== current && bookmarks.indexOf(u) < 0; });
-  if (bm.length === 0 && recent.length === 0) return;
   if (bm.length > 0) {
     var sec = document.createElement('div');
     sec.className = 'url-dropdown-section';
@@ -300,10 +322,14 @@ function renderPreviewDropdown() {
 }
 
 function openPreviewDropdown() {
-  renderPreviewDropdown();
+  renderStaticDropdown();
   if (previewDropdown.children.length > 0) {
     previewDropdown.classList.add('open');
   }
+}
+
+function closeMoreMenu() {
+  if (previewMoreMenu) previewMoreMenu.classList.remove('open');
 }
 
 function closePreviewDropdown() {
@@ -322,6 +348,8 @@ export function initPreview() {
   previewForward = document.getElementById('preview-forward');
   viewportToggle = document.getElementById('viewport-toggle');
   previewBookmark = document.getElementById('preview-bookmark');
+  previewMore = document.getElementById('preview-more');
+  previewMoreMenu = document.getElementById('preview-more-menu');
   previewDropdown = document.getElementById('preview-url-dropdown');
   previewFrames = document.getElementById('preview-frames');
   browserTabsBar = document.getElementById('browser-tabs');
@@ -408,12 +436,34 @@ export function initPreview() {
     navigateWithoutHistory(tab, tab.history[tab.historyIndex]);
   });
 
-  // Viewport toggle — cycle: desktop → tablet → mobile → desktop
+  // Viewport toggle — cycle: mobile → tablet → desktop
   viewportToggle.addEventListener('click', function (e) {
     e.preventDefault();
     var idx = VIEWPORTS.indexOf(currentViewport);
     currentViewport = VIEWPORTS[(idx + 1) % VIEWPORTS.length];
     applyViewport();
+    viewportToggle.innerHTML = '&#x1F4F1; 뷰포트: ' + VIEWPORT_LABELS[currentViewport];
+    closeMoreMenu();
+  });
+
+  // More menu toggle
+  previewMore.addEventListener('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    previewMoreMenu.classList.toggle('open');
+  });
+  // Close more menu on outside click
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#preview-more-menu') && !e.target.closest('#preview-more')) {
+      closeMoreMenu();
+    }
+  });
+  // Close more menu after any menu item click
+  previewMoreMenu.querySelectorAll('.preview-menu-item').forEach(function (item) {
+    if (item.id === 'viewport-toggle') return; // handled separately
+    item.addEventListener('click', function () {
+      closeMoreMenu();
+    });
   });
 
   // Recent URL dropdown — focus/blur
