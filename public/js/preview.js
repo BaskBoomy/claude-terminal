@@ -1,12 +1,17 @@
 // preview.js — Multi-tab browser preview (ES module)
 
-let browserTabs = []; // [{id, url, label}]
+let browserTabs = []; // [{id, url, label, history: string[], historyIndex: number}]
 let activeTabId = null;
 let tabIdCounter = 0;
 let recentUrls = [];
+var VIEWPORTS = ['mobile', 'tablet', 'desktop'];
+var VIEWPORT_WIDTHS = { mobile: 0, tablet: 768, desktop: 1280 };
+var VIEWPORT_LABELS = { mobile: 'M', tablet: 'Tab', desktop: 'PC' };
+var currentViewport = 'mobile';
 
 // DOM refs
 let previewUrlInput, previewReload, previewOpen, previewClear;
+let previewBack, previewForward, viewportToggle;
 let previewDropdown, previewFrames, browserTabsBar, browserTabAdd;
 
 function ensureProtocol(url) {
@@ -21,6 +26,53 @@ function labelFromUrl(url) {
   } catch (e) {
     return url || 'New Tab';
   }
+}
+
+function applyViewport() {
+  var containerWidth = previewFrames.clientWidth;
+  var containerHeight = previewFrames.clientHeight;
+  var targetWidth = VIEWPORT_WIDTHS[currentViewport];
+
+  previewFrames.querySelectorAll('.preview-iframe').forEach(function (f) {
+    if (!targetWidth || targetWidth <= containerWidth) {
+      // Mobile (native) — no scaling
+      f.style.width = '100%';
+      f.style.height = '100%';
+      f.style.transform = '';
+    } else {
+      // Scale down: render at targetWidth, shrink to fit
+      var scale = containerWidth / targetWidth;
+      f.style.width = targetWidth + 'px';
+      f.style.height = (containerHeight / scale) + 'px';
+      f.style.transform = 'scale(' + scale + ')';
+    }
+  });
+  if (viewportToggle) {
+    viewportToggle.textContent = VIEWPORT_LABELS[currentViewport];
+    viewportToggle.classList.toggle('active', currentViewport !== 'mobile');
+  }
+}
+
+function updateNavButtons() {
+  var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+  if (!tab) {
+    if (previewBack) previewBack.disabled = true;
+    if (previewForward) previewForward.disabled = true;
+    return;
+  }
+  if (previewBack) previewBack.disabled = tab.historyIndex <= 0;
+  if (previewForward) previewForward.disabled = tab.historyIndex >= tab.history.length - 1;
+}
+
+function navigateWithoutHistory(tab, url) {
+  tab.url = url;
+  tab.label = labelFromUrl(url);
+  previewUrlInput.value = url;
+  var iframe = document.getElementById(tab.id);
+  if (iframe) iframe.src = url;
+  renderBrowserTabs();
+  saveBrowserTabs();
+  updateNavButtons();
 }
 
 function saveRecentUrl(url) {
@@ -83,12 +135,13 @@ export function activateBrowserTab(id) {
   var tab = browserTabs.find(function (t) { return t.id === id; });
   previewUrlInput.value = tab ? tab.url : '';
   saveBrowserTabs();
+  updateNavButtons();
 }
 
 export function createBrowserTab(url, skipSave) {
   var id = 'btab-' + (++tabIdCounter);
   var fullUrl = url ? ensureProtocol(url) : '';
-  var tab = { id: id, url: fullUrl, label: labelFromUrl(fullUrl) || 'New Tab' };
+  var tab = { id: id, url: fullUrl, label: labelFromUrl(fullUrl) || 'New Tab', history: fullUrl ? [fullUrl] : [], historyIndex: fullUrl ? 0 : -1 };
   browserTabs.push(tab);
 
   // Create iframe
@@ -101,6 +154,7 @@ export function createBrowserTab(url, skipSave) {
   if (fullUrl) saveRecentUrl(fullUrl);
   renderBrowserTabs();
   activateBrowserTab(id);
+  applyViewport();
   if (!skipSave) saveBrowserTabs();
   return tab;
 }
@@ -130,6 +184,10 @@ export function navigateActiveTab(url) {
   url = ensureProtocol(url);
   var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
   if (!tab) return;
+  // Truncate forward history and push new URL
+  tab.history = tab.history.slice(0, tab.historyIndex + 1);
+  tab.history.push(url);
+  tab.historyIndex = tab.history.length - 1;
   tab.url = url;
   tab.label = labelFromUrl(url);
   previewUrlInput.value = url;
@@ -138,6 +196,7 @@ export function navigateActiveTab(url) {
   saveRecentUrl(url);
   renderBrowserTabs();
   saveBrowserTabs();
+  updateNavButtons();
   closePreviewDropdown();
 }
 
@@ -192,6 +251,9 @@ export function initPreview() {
   previewReload = document.getElementById('preview-reload');
   previewOpen = document.getElementById('preview-open');
   previewClear = document.getElementById('preview-clear');
+  previewBack = document.getElementById('preview-back');
+  previewForward = document.getElementById('preview-forward');
+  viewportToggle = document.getElementById('viewport-toggle');
   previewDropdown = document.getElementById('preview-url-dropdown');
   previewFrames = document.getElementById('preview-frames');
   browserTabsBar = document.getElementById('browser-tabs');
@@ -252,6 +314,30 @@ export function initPreview() {
     e.preventDefault();
     var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
     if (tab && tab.url) window.open(tab.url, '_blank');
+  });
+
+  // Back/Forward buttons
+  previewBack.addEventListener('click', function (e) {
+    e.preventDefault();
+    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    if (!tab || tab.historyIndex <= 0) return;
+    tab.historyIndex--;
+    navigateWithoutHistory(tab, tab.history[tab.historyIndex]);
+  });
+  previewForward.addEventListener('click', function (e) {
+    e.preventDefault();
+    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    if (!tab || tab.historyIndex >= tab.history.length - 1) return;
+    tab.historyIndex++;
+    navigateWithoutHistory(tab, tab.history[tab.historyIndex]);
+  });
+
+  // Viewport toggle — cycle: desktop → tablet → mobile → desktop
+  viewportToggle.addEventListener('click', function (e) {
+    e.preventDefault();
+    var idx = VIEWPORTS.indexOf(currentViewport);
+    currentViewport = VIEWPORTS[(idx + 1) % VIEWPORTS.length];
+    applyViewport();
   });
 
   // Recent URL dropdown — focus/blur
