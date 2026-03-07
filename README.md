@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="README.md">English</a> · <a href="README.ko.md">한국어</a>
+  <a href="README.en.md">English</a> · <a href="README.md">한국어</a>
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 <h1 align="center">Claude Terminal</h1>
 
 <p align="center">
-  Access <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> from anywhere — a mobile-first web terminal you can self-host.
+  어디서든 <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a>에 접속하세요 — 셀프 호스팅 가능한 모바일 웹 터미널.
 </p>
 
 <p align="center">
@@ -22,47 +22,47 @@
 
 <br>
 
-> **What is this?** A self-hosted PWA that wraps Claude Code in a touch-friendly web UI. Install it on a Raspberry Pi, VPS, or any always-on machine — then open it from your phone, tablet, or any browser. One server, access from everywhere.
+> **이게 뭔가요?** Claude Code를 모바일 친화적인 웹 UI로 감싼 셀프 호스팅 PWA입니다. 라즈베리파이, VPS, 또는 항상 켜져 있는 아무 서버에 설치하면 — 폰, 태블릿, 어떤 브라우저에서든 접속할 수 있습니다. 서버 하나로, 어디서든 코딩.
 
 <br>
 
-<!-- screenshot placeholder -->
-<!-- <p align="center"><img src="docs/screenshot.png" width="800" alt="Claude Terminal Screenshot"></p> -->
+<!-- 스크린샷 자리 -->
+<!-- <p align="center"><img src="docs/screenshot.png" width="800" alt="Claude Terminal 스크린샷"></p> -->
 
-## Why
+## 왜 만들었나
 
-Claude Code is powerful, but it only runs in a local terminal. If you want to:
+Claude Code는 강력하지만, 로컬 터미널에서만 실행됩니다. 만약:
 
-- **Code from your phone** while away from your desk
-- **Monitor long-running tasks** without keeping a laptop open
-- **Manage Claude's memory and skills** with a visual editor
-- **Check git status and server health** at a glance
+- 책상을 떠나서도 **폰으로 코딩**하고 싶다면
+- 노트북을 열어두지 않고도 **장시간 작업을 모니터링**하고 싶다면
+- Claude의 **메모리와 스킬을 시각적으로 관리**하고 싶다면
+- **Git 상태와 서버 상태를 한눈에** 확인하고 싶다면
 
-...you need a way to access your terminal remotely. Claude Terminal gives you that in a single ~8MB binary with zero external dependencies.
+...터미널에 원격으로 접근할 방법이 필요합니다. Claude Terminal은 ~8MB 단일 바이너리로, 외부 의존성 없이 이 모든 걸 제공합니다.
 
-## Features
+## 기능
 
-| Tab | What it does |
+| 탭 | 설명 |
 |-----|-------------|
-| **Terminal** | Full xterm.js terminal with touch scrolling, swipe-to-switch tmux windows, virtual key bar |
-| **Preview** | Multi-tab browser for previewing web apps your code is building |
-| **Notes** | Markdown notes with auto-save — send any note directly to Claude as a prompt |
-| **Brain** | Browse and edit Claude Code's memory, skills, agents, rules, and hooks |
-| **Dash** | Git status, Claude API usage metrics, CPU/memory/disk/temperature at a glance |
+| **Terminal** | xterm.js 기반 터미널 — 터치 스크롤, 스와이프로 tmux 윈도우 전환, 가상 키 바 |
+| **Preview** | 멀티탭 브라우저 — 코드로 만들고 있는 웹앱을 바로 미리보기 |
+| **Notes** | 자동 저장 메모 — 메모 내용을 Claude에게 바로 전송 가능 |
+| **Brain** | Claude Code의 메모리, 스킬, 에이전트, 규칙, 훅을 탐색하고 편집 |
+| **Dash** | Git 상태, Claude API 사용량, CPU/메모리/디스크/온도 한눈에 |
 
-**Plus:** custom command snippets, configurable fonts, drag-to-reorder tabs, pull-to-refresh, copy mode (screen + scrollback), wake lock, background notifications, and installable as a home screen app on iOS/Android.
+**추가 기능:** 커스텀 명령어 스니펫, 글꼴 크기 조절, 탭 드래그 정렬, 당겨서 새로고침, 복사 모드 (화면 + 스크롤백), 화면 꺼짐 방지, 백그라운드 알림, iOS/Android 홈 화면 앱 설치.
 
-## Quick Start
+## 빠른 시작
 
-**Option 1 — One command (requires Node.js):**
+**방법 1 — 한 줄 명령 (Node.js 필요):**
 
 ```bash
 npx create-claude-terminal
 ```
 
-The interactive installer will prompt for your password, ports, and domain, then set up everything including systemd/launchd services.
+대화형 설치 프로그램이 비밀번호, 포트, 도메인을 물어보고 systemd/launchd 서비스까지 자동으로 설정합니다.
 
-**Option 2 — Git clone:**
+**방법 2 — Git clone:**
 
 ```bash
 git clone https://github.com/BaskBoomy/claude-terminal.git
@@ -70,161 +70,161 @@ cd claude-terminal
 ./install.sh
 ```
 
-**Option 3 — Manual setup:**
+**방법 3 — 수동 설치:**
 
 ```bash
-# 1. Install prerequisites
-sudo apt install tmux    # or: brew install tmux
+# 1. 필수 패키지 설치
+sudo apt install tmux    # macOS: brew install tmux
 
-# 2. Install ttyd
+# 2. ttyd 설치
 sudo bash scripts/setup-ttyd.sh
 
-# 3. Configure
+# 3. 설정
 cp .env.example .env
-nano .env                # set PASSWORD at minimum
+nano .env                # 최소한 PASSWORD만 설정
 
-# 4. Build & run
+# 4. 빌드 & 실행
 go build -ldflags="-s -w" -o claude-terminal .
 ttyd -p 7681 -W -b /ttyd scripts/ttyd-start.sh &
 ./claude-terminal
 ```
 
-Open `http://<your-ip>:7680` and log in.
+`http://<서버-IP>:7680`에 접속해서 로그인하세요.
 
-## Architecture
+## 아키텍처
 
 ```
- Phone / Tablet / Desktop
+ 폰 / 태블릿 / 데스크톱
           │
-          │  HTTPS (auto Let's Encrypt) or HTTP
+          │  HTTPS (자동 Let's Encrypt) 또는 HTTP
           ▼
  ┌──────────────────────┐
- │   claude-terminal    │  single Go binary (~8MB)
+ │   claude-terminal    │  Go 단일 바이너리 (~8MB)
  │                      │
  │  ┌────────────────┐  │
- │  │  Static files  │  │  PWA frontend (HTML/CSS/JS)
- │  │  API routes    │  │  auth, notes, brain, settings, git, usage
- │  │  ttyd proxy    │  │  reverse proxy with WebSocket tunneling
+ │  │  정적 파일      │  │  PWA 프론트엔드 (HTML/CSS/JS)
+ │  │  API 라우트     │  │  인증, 메모, 브레인, 설정, git, 사용량
+ │  │  ttyd 프록시    │  │  WebSocket 터널링 리버스 프록시
  │  └────────────────┘  │
  └──────────┬───────────┘
             │ localhost
             ▼
  ┌──────────────────────┐
- │       ttyd           │  web terminal emulator
+ │       ttyd           │  웹 터미널 에뮬레이터
  └──────────┬───────────┘
             │
             ▼
  ┌──────────────────────┐
- │       tmux           │  persistent terminal sessions
+ │       tmux           │  영속 터미널 세션
  │  ┌────────────────┐  │
- │  │  Claude Code   │  │  AI coding assistant
+ │  │  Claude Code   │  │  AI 코딩 어시스턴트
  │  └────────────────┘  │
  └──────────────────────┘
 ```
 
-No Docker, no Nginx, no Caddy — just one binary + ttyd + tmux.
+Docker 없이, Nginx 없이, Caddy 없이 — 바이너리 하나 + ttyd + tmux면 끝.
 
-## Configuration
+## 설정
 
-All settings live in `.env` (see [`.env.example`](.env.example)):
+모든 설정은 `.env` 파일에서 관리합니다 ([`.env.example`](.env.example) 참고):
 
-| Variable | Default | Description |
+| 변수 | 기본값 | 설명 |
 |----------|---------|-------------|
-| `PASSWORD` | *(required)* | Login password — hashed automatically on first run |
-| `PORT` | `7680` | Server port |
-| `TTYD_PORT` | `7681` | ttyd port |
-| `DOMAIN` | | Your domain — enables automatic HTTPS via Let's Encrypt |
-| `CLAUDE_CMD` | `claude` | Command to launch Claude Code |
-| `TMUX_SESSION` | `claude` | tmux session name |
-| `SESSION_MAX_AGE` | `86400` | Login session lifetime in seconds (24h) |
+| `PASSWORD` | *(필수)* | 로그인 비밀번호 — 첫 실행 시 자동으로 해시 처리 |
+| `PORT` | `7680` | 서버 포트 |
+| `TTYD_PORT` | `7681` | ttyd 포트 |
+| `DOMAIN` | | 도메인 — 설정하면 Let's Encrypt HTTPS 자동 활성화 |
+| `CLAUDE_CMD` | `claude` | Claude Code 실행 명령어 |
+| `TMUX_SESSION` | `claude` | tmux 세션 이름 |
+| `SESSION_MAX_AGE` | `86400` | 로그인 세션 유지 시간 (초, 기본 24시간) |
 
 <details>
-<summary>All variables</summary>
+<summary>전체 변수 목록</summary>
 
-| Variable | Default | Description |
+| 변수 | 기본값 | 설명 |
 |----------|---------|-------------|
-| `HOST` | `0.0.0.0` | Bind address |
-| `TMUX_SOCKET` | *(auto)* | tmux socket path |
-| `UPLOAD_DIR` | `/tmp/claude-uploads` | File upload directory |
-| `NOTIFY_DIR` | `/tmp/claude-notify` | Notification directory |
-| `RATE_LIMIT_MAX` | `5` | Max failed login attempts per IP |
-| `RATE_LIMIT_WINDOW` | `900` | Rate limit window in seconds (15min) |
+| `HOST` | `0.0.0.0` | 바인드 주소 |
+| `TMUX_SOCKET` | *(자동)* | tmux 소켓 경로 |
+| `UPLOAD_DIR` | `/tmp/claude-uploads` | 파일 업로드 디렉토리 |
+| `NOTIFY_DIR` | `/tmp/claude-notify` | 알림 디렉토리 |
+| `RATE_LIMIT_MAX` | `5` | IP당 최대 로그인 실패 횟수 |
+| `RATE_LIMIT_WINDOW` | `900` | 로그인 제한 시간 (초, 기본 15분) |
 
 </details>
 
 ## HTTPS
 
-**Built-in (recommended for single-service setups):**
+**내장 방식 (단일 서비스 환경 추천):**
 
-Set `DOMAIN=your.domain.com` in `.env`. The server automatically obtains and renews Let's Encrypt certificates.
+`.env`에 `DOMAIN=your.domain.com`을 설정하면 자동으로 Let's Encrypt 인증서를 발급하고 갱신합니다.
 
-**Behind a reverse proxy:**
+**리버스 프록시 방식:**
 
-If you already run Caddy, Nginx, or similar:
+이미 Caddy, Nginx 등을 사용하고 있다면:
 
 ```
-# Caddyfile example
+# Caddyfile 예시
 your.domain.com {
     reverse_proxy localhost:7680
 }
 ```
 
-## Security
+## 보안
 
-- **Password hashing** — PBKDF2-SHA256 with 600,000 iterations
-- **Session cookies** — `HttpOnly`, `Secure` (when HTTPS), `SameSite=Strict`
-- **Rate limiting** — 5 failed attempts per 15 minutes per IP
-- **Path traversal protection** — Brain file access restricted to known project directories
-- **No credentials in source** — password hash stored in `data/` (gitignored)
+- **비밀번호 해싱** — PBKDF2-SHA256, 600,000회 반복
+- **세션 쿠키** — `HttpOnly`, `Secure` (HTTPS 시), `SameSite=Strict`
+- **요청 제한** — IP당 15분 내 5회 로그인 실패 시 차단
+- **경로 탐색 보호** — Brain 파일 접근을 알려진 프로젝트 디렉토리로 제한
+- **소스에 인증 정보 없음** — 비밀번호 해시는 `data/`에 저장 (gitignored)
 
-## Project Structure
+## 프로젝트 구조
 
 ```
 claude-terminal/
-├── main.go              # HTTP server, ttyd reverse proxy, auto HTTPS
-├── config.go            # .env loading, password hashing
-├── auth.go              # sessions, rate limiting, middleware
-├── routes.go            # API handlers (tmux, notes, brain, git, usage)
-├── brain.go             # Claude Code memory/skills file scanner
-├── public/              # PWA frontend
+├── main.go              # HTTP 서버, ttyd 리버스 프록시, 자동 HTTPS
+├── config.go            # .env 로딩, 비밀번호 해싱
+├── auth.go              # 세션, 요청 제한, 미들웨어
+├── routes.go            # API 핸들러 (tmux, 메모, 브레인, git, 사용량)
+├── brain.go             # Claude Code 메모리/스킬 파일 스캐너
+├── public/              # PWA 프론트엔드
 │   ├── index.html
 │   ├── login.html
 │   ├── css/style.css
-│   └── js/              # ES modules (app, terminal, preview, notes, brain, dash, ...)
+│   └── js/              # ES 모듈 (app, terminal, preview, notes, brain, dash, ...)
 ├── scripts/
-│   ├── ttyd-start.sh    # tmux session entry point
-│   └── setup-ttyd.sh    # ttyd installer
-├── npm/                 # npx create-claude-terminal package
-├── install.sh           # one-click setup script
-├── .env.example         # configuration template
-└── data/                # runtime data — notes, settings, password hash (gitignored)
+│   ├── ttyd-start.sh    # tmux 세션 진입점
+│   └── setup-ttyd.sh    # ttyd 설치 스크립트
+├── npm/                 # npx create-claude-terminal 패키지
+├── install.sh           # 원클릭 설치 스크립트
+├── .env.example         # 설정 템플릿
+└── data/                # 런타임 데이터 — 메모, 설정, 비밀번호 해시 (gitignored)
 ```
 
-## Requirements
+## 요구 사항
 
-| Dependency | Purpose | Install |
+| 의존성 | 용도 | 설치 |
 |-----------|---------|---------|
-| **tmux** | Persistent terminal sessions | `apt install tmux` / `brew install tmux` |
-| **ttyd** | Web terminal emulator | `bash scripts/setup-ttyd.sh` (auto-installed) |
-| **Claude Code** | AI coding assistant | [Installation guide](https://docs.anthropic.com/en/docs/claude-code) |
-| **Go 1.22+** | Build from source | [golang.org](https://go.dev/dl/) *(not needed if using pre-built binary)* |
+| **tmux** | 영속 터미널 세션 | `apt install tmux` / `brew install tmux` |
+| **ttyd** | 웹 터미널 에뮬레이터 | `bash scripts/setup-ttyd.sh` (자동 설치) |
+| **Claude Code** | AI 코딩 어시스턴트 | [설치 가이드](https://docs.anthropic.com/en/docs/claude-code) |
+| **Go 1.22+** | 소스에서 빌드 시 | [golang.org](https://go.dev/dl/) *(미리 빌드된 바이너리 사용 시 불필요)* |
 
-## Contributing
+## 기여
 
-Contributions are welcome! Feel free to open issues and pull requests.
+기여를 환영합니다! 이슈와 풀 리퀘스트를 자유롭게 열어주세요.
 
-1. Fork the repo
-2. Create your branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. 저장소를 Fork합니다
+2. 브랜치를 만듭니다 (`git checkout -b feature/amazing-feature`)
+3. 변경사항을 커밋합니다
+4. 브랜치에 Push합니다 (`git push origin feature/amazing-feature`)
+5. Pull Request를 열어주세요
 
-## License
+## 라이선스
 
-Distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
+MIT 라이선스로 배포됩니다. 자세한 내용은 [`LICENSE`](LICENSE)를 참고하세요.
 
 ---
 
 <p align="center">
-  Built for developers who code from everywhere.
+  어디서든 코딩하는 개발자를 위해 만들었습니다.
 </p>
