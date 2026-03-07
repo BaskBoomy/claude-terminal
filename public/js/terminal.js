@@ -246,6 +246,7 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     // --- Clear button: tap = clear, double-tap = copy ---
     if (clearInputBtn) {
         var lastTapTime = 0;
+        var clearTimer = null;
 
         function doCopy() {
             if (!textInput.value) return;
@@ -278,17 +279,18 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             e.preventDefault();
             var now = Date.now();
             if (now - lastTapTime < 400) {
-                // Double tap = copy
+                // Double tap = copy (cancel pending clear)
+                clearTimeout(clearTimer);
                 doCopy();
                 lastTapTime = 0;
             } else {
-                // Single tap = clear (with short delay to check for double)
+                // Single tap = wait for possible double tap
                 lastTapTime = now;
-                setTimeout(function() {
+                clearTimer = setTimeout(function() {
                     if (lastTapTime === now && textInput.value) {
                         doClear();
                     }
-                }, 400);
+                }, 350);
             }
         });
     }
