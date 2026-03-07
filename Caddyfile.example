@@ -1,0 +1,57 @@
+# Claude Terminal — Caddy reverse proxy configuration
+#
+# Usage:
+#   1. Copy this file: cp Caddyfile.example /etc/caddy/Caddyfile
+#   2. Replace YOUR_DOMAIN with your actual domain
+#   3. Replace /path/to/claude-terminal with the installation path
+#   4. Adjust ports if you changed them in .env
+#   5. Reload Caddy: sudo systemctl reload caddy
+
+YOUR_DOMAIN {
+    # Public assets (no auth required)
+    @public path /manifest.json /icon-192.png /sw.js /login.html
+    handle @public {
+        root * /path/to/claude-terminal/public
+        file_server
+    }
+
+    # Auth API (no cookie check — handles its own auth)
+    @auth_api path /api/auth/*
+    handle @auth_api {
+        reverse_proxy localhost:7682
+    }
+
+    # ttyd (terminal) — require session cookie
+    @ttyd path /ttyd /ttyd/*
+    handle @ttyd {
+        @no_session_ttyd {
+            not header_regexp cookie_check Cookie __claude_session=[a-f0-9]{64}
+        }
+        respond @no_session_ttyd 403
+        reverse_proxy localhost:7681
+    }
+
+    # API endpoints
+    @api path /api /api/*
+    handle @api {
+        reverse_proxy localhost:7682
+    }
+
+    # File upload endpoint
+    @upload path /upload
+    handle @upload {
+        reverse_proxy localhost:7682
+    }
+
+    # Static files (require session cookie)
+    handle {
+        @no_session {
+            not header_regexp cookie_main Cookie __claude_session=[a-f0-9]{64}
+        }
+        redir @no_session /login.html 302
+        root * /path/to/claude-terminal/public
+        header Cache-Control "no-cache, no-store, must-revalidate"
+        try_files {path} /index.html
+        file_server
+    }
+}
