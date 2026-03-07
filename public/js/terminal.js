@@ -5,7 +5,7 @@ let textInput = null;
 let sendBtn = null;
 let imgBtn = null;
 let fileInput = null;
-
+let clearInputBtn = null;
 let scrollBottomBtnEl = null;
 
 let inputHistory = [];
@@ -33,7 +33,7 @@ export function getInputHistory() {
 function autoResize() {
     // Switch to multi-line mode for measurement
     textInput.style.lineHeight = '1.4';
-    textInput.style.padding = '8px 44px 8px 14px';
+    textInput.style.padding = '8px 72px 8px 14px';
     textInput.style.height = 'auto';
     var h = Math.min(textInput.scrollHeight, 120);
     // If single line (content fits in ~38px), revert to centered mode
@@ -43,6 +43,12 @@ function autoResize() {
         textInput.style.height = '';
     } else {
         textInput.style.height = h + 'px';
+    }
+}
+
+function updateClearBtn() {
+    if (clearInputBtn) {
+        clearInputBtn.classList.toggle('visible', textInput.value.length > 0);
     }
 }
 
@@ -164,7 +170,7 @@ function actualSend(text, ta) {
     textInput.style.lineHeight = '';
     textInput.style.padding = '';
     sessionStorage.removeItem('terminal-input');
-
+    updateClearBtn();
 }
 
 // --- Main submit function ---
@@ -213,6 +219,7 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     sendBtn = sendBtnEl;
     imgBtn = document.getElementById('img-btn');
     fileInput = document.getElementById('file-input');
+    clearInputBtn = document.getElementById('clear-input');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
 
     // Load history from localStorage
@@ -226,14 +233,58 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     // Restore persisted input text
     var savedInput = sessionStorage.getItem('terminal-input');
     if (savedInput) textInput.value = savedInput;
-
+    updateClearBtn();
 
     // --- Input event: persist + auto-resize + clear button ---
     textInput.addEventListener('input', function () {
         sessionStorage.setItem('terminal-input', textInput.value);
         autoResize();
-    
+        updateClearBtn();
     });
+
+    // --- Clear button: tap = clear, long press = copy ---
+    if (clearInputBtn) {
+        var longPressTimer = null;
+        var didLongPress = false;
+
+        clearInputBtn.addEventListener('mousedown', startLongPress);
+        clearInputBtn.addEventListener('touchstart', function(e) { e.preventDefault(); startLongPress(); }, { passive: false });
+        clearInputBtn.addEventListener('mouseup', endLongPress);
+        clearInputBtn.addEventListener('touchend', endLongPress);
+        clearInputBtn.addEventListener('mouseleave', cancelLongPress);
+        clearInputBtn.addEventListener('touchcancel', cancelLongPress);
+
+        function startLongPress() {
+            didLongPress = false;
+            longPressTimer = setTimeout(function() {
+                didLongPress = true;
+                // Copy input text
+                if (textInput.value && navigator.clipboard) {
+                    navigator.clipboard.writeText(textInput.value).then(function() {
+                        window.showToast && window.showToast('복사됨', 1500);
+                    });
+                }
+            }, 500);
+        }
+        function endLongPress() {
+            clearTimeout(longPressTimer);
+            if (!didLongPress && textInput.value) {
+                // Short tap = clear
+                textInput.value = '';
+                textInput.style.height = '';
+                textInput.style.lineHeight = '';
+                textInput.style.padding = '';
+                sessionStorage.removeItem('terminal-input');
+                updateClearBtn();
+                textInput.focus();
+            }
+            didLongPress = false;
+        }
+        function cancelLongPress() {
+            clearTimeout(longPressTimer);
+            didLongPress = false;
+        }
+    }
 
     // --- Paste image from clipboard ---
     textInput.addEventListener('paste', function (e) {
