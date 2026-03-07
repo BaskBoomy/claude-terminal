@@ -3,8 +3,8 @@
   "short_name": "Terminal",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1815",
-  "theme_color": "#1a1815",
+  "background_color": "#1A1917",
+  "theme_color": "#1A1917",
   "orientation": "any",
   "icons": [
     {

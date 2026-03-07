@@ -1,4 +1,5 @@
 import { showToast, colorForPct, colorForTemp } from './utils.js';
+import { T } from './theme.js';
 
 // --- State ---
 let tmuxPollTimer = null;
@@ -108,11 +109,11 @@ function _renderUsage(data) {
     }
     usageEl.textContent = pct + '% \u00B7 ' + timeStr;
     if (pct >= 80) {
-        usageEl.style.color = '#ff6b6b';
+        usageEl.style.color = T.danger();
     } else if (pct >= 50) {
-        usageEl.style.color = '#e8b84b';
+        usageEl.style.color = T.warn;
     } else {
-        usageEl.style.color = '#6a6158';
+        usageEl.style.color = T.textSubtle();
     }
 }
 

@@ -3,15 +3,19 @@ import { showConfirm, closeConfirm, showToast } from './utils.js';
 
 var shSettings = { general: { wakeLock: false, fontSize: 16, notification: false }, snippets: [] };
 
-var SH_COLORS = {
-    'default': '#6a6158',
-    'green':   '#4caf50',
-    'blue':    '#C15F3C',
-    'red':     '#ff6b6b',
-    'yellow':  '#f9e2af',
-    'purple':  '#cba6f7',
-    'teal':    '#388e3c'
-};
+function _cv(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function getSHColors() {
+    return {
+        'default': _cv('--text-subtle'),
+        'green':   _cv('--success'),
+        'blue':    _cv('--accent'),
+        'red':     _cv('--danger'),
+        'yellow':  '#f9e2af',
+        'purple':  '#cba6f7',
+        'teal':    _cv('--success')
+    };
+}
+var SH_COLORS = getSHColors();
 var SH_COLOR_NAMES = Object.keys(SH_COLORS);
 
 var shDragSrcIdx = null;

@@ -1,4 +1,5 @@
 import { escapeHtml, colorForPct, colorForTemp } from './utils.js';
+import { T } from './theme.js';
 import { getCachedUsageData, getLastServerData } from './polling.js';
 
 // --- State ---
@@ -95,7 +96,7 @@ function renderUsageSection(data) {
     } else {
         timeStr = 'resetting...';
     }
-    var barColor = pct >= 80 ? '#ff6b6b' : pct >= 50 ? '#e8b84b' : '#8ab563';
+    var barColor = pct >= 80 ? T.danger() : pct >= 50 ? T.warn : T.successText();
 
     html += '<div class="usage-card">';
     html += '<div class="usage-header">';
@@ -166,9 +167,9 @@ function renderGitSection(repos, activeId) {
     if (git.changes && git.changes.total > 0) {
         var c = git.changes;
         html += '<div class="git-changes-row">';
-        html += '<div class="git-change-item"><div class="git-change-num" style="color:#8ab563">' + c.staged + '</div><div class="git-change-label">Staged</div></div>';
-        html += '<div class="git-change-item"><div class="git-change-num" style="color:#e8b84b">' + c.modified + '</div><div class="git-change-label">Modified</div></div>';
-        html += '<div class="git-change-item"><div class="git-change-num" style="color:#6a6158">' + c.untracked + '</div><div class="git-change-label">Untracked</div></div>';
+        html += '<div class="git-change-item"><div class="git-change-num" style="color:' + T.successText() + '">' + c.staged + '</div><div class="git-change-label">Staged</div></div>';
+        html += '<div class="git-change-item"><div class="git-change-num" style="color:' + T.warn + '">' + c.modified + '</div><div class="git-change-label">Modified</div></div>';
+        html += '<div class="git-change-item"><div class="git-change-num" style="color:' + T.textSubtle() + '">' + c.untracked + '</div><div class="git-change-label">Untracked</div></div>';
         html += '</div>';
 
         // File list (collapsed)
@@ -207,10 +208,10 @@ function renderServerSection(s) {
     var html = '<div class="dash-section">';
     html += '<div class="dash-section-title"><span>🖥</span> Server</div>';
     html += '<div class="usage-card"><div class="usage-daily-row">';
-    if (s.cpu != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">CPU</div><div class="usage-daily-val" style="color:' + (s.cpu >= 80 ? '#ff6b6b' : '#e8e6e3') + '">' + s.cpu + '%</div></div>';
-    if (s.mem != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">MEM</div><div class="usage-daily-val" style="color:' + (s.mem >= 80 ? '#ff6b6b' : '#e8e6e3') + '">' + s.memUsedGB + '/' + s.memTotalGB + 'G</div></div>';
+    if (s.cpu != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">CPU</div><div class="usage-daily-val" style="color:' + (s.cpu >= 80 ? T.danger() : T.text()) + '">' + s.cpu + '%</div></div>';
+    if (s.mem != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">MEM</div><div class="usage-daily-val" style="color:' + (s.mem >= 80 ? T.danger() : T.text()) + '">' + s.memUsedGB + '/' + s.memTotalGB + 'G</div></div>';
     if (s.disk != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">DISK</div><div class="usage-daily-val">' + s.disk + '%</div></div>';
-    if (s.temp != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">TEMP</div><div class="usage-daily-val" style="color:' + (s.temp >= 70 ? '#ff6b6b' : s.temp >= 55 ? '#e8b84b' : '#e8e6e3') + '">' + s.temp + '°C</div></div>';
+    if (s.temp != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">TEMP</div><div class="usage-daily-val" style="color:' + (s.temp >= 70 ? T.danger() : s.temp >= 55 ? T.warn : T.text()) + '">' + s.temp + '°C</div></div>';
     html += '</div></div></div>';
     return html;
 }

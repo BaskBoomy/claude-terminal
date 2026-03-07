@@ -16,10 +16,8 @@ export function showConfirm(msg, buttons) {
     buttons.forEach(b => {
         const btn = document.createElement('button');
         btn.textContent = b.label;
-        btn.className = 'confirm-btn' + (b.className ? ' ' + b.className : '');
-        if (b.className && b.className.includes('primary')) {
-            btn.style.background = '#C15F3C';
-        }
+        const cls = b.className || b.style || '';
+        btn.className = 'confirm-btn' + (cls ? ' ' + cls : '');
         btn.onclick = () => { closeConfirm(); if (b.action) b.action(); };
         actions.appendChild(btn);
     });
@@ -58,13 +56,15 @@ export function formatBytes(bytes) {
 }
 
 export function colorForPct(pct) {
-    if (pct > 80) return '#ff6b6b';
+    var s = getComputedStyle(document.documentElement);
+    if (pct > 80) return s.getPropertyValue('--danger').trim();
     if (pct > 60) return '#e8b84b';
-    return '#8ab563';
+    return s.getPropertyValue('--success-text').trim();
 }
 
 export function colorForTemp(t) {
-    if (t > 70) return '#ff6b6b';
+    var s = getComputedStyle(document.documentElement);
+    if (t > 70) return s.getPropertyValue('--danger').trim();
     if (t > 60) return '#e8b84b';
-    return '#8ab563';
+    return s.getPropertyValue('--success-text').trim();
 }
