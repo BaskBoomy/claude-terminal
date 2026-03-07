@@ -20,15 +20,14 @@ Built as a PWA (Progressive Web App) that connects to Claude Code running in tmu
 
 ## Requirements
 
-- Linux server (Raspberry Pi, VPS, etc.)
-- Python 3.8+
+- Linux or macOS server (Raspberry Pi, VPS, etc.)
 - tmux
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/claude-terminal.git
+git clone https://github.com/BaskBoomy/claude-terminal.git
 cd claude-terminal
 ./install.sh
 ```
@@ -36,10 +35,11 @@ cd claude-terminal
 The install script will:
 1. Install ttyd (web terminal emulator)
 2. Configure your password and settings
-3. Create systemd services
-4. Start the server
+3. Build the Go server (requires Go 1.22+)
+4. Create systemd services
+5. Start the server
 
-Access at `http://YOUR_IP:7682`
+Access at `http://YOUR_IP:PORT` (default port from `.env`)
 
 ## Manual Setup
 
@@ -56,35 +56,36 @@ cp .env.example .env
 # Edit .env — set at minimum: PASSWORD
 ```
 
-### 3. Start services
+### 3. Build
+
+```bash
+go build -ldflags="-s -w" -o claude-terminal .
+```
+
+### 4. Start services
 
 ```bash
 # Start ttyd (web terminal)
-ttyd -p 7681 -W -b /ttyd scripts/ttyd-start.sh &
+ttyd -p $TTYD_PORT -W -b /ttyd scripts/ttyd-start.sh &
 
-# Start API server
-python3 -m server.app
+# Start server
+./claude-terminal
 ```
 
-### 4. Access
+### 5. Access
 
-Open `http://YOUR_IP:7682` in your browser. Log in with your password.
+Open `http://YOUR_IP:PORT` in your browser. Log in with your password.
 
-## HTTPS with Caddy (Recommended)
+## HTTPS
 
-For secure remote access with a custom domain:
+The server supports automatic HTTPS via Let's Encrypt when a domain is configured:
 
 ```bash
-cp Caddyfile.example /etc/caddy/Caddyfile
-# Edit: replace YOUR_DOMAIN and paths
-sudo systemctl reload caddy
+# In .env
+DOMAIN=your.domain.com
 ```
 
-The Caddyfile template includes:
-- Automatic TLS certificates
-- Cookie-based auth check on ttyd access
-- Static file serving with SPA fallback
-- Redirect to login for unauthenticated users
+Alternatively, use a reverse proxy like Caddy or nginx.
 
 ## Configuration
 
@@ -93,48 +94,47 @@ All settings are in `.env`:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PASSWORD` | (required) | Login password |
-| `PORT` | `7682` | API server port |
+| `PORT` | `7680` | Server port |
 | `TTYD_PORT` | `7681` | ttyd port |
-| `DOMAIN` | | Custom domain (for display) |
-| `GIT_DIR` | | Git repo path for dashboard |
-| `PROJECT_DIRS` | | Comma-separated project paths for Brain tab |
+| `DOMAIN` | | Custom domain (enables HTTPS) |
 | `TMUX_SESSION` | `claude` | tmux session name |
-| `CLAUDE_CMD` | `claude --dangerously-skip-permissions` | Claude startup command |
+| `CLAUDE_CMD` | `claude` | Claude startup command |
 | `SESSION_MAX_AGE` | `86400` | Session lifetime (seconds) |
+| `UPLOAD_DIR` | `/tmp/claude-uploads` | File upload directory |
+| `NOTIFY_DIR` | `/tmp/claude-notify` | Notification directory |
 
 ## Project Structure
 
 ```
 claude-terminal/
-├── server/                 # Python backend
-│   ├── app.py              # HTTP server + routing
-│   ├── config.py           # Environment-based configuration
-│   ├── auth.py             # Authentication + sessions
-│   ├── brain.py            # Claude Code file scanner
-│   └── routes.py           # API route handlers
-├── public/                 # Frontend (served as static files)
-│   ├── index.html          # Main app HTML
-│   ├── login.html          # Login page
-│   ├── css/style.css       # Styles
-│   └── js/                 # ES modules
-│       ├── app.js          # Main orchestrator
-│       ├── terminal.js     # xterm.js integration
-│       ├── preview.js      # Multi-tab browser
-│       ├── notes.js        # Notes CRUD
-│       ├── brain.js        # Memory/skills viewer
-│       ├── dash.js         # Dashboard
-│       ├── settings.js     # Settings sheet
-│       ├── polling.js      # Status bar polling
-│       ├── copy-mode.js    # Terminal copy mode
-│       ├── gestures.js     # Touch gestures + PTR
-│       ├── snippets.js     # Command snippets
-│       ├── auth.js         # Auth check
-│       └── utils.js        # Shared utilities
-├── scripts/                # Setup scripts
-├── data/                   # Runtime data (gitignored)
-├── install.sh              # One-click setup
-├── Caddyfile.example       # Caddy reverse proxy template
-├── .env.example            # Configuration template
+├── main.go                # Entry point + HTTP server
+├── config.go              # Environment-based configuration
+├── auth.go                # Authentication + sessions
+├── routes.go              # API route handlers
+├── brain.go               # Claude Code file scanner
+├── public/                # Frontend (served as static files)
+│   ├── index.html         # Main app HTML
+│   ├── login.html         # Login page
+│   ├── css/style.css      # Styles
+│   └── js/                # ES modules
+│       ├── app.js         # Main orchestrator
+│       ├── terminal.js    # xterm.js integration
+│       ├── preview.js     # Multi-tab browser
+│       ├── notes.js       # Notes CRUD
+│       ├── brain.js       # Memory/skills viewer
+│       ├── dash.js        # Dashboard
+│       ├── settings.js    # Settings sheet
+│       ├── polling.js     # Status bar polling
+│       ├── copy-mode.js   # Terminal copy mode
+│       ├── gestures.js    # Touch gestures + PTR
+│       ├── snippets.js    # Command snippets
+│       ├── auth.js        # Auth check
+│       └── utils.js       # Shared utilities
+├── scripts/               # Setup scripts
+├── data/                  # Runtime data (gitignored)
+├── npm/                   # npx create-claude-terminal CLI
+├── install.sh             # One-click setup
+├── .env.example           # Configuration template
 └── README.md
 ```
 
@@ -159,7 +159,7 @@ claude-terminal/
 ## Security
 
 - Password hashed with PBKDF2-SHA256 (600,000 iterations)
-- Session cookies: HttpOnly, Secure, SameSite=Strict
+- Session cookies: HttpOnly, Secure (when HTTPS), SameSite=Strict
 - Rate limiting: 5 failed attempts per 15 minutes per IP
 - Path traversal protection on brain file access
 - No credentials stored in source code

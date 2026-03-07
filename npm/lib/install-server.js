@@ -46,7 +46,7 @@ function download(url, dest) {
 }
 
 async function installServer(config) {
-  const { installDir, password, port, domain } = config;
+  const { installDir, password, port, domain, claudeCmd } = config;
 
   console.log(`\n  Installing Claude Terminal to ${installDir}...`);
   fs.mkdirSync(installDir, { recursive: true });
@@ -103,6 +103,8 @@ async function installServer(config) {
   const envContent = [
     `PASSWORD=${password}`,
     `PORT=${port}`,
+    `TTYD_PORT=${config.ttydPort || 7681}`,
+    `CLAUDE_CMD=${config.claudeCmd || 'claude'}`,
     domain ? `DOMAIN=${domain}` : '# DOMAIN=your.domain.com',
   ].join('\n') + '\n';
   fs.writeFileSync(path.join(installDir, '.env'), envContent, { mode: 0o600 });
