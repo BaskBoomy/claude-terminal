@@ -494,24 +494,26 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 #settings-sheet.dragging { transition: none; }
 
 .sheet-header {
-    display: flex; align-items: center; padding: 12px 16px 8px;
+    display: flex; align-items: center; padding: 10px 16px 6px;
     flex-shrink: 0; cursor: grab; user-select: none; touch-action: none;
 }
 .sheet-handle {
-    width: 36px; height: 5px; background: var(--border); border-radius: 3px;
-    margin: 0 auto 8px;
+    width: 32px; height: 4px; background: var(--border); border-radius: 2px;
+    margin: 0 auto 6px;
 }
 .sheet-title {
-    flex: 1; font-size: 17px; font-weight: 600; color: var(--text);
-    font-family: -apple-system, system-ui, sans-serif;
+    flex: 1; font-size: 14px; font-weight: 600; color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    letter-spacing: 0.5px;
 }
 .sheet-close {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--bg-raised); border: none; color: var(--text-muted);
-    font-size: 16px; cursor: pointer; display: flex;
+    width: 28px; height: 28px; border-radius: 6px;
+    background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+    font-size: 14px; cursor: pointer; display: flex;
     align-items: center; justify-content: center;
+    transition: background 0.15s;
 }
-.sheet-close:active { background: var(--border); }
+.sheet-close:active { background: var(--bg-raised); }
 
 .sheet-body {
     flex: 1; overflow-y: auto; overscroll-behavior: contain;
@@ -520,153 +522,204 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 
 .settings-section-title {
-    font-size: 12px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.8px; color: var(--text-muted); margin: 20px 0 8px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-subtle); margin: 20px 0 6px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    display: flex; align-items: center; gap: 8px;
+}
+.settings-section-title::before,
+.settings-section-title::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
 }
 .settings-section-title:first-child { margin-top: 8px; }
 
 .settings-group {
-    background: var(--bg); border-radius: 12px;
-    border: 1px solid var(--bg-raised); overflow: hidden;
+    background: transparent; border-radius: 0;
+    border: none; overflow: hidden;
 }
 .settings-item {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; min-height: 44px;
+    padding: 10px 12px; min-height: 40px; border-radius: 8px;
+    transition: background 0.15s;
 }
-.settings-divider { height: 1px; background: var(--bg-raised); margin-left: 16px; }
+.settings-item:active { background: var(--bg-raised); }
+.settings-divider { height: 0; margin: 2px 0; }
 .settings-item-label {
-    font-size: 15px; color: var(--text); font-weight: 500;
+    font-size: 13px; color: var(--text); font-weight: 500;
 }
 .settings-item-desc {
-    font-size: 12px; color: var(--text-subtle); margin-top: 2px;
+    font-size: 11px; color: var(--text-subtle); margin-top: 1px;
 }
 
-/* iOS-style toggle */
+/* Slim toggle */
 .ios-toggle {
-    position: relative; width: 51px; height: 31px; flex-shrink: 0;
+    position: relative; width: 36px; height: 20px; flex-shrink: 0;
 }
 .ios-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
 .ios-toggle .tog-track {
     position: absolute; inset: 0; background: var(--border);
-    border-radius: 16px; cursor: pointer; transition: background 0.25s;
+    border-radius: 10px; cursor: pointer; transition: background 0.2s;
 }
 .ios-toggle .tog-thumb {
-    position: absolute; width: 27px; height: 27px;
-    left: 2px; top: 2px; background: var(--white);
-    border-radius: 50%; transition: transform 0.25s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    position: absolute; width: 16px; height: 16px;
+    left: 2px; top: 2px; background: var(--text-muted);
+    border-radius: 50%; transition: transform 0.2s, background 0.2s;
 }
 .ios-toggle input:checked ~ .tog-track { background: var(--accent); }
-.ios-toggle input:checked ~ .tog-thumb { transform: translateX(20px); }
+.ios-toggle input:checked ~ .tog-thumb { transform: translateX(16px); background: var(--white); }
 
-/* Font size control */
-.font-ctrl { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* Font size stepper */
+.font-ctrl { display: flex; align-items: center; gap: 0; flex-shrink: 0; background: var(--bg-raised); border-radius: 8px; border: 1px solid var(--border); }
 .font-ctrl button {
-    width: 32px; height: 32px; border-radius: 8px;
-    background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);
-    font-size: 18px; cursor: pointer; line-height: 1;
+    width: 30px; height: 30px; border-radius: 0;
+    background: transparent; color: var(--text-muted); border: none;
+    font-size: 16px; cursor: pointer; line-height: 1;
     display: flex; align-items: center; justify-content: center;
-    touch-action: manipulation;
+    touch-action: manipulation; transition: color 0.15s;
 }
-.font-ctrl button:active { background: var(--border); }
+.font-ctrl button:active { color: var(--accent); background: var(--border); }
 .font-ctrl .font-val {
-    font-size: 15px; color: var(--text); min-width: 28px; text-align: center;
+    font-size: 13px; color: var(--text); min-width: 24px; text-align: center;
+    font-family: 'SF Mono', 'Cascadia Code', monospace; font-weight: 600;
+    border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+    height: 30px; line-height: 30px;
 }
 
 /* Snippet card in sheet */
 .sn-card {
-    background: var(--bg); border-radius: 12px;
-    border: 2px solid var(--bg-raised); padding: 14px 16px;
-    margin-bottom: 8px; transition: border-color 0.15s;
+    background: transparent; border-radius: 8px;
+    border: 1px solid var(--border); padding: 0;
+    margin-bottom: 6px; transition: border-color 0.15s;
+    overflow: hidden;
 }
 .sn-card.dragging { opacity: 0.4; }
 .sn-card.drag-over { border-color: var(--accent); }
-.sn-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+
+/* Collapsed header row */
+.sn-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; cursor: pointer; min-height: 40px;
+    transition: background 0.15s;
+}
+.sn-header:active { background: var(--bg-raised); }
+.sn-color-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.sn-header-label {
+    flex: 1; font-size: 13px; color: var(--text); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0;
+}
+.sn-header-label.empty { color: var(--text-subtle); font-style: italic; }
+.sn-header-cmd {
+    font-size: 11px; color: var(--text-subtle); max-width: 120px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.sn-chevron {
+    font-size: 10px; color: var(--text-subtle); transition: transform 0.2s;
+    flex-shrink: 0; width: 16px; text-align: center;
+}
+.sn-card.expanded .sn-chevron { transform: rotate(90deg); }
 .sn-handle {
-    cursor: grab; color: var(--text-subtle); font-size: 18px; padding: 6px;
-    user-select: none; touch-action: none; min-width: 32px; text-align: center;
+    cursor: grab; color: var(--text-subtle); font-size: 14px; padding: 4px;
+    user-select: none; touch-action: none; min-width: 24px; text-align: center;
 }
 .sn-handle:active { cursor: grabbing; color: var(--accent); }
+
+/* Expanded body */
+.sn-body {
+    display: none; padding: 8px 10px 10px;
+    border-top: 1px solid var(--border);
+}
+.sn-card.expanded .sn-body { display: block; }
+
+.sn-top { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .sn-top input {
-    flex: 1; min-width: 0; padding: 8px 10px; background: var(--bg-raised);
-    color: var(--text); border: 1px solid var(--border); border-radius: 8px;
-    font-size: 15px; font-weight: 600; outline: none;
+    flex: 1; min-width: 0; padding: 6px 8px; background: var(--bg-raised);
+    color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; font-weight: 600; outline: none;
     font-family: -apple-system, system-ui, sans-serif;
 }
 .sn-top input:focus { border-color: var(--accent); }
 .sn-del {
-    padding: 8px 10px; background: none; border: none;
-    color: var(--danger); cursor: pointer; font-size: 18px; border-radius: 6px;
-    min-width: 36px; text-align: center;
+    padding: 6px 8px; background: none; border: none;
+    color: var(--danger); cursor: pointer; font-size: 14px; border-radius: 4px;
+    min-width: 28px; text-align: center;
 }
 .sn-del:active { background: var(--bg-raised); }
 
-.sn-field { margin-bottom: 10px; }
+.sn-field { margin-bottom: 8px; }
 .sn-field:last-child { margin-bottom: 0; }
-.sn-field-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
+.sn-field-label { font-size: 10px; color: var(--text-subtle); margin-bottom: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .sn-field textarea {
-    width: 100%; padding: 8px 10px; background: var(--bg-raised);
-    color: var(--text); border: 1px solid var(--border); border-radius: 8px;
-    font-size: 13px; font-family: 'SF Mono', 'Cascadia Code', monospace;
-    resize: vertical; min-height: 34px; outline: none; line-height: 1.4;
+    width: 100%; padding: 6px 8px; background: var(--bg-raised);
+    color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    font-size: 12px; font-family: 'SF Mono', 'Cascadia Code', monospace;
+    resize: vertical; min-height: 30px; outline: none; line-height: 1.4;
 }
 .sn-field textarea:focus { border-color: var(--accent); }
 
-.sn-colors { display: flex; gap: 8px; flex-wrap: wrap; }
+.sn-colors { display: flex; gap: 6px; flex-wrap: wrap; }
 .sn-color-opt {
-    width: 28px; height: 28px; border-radius: 50%;
+    width: 18px; height: 18px; border-radius: 50%;
     border: 2px solid transparent; cursor: pointer; transition: 0.15s;
 }
-.sn-color-opt:hover { transform: scale(1.1); }
+.sn-color-opt:hover { transform: scale(1.15); }
 .sn-color-opt.selected { border-color: var(--text); box-shadow: 0 0 0 1px var(--bg); }
 
-.sn-confirm-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 10px; background: var(--bg-raised); border-radius: 8px;
+.sn-opts-row {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
 }
-.sn-confirm-row span { font-size: 13px; color: var(--text-muted); }
-.sn-mini-toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.sn-opt-item {
+    display: flex; align-items: center; gap: 6px;
+}
+.sn-opt-item span { font-size: 11px; color: var(--text-muted); }
+.sn-mini-toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
 .sn-mini-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
 .sn-mini-toggle .mt-track {
     position: absolute; inset: 0; background: var(--border);
-    border-radius: 11px; cursor: pointer; transition: 0.2s;
+    border-radius: 9px; cursor: pointer; transition: 0.2s;
 }
 .sn-mini-toggle .mt-thumb {
-    position: absolute; width: 18px; height: 18px;
-    left: 2px; top: 2px; background: var(--text);
+    position: absolute; width: 14px; height: 14px;
+    left: 2px; top: 2px; background: var(--text-muted);
     border-radius: 50%; transition: 0.2s;
 }
-.sn-mini-toggle input:checked ~ .mt-track { background: var(--danger); }
-.sn-mini-toggle input:checked ~ .mt-thumb { transform: translateX(18px); }
+.sn-mini-toggle input:checked ~ .mt-track { background: var(--accent); }
+.sn-mini-toggle input:checked ~ .mt-thumb { transform: translateX(14px); background: var(--white); }
 
 .sn-add-btn {
-    width: 100%; padding: 12px; background: transparent;
-    color: var(--accent); border: 1px dashed var(--border); border-radius: 12px;
-    font-size: 15px; cursor: pointer; margin-top: 4px;
-    font-family: -apple-system, system-ui, sans-serif;
+    width: 100%; padding: 10px; background: transparent;
+    color: var(--text-subtle); border: 1px dashed var(--border); border-radius: 8px;
+    font-size: 12px; cursor: pointer; margin-top: 4px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    transition: color 0.15s, border-color 0.15s;
 }
-.sn-add-btn:active { background: var(--bg); }
+.sn-add-btn:active { color: var(--accent); border-color: var(--accent); }
 
-/* Logout button */
+/* Logout link */
 .settings-logout {
-    width: 100%; padding: 14px; margin: 24px 0 8px;
-    background: var(--bg); border: 1px solid var(--bg-raised); border-radius: 12px;
-    color: var(--danger); font-size: 15px; font-weight: 600; cursor: pointer;
-    font-family: -apple-system, system-ui, sans-serif;
+    width: auto; padding: 8px 0; margin: 20px 0 8px;
+    background: transparent; border: none; border-radius: 0;
+    color: var(--danger); font-size: 12px; font-weight: 500; cursor: pointer;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    opacity: 0.7; transition: opacity 0.15s;
+    display: block;
 }
-.settings-logout:active { background: var(--bg-raised); }
+.settings-logout:active { opacity: 1; }
 
 /* Save bar */
 .settings-save-bar {
-    flex-shrink: 0; padding: 12px 16px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--bg-raised);
+    flex-shrink: 0; padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
 }
 .settings-save-btn {
-    width: 100%; padding: 14px; background: var(--accent); color: var(--white);
-    border: none; border-radius: 10px; font-size: 16px; font-weight: 700;
+    width: 100%; padding: 10px; background: var(--accent); color: var(--white);
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
     cursor: pointer; transition: background 0.2s;
-    font-family: -apple-system, system-ui, sans-serif;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
 }
 .settings-save-btn:active { background: var(--accent-hover); }
 .settings-save-btn.saved { background: var(--success); }
