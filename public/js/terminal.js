@@ -5,7 +5,7 @@ let textInput = null;
 let sendBtn = null;
 let imgBtn = null;
 let fileInput = null;
-let clearInputBtn = null;
+
 let scrollBottomBtnEl = null;
 
 let inputHistory = [];
@@ -46,11 +46,6 @@ function autoResize() {
     }
 }
 
-function updateClearBtn() {
-    if (clearInputBtn) {
-        clearInputBtn.classList.toggle('visible', textInput.value.length > 0);
-    }
-}
 
 // --- Find xterm.js hidden textarea inside iframe ---
 export function getTA() {
@@ -169,7 +164,7 @@ function actualSend(text, ta) {
     textInput.style.lineHeight = '';
     textInput.style.padding = '';
     sessionStorage.removeItem('terminal-input');
-    updateClearBtn();
+
 }
 
 // --- Main submit function ---
@@ -211,14 +206,6 @@ export function getTtydUrl() {
     return size !== 15 ? '/ttyd/?fontSize=' + size : '/ttyd/';
 }
 
-// --- Clear input field and update UI ---
-export function clearInput() {
-    textInput.value = '';
-    sessionStorage.removeItem('terminal-input');
-    autoResize();
-    updateClearBtn();
-}
-
 // --- Initialize terminal module ---
 export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     frame = frameEl;
@@ -226,7 +213,6 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     sendBtn = sendBtnEl;
     imgBtn = document.getElementById('img-btn');
     fileInput = document.getElementById('file-input');
-    clearInputBtn = document.getElementById('clear-input');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
 
     // Load history from localStorage
@@ -240,23 +226,14 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     // Restore persisted input text
     var savedInput = sessionStorage.getItem('terminal-input');
     if (savedInput) textInput.value = savedInput;
-    updateClearBtn();
+
 
     // --- Input event: persist + auto-resize + clear button ---
     textInput.addEventListener('input', function () {
         sessionStorage.setItem('terminal-input', textInput.value);
         autoResize();
-        updateClearBtn();
+    
     });
-
-    // --- Clear input button ---
-    if (clearInputBtn) {
-        clearInputBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            clearInput();
-            textInput.focus();
-        });
-    }
 
     // --- Paste image from clipboard ---
     textInput.addEventListener('paste', function (e) {
