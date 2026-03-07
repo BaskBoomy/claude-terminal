@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=20">
+    <link rel="stylesheet" href="/css/style.css?v=21">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -26,6 +26,7 @@
         <button class="view-tab" data-view="notes">Notes</button>
         <button class="view-tab" data-view="brain">Brain</button>
         <button class="view-tab" data-view="dash">Dash</button>
+        <button class="view-tab" data-view="launch">Launch</button>
     </div>
     <div id="terminal-wrap">
         <iframe id="terminal-frame" src="/ttyd/"></iframe>
@@ -71,6 +72,7 @@
             </div>
         </div>
         <div id="dash-container"><div id="dash-scroll"><div id="dash-content"></div></div></div>
+        <div id="launch-container"><div id="launch-scroll"><div id="launch-content"></div></div></div>
         <div id="brain-container">
             <div id="brain-tree-view">
                 <div id="brain-tree-header">
@@ -260,6 +262,6 @@ if ('serviceWorker' in navigator) {
         .catch(function() {});
 }
 </script>
-<script type="module" src="/js/app.js?v=13"></script>
+<script type="module" src="/js/app.js?v=14"></script>
 </body>
 </html>
