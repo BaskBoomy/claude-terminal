@@ -1,0 +1,25 @@
+# Runtime data
+data/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+/tmp/
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Notes (user data)
+notes.txt
