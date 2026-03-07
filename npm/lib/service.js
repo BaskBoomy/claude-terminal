@@ -19,7 +19,7 @@ async function setupService(config) {
 }
 
 async function setupSystemd(config, user) {
-  const { installDir, port } = config;
+  const { installDir, port, ttydPort } = config;
   const ttydPath = findBinary('ttyd');
   const binPath = path.join(installDir, 'claude-terminal');
   const scriptPath = path.join(installDir, 'ttyd-start.sh');
@@ -32,9 +32,10 @@ After=network.target
 [Service]
 Type=simple
 User=${user}
-ExecStart=${ttydPath} -p 7681 -W -b /ttyd ${scriptPath}
+ExecStart=${ttydPath} -p ${ttydPort} -W -b /ttyd ${scriptPath}
 Restart=on-failure
 RestartSec=5
+Environment=CLAUDE_CMD=${config.claudeCmd || 'claude'}
 
 [Install]
 WantedBy=multi-user.target
@@ -77,7 +78,7 @@ WantedBy=multi-user.target
     console.log('  ✅ systemd services enabled and started');
   } catch (err) {
     console.log('  ⚠️  Could not set up systemd. Start manually:');
-    console.log(`     ${ttydPath} -p 7681 -W -b /ttyd ${scriptPath} &`);
+    console.log(`     ${ttydPath} -p ${ttydPort} -W -b /ttyd ${scriptPath} &`);
     console.log(`     PORT=${config.port} ${binPath} &`);
   }
 
@@ -103,7 +104,7 @@ async function setupLaunchd(config, user) {
     <key>ProgramArguments</key>
     <array>
         <string>${ttydPath}</string>
-        <string>-p</string><string>7681</string>
+        <string>-p</string><string>${config.ttydPort}</string>
         <string>-W</string>
         <string>-b</string><string>/ttyd</string>
         <string>${scriptPath}</string>

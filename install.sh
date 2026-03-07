@@ -25,9 +25,6 @@ echo -e "${NC}"
 # ─── 1. Check prerequisites ───────────────────────────────
 info "Checking prerequisites..."
 
-command -v python3 >/dev/null 2>&1 || error "python3 is required but not installed. Run: sudo apt install python3"
-success "python3 found: $(python3 --version)"
-
 command -v tmux >/dev/null 2>&1 || error "tmux is required but not installed. Run: sudo apt install tmux"
 success "tmux found: $(tmux -V)"
 
@@ -102,19 +99,18 @@ success "Data directories ready"
 info "Creating systemd service files..."
 
 CURRENT_USER="$(whoami)"
-PYTHON_BIN="$(command -v python3)"
 
 # Main server service
 sudo tee /etc/systemd/system/claude-terminal.service > /dev/null <<EOF
 [Unit]
-Description=Claude Terminal - Python API Server
-After=network.target
+Description=Claude Terminal - Web UI for Claude Code
+After=network.target claude-terminal-ttyd.service
 
 [Service]
 Type=simple
 User=$CURRENT_USER
 WorkingDirectory=$SCRIPT_DIR
-ExecStart=$PYTHON_BIN $SCRIPT_DIR/server/app.py
+ExecStart=$SCRIPT_DIR/claude-terminal
 Restart=on-failure
 RestartSec=5
 EnvironmentFile=$SCRIPT_DIR/.env
@@ -126,6 +122,8 @@ success "Created claude-terminal.service"
 
 # ttyd service
 TTYD_BIN="$(command -v ttyd)"
+TTYD_PORT="$(grep '^TTYD_PORT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo 7681)"
+[ -z "$TTYD_PORT" ] && TTYD_PORT=7681
 sudo tee /etc/systemd/system/claude-terminal-ttyd.service > /dev/null <<EOF
 [Unit]
 Description=Claude Terminal - ttyd Web Terminal
@@ -134,10 +132,8 @@ After=network.target
 [Service]
 Type=simple
 User=$CURRENT_USER
-Environment=TMUX_SESSION=claude
-Environment=CLAUDE_CMD=claude
 EnvironmentFile=$SCRIPT_DIR/.env
-ExecStart=$TTYD_BIN --port 7681 --base-path /ttyd --writable $SCRIPT_DIR/scripts/ttyd-start.sh
+ExecStart=$TTYD_BIN --port $TTYD_PORT --base-path /ttyd --writable $SCRIPT_DIR/scripts/ttyd-start.sh
 Restart=on-failure
 RestartSec=5
 
@@ -180,7 +176,9 @@ if [ -n "$DOMAIN" ]; then
     echo "    2. Point DNS for $DOMAIN to this server"
 else
     echo -e "  ${BOLD}Access URL:${NC}"
-    echo "    http://$(hostname -I | awk '{print $1}'):7682"
+    PORT="$(grep '^PORT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 || echo 7680)"
+    [ -z "$PORT" ] && PORT=7680
+    echo "    http://$(hostname -I | awk '{print $1}'):$PORT"
     echo ""
     echo -e "  ${BOLD}Next steps:${NC}"
     echo "    1. (Optional) Set up a domain with Caddy (see Caddyfile.example)"

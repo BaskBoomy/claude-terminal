@@ -56,6 +56,8 @@ async function prompt(checks) {
   }
 
   const port = await ask(rl, 'Port', '7680');
+  const ttydPort = await ask(rl, 'ttyd port', '7681');
+  const claudeCmd = await ask(rl, 'Claude command', 'claude');
   const domain = await ask(rl, 'Domain (optional, for HTTPS)', '');
   const installDir = await ask(rl, 'Install directory', `${process.env.HOME}/.claude-terminal`);
 
@@ -64,6 +66,8 @@ async function prompt(checks) {
   return {
     password,
     port: parseInt(port, 10) || 7680,
+    ttydPort: parseInt(ttydPort, 10) || 7681,
+    claudeCmd,
     domain,
     installDir,
   };

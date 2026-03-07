@@ -97,7 +97,7 @@ func setSessionCookie(w http.ResponseWriter, cfg *Config, token string) {
 		Path:     "/",
 		MaxAge:   cfg.SessionMaxAge,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   cfg.Domain != "",
 		SameSite: http.SameSiteStrictMode,
 	})
 }
@@ -109,7 +109,7 @@ func clearSessionCookie(w http.ResponseWriter, cfg *Config) {
 		Path:     "/",
 		MaxAge:   0,
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   cfg.Domain != "",
 		SameSite: http.SameSiteStrictMode,
 	})
 }
