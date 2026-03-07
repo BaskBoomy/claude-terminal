@@ -12,7 +12,6 @@ export async function initAuth() {
   } catch (e) {
     // Network error — allow through (might be local access)
   }
-  document.body.style.visibility = 'visible';
   // Override global fetch to handle 401
   window.fetch = authFetch;
   return true;

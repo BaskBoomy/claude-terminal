@@ -1,5 +1,5 @@
-// v2 — force cache clear on update
-var CACHE_VERSION = 'v2';
+// v3 — network-first for all app assets
+var CACHE_VERSION = 'v3';
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
@@ -10,11 +10,17 @@ self.addEventListener('install', function(e) {
 });
 
 self.addEventListener('activate', function(e) {
-    e.waitUntil(self.clients.claim());
+    e.waitUntil(
+        caches.keys().then(function(names) {
+            return Promise.all(names.map(function(name) { return caches.delete(name); }));
+        }).then(function() { return self.clients.claim(); })
+    );
 });
 
 self.addEventListener('fetch', function(event) {
     var url = new URL(event.request.url);
+
+    // ttyd: patch WebSocket interception
     if (url.pathname === '/ttyd/' && event.request.mode === 'navigate') {
         event.respondWith(
             fetch(event.request).then(function(response) {
@@ -42,5 +48,19 @@ self.addEventListener('fetch', function(event) {
                 });
             })
         );
+        return;
+    }
+
+    // All same-origin JS, CSS, and HTML: network-first, bypass cache
+    if (url.origin === self.location.origin) {
+        var ext = url.pathname.split('.').pop();
+        if (ext === 'js' || ext === 'css' || ext === 'html' || url.pathname === '/' || event.request.mode === 'navigate') {
+            event.respondWith(
+                fetch(event.request, { cache: 'no-store' }).catch(function() {
+                    return caches.match(event.request);
+                })
+            );
+            return;
+        }
     }
 });
