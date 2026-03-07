@@ -242,59 +242,60 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
         updateClearBtn();
     });
 
-    // --- Clear button: tap = clear, long press = copy ---
+    // --- Clear button: tap = clear, double-tap = copy ---
     if (clearInputBtn) {
-        var longPressTimer = null;
-        var didLongPress = false;
+        var lastTapTime = 0;
 
-        clearInputBtn.addEventListener('mousedown', startLongPress);
-        clearInputBtn.addEventListener('touchstart', function(e) { e.preventDefault(); startLongPress(); }, { passive: false });
-        clearInputBtn.addEventListener('mouseup', endLongPress);
-        clearInputBtn.addEventListener('touchend', endLongPress);
-        clearInputBtn.addEventListener('mouseleave', cancelLongPress);
-        clearInputBtn.addEventListener('touchcancel', cancelLongPress);
-
-        function copyInputText() {
+        function doCopy() {
             if (!textInput.value) return;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(textInput.value)
-                    .then(function() { window.showToast && window.showToast('복사됨', 1500); })
-                    .catch(fallbackCopy);
-            } else {
-                fallbackCopy();
-            }
+            // Try modern clipboard API first, fallback to execCommand
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(textInput.value)
+                        .then(function() { window.showToast && window.showToast('복사됨', 1500); })
+                        .catch(function() { execCopy(); });
+                    return;
+                }
+            } catch(e) {}
+            execCopy();
         }
-        function fallbackCopy() {
-            textInput.select();
+        function execCopy() {
+            var ta = document.createElement('textarea');
+            ta.value = textInput.value;
+            ta.style.cssText = 'position:fixed;left:-9999px';
+            document.body.appendChild(ta);
+            ta.select();
             document.execCommand('copy');
-            window.getSelection().removeAllRanges();
+            document.body.removeChild(ta);
             window.showToast && window.showToast('복사됨', 1500);
         }
-        function startLongPress() {
-            didLongPress = false;
-            longPressTimer = setTimeout(function() {
-                didLongPress = true;
-                copyInputText();
-            }, 500);
+        function doClear() {
+            textInput.value = '';
+            textInput.style.height = '';
+            textInput.style.lineHeight = '';
+            textInput.style.padding = '';
+            sessionStorage.removeItem('terminal-input');
+            updateClearBtn();
+            textInput.focus();
         }
-        function endLongPress() {
-            clearTimeout(longPressTimer);
-            if (!didLongPress && textInput.value) {
-                // Short tap = clear
-                textInput.value = '';
-                textInput.style.height = '';
-                textInput.style.lineHeight = '';
-                textInput.style.padding = '';
-                sessionStorage.removeItem('terminal-input');
-                updateClearBtn();
-                textInput.focus();
+
+        clearInputBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var now = Date.now();
+            if (now - lastTapTime < 400) {
+                // Double tap = copy
+                doCopy();
+                lastTapTime = 0;
+            } else {
+                // Single tap = clear (with short delay to check for double)
+                lastTapTime = now;
+                setTimeout(function() {
+                    if (lastTapTime === now && textInput.value) {
+                        doClear();
+                    }
+                }, 400);
             }
-            didLongPress = false;
-        }
-        function cancelLongPress() {
-            clearTimeout(longPressTimer);
-            didLongPress = false;
-        }
+        });
     }
 
     // --- Paste image from clipboard ---
