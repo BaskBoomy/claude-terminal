@@ -154,7 +154,7 @@ function actualSend(text, ta) {
     saveHistory();
     historyIndex = -1;
     textInput.value = '';
-    textInput.style.height = '36px';
+    textInput.style.height = '';
     sessionStorage.removeItem('terminal-input');
     updateClearBtn();
 }
