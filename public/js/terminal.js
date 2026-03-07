@@ -178,7 +178,7 @@ function actualSend(text, ta) {
 export function submitInput() {
     var text = textInput.value;
 
-    // If scrolled up, exit copy-mode + scroll to bottom first, then send with delay
+    // If scrolled up, exit copy-mode via server API + scroll to bottom, then send
     if (scrollBottomBtnEl && scrollBottomBtnEl.classList.contains('visible')) {
         var actuallyScrolledUp = false;
         try {
@@ -189,18 +189,21 @@ export function submitInput() {
         } catch (e) {}
 
         if (actuallyScrolledUp) {
-            sendKey('q', 81); // exit tmux copy-mode
-            try {
-                var viewport2 = frame.contentDocument.querySelector('.xterm-viewport');
-                if (viewport2) viewport2.scrollTop = viewport2.scrollHeight;
-            } catch (e) {}
-            scrollBottomBtnEl.classList.remove('visible');
-            setTimeout(function () {
-                doSendInput(text);
-            }, 150);
+            fetch('/api/tmux-scroll-bottom', { method: 'POST' })
+                .catch(function() {})
+                .finally(function() {
+                    try {
+                        var vp = frame.contentDocument.querySelector('.xterm-viewport');
+                        if (vp) vp.scrollTop = vp.scrollHeight;
+                    } catch (e) {}
+                    scrollBottomBtnEl.classList.remove('visible');
+                    setTimeout(function () {
+                        doSendInput(text);
+                    }, 150);
+                });
             return;
         }
-        // Button visible but actually at bottom — stale state, don't send 'q'
+        // Button visible but actually at bottom — stale state
         scrollBottomBtnEl.classList.remove('visible');
     }
 
