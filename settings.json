@@ -2,7 +2,15 @@
   "general": {
     "wakeLock": false,
     "fontSize": 12,
-    "notification": true
+    "notification": true,
+    "tabOrder": [
+      "preview",
+      "notes",
+      "terminal",
+      "brain",
+      "dash"
+    ],
+    "termFontSize": 10
   },
   "snippets": [
     {

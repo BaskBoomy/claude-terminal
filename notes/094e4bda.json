@@ -1,6 +1,0 @@
-{
-  "title": "테스트 계정",
-  "content": "[PLATFORM_ADMIN]\n  master@naught.kr          나트 관리자 (잭)\n\n[ORG_OWNER]\n  owner@dokjaeja.com        독재자 학원장\n\n[BRANCH_ADMIN]\n  admin@dokjaeja.com        지점관리자\n\n[MENTOR]\n  mentor@dokjaeja.com       멘토\n\n[TEACHER]\n  teacher1@dokjaeja.com     선생님1\n  teacher2@dokjaeja.com     선생님2\n\n[PARENT]\n  parent1@dokjaeja.com      학부모1\n\n[STUDENT] (로그인코드)\n  111111                    학생1\n  222222                    학생2\n  333333                    학생3\n\n비밀번호: qwer1234!",
-  "createdAt": 1772469868115,
-  "updatedAt": 1772469868115
-}

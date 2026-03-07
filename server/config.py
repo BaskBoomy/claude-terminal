@@ -102,7 +102,6 @@ SETTINGS_FILE = os.path.join(DATA_DIR, 'settings.json')
 NOTES_DIR = os.path.join(DATA_DIR, 'notes')
 UPLOAD_DIR = _env('UPLOAD_DIR', '/tmp/claude-uploads')
 NOTIFY_DIR = _env('NOTIFY_DIR', '/tmp/claude-notify')
-GIT_DIR = _env('GIT_DIR') or None
 
 # ─── tmux ─────────────────────────────────────────────────
 
@@ -127,65 +126,140 @@ TMUX_SOCKET = _find_tmux_socket()
 # ─── Brain directories ────────────────────────────────────
 
 _HOME = os.path.expanduser('~')
+_KNOWN_CATEGORIES = ('memory', 'skills', 'agents', 'rules', 'hooks')
+
+
+def _dir_name_to_path(name):
+    """Convert Claude projects dir name to real filesystem path.
+
+    e.g. "-home-jack-dokjaeja" → "/home/jack/dokjaeja"
+
+    Strategy: split on '-', then greedily try the shortest prefix
+    that exists as a directory, resolve it, and continue with the rest.
+    """
+    # "-home-jack-dokjaeja" → ['home', 'jack', 'dokjaeja']
+    segments = name.strip('-').split('-')
+    if not segments:
+        return None
+
+    resolved = ''
+    i = 0
+    while i < len(segments):
+        # Try single segment first, then progressively longer hyphenated names
+        matched = False
+        for end in range(i + 1, len(segments) + 1):
+            candidate = resolved + '/' + '-'.join(segments[i:end])
+            if os.path.isdir(candidate):
+                resolved = candidate
+                i = end
+                matched = True
+                break
+        if not matched:
+            # No existing dir found — append remaining as-is
+            resolved = resolved + '/' + '-'.join(segments[i:])
+            break
+
+    return resolved if os.path.isdir(resolved) else None
 
 
 def _build_brain_dirs():
-    """Build list of brain directory configurations."""
+    """Auto-discover brain directories from ~/.claude/projects/."""
     dirs = []
-
-    # Global scope — always included
     global_claude = os.path.join(_HOME, '.claude')
-    # Find the project memory dir (convention: ~/.claude/projects/-home-<user>/memory/)
     projects_dir = os.path.join(global_claude, 'projects')
-    memory_dir = None
+
+    # 1. Global scope — scan ~/.claude/ for known categories
+    global_cats = {}
+    for cat in _KNOWN_CATEGORIES:
+        if cat == 'memory':
+            continue  # memory lives under projects/
+        path = os.path.join(global_claude, cat)
+        if os.path.isdir(path):
+            global_cats[cat] = path
+
+    # 2. Discover projects from ~/.claude/projects/
+    seen_projects = {}  # real_path → project_dir_name
     if os.path.isdir(projects_dir):
-        for d in os.listdir(projects_dir):
-            mem = os.path.join(projects_dir, d, 'memory')
-            if os.path.isdir(mem):
-                memory_dir = mem
-                break
+        for d in sorted(os.listdir(projects_dir)):
+            dpath = os.path.join(projects_dir, d)
+            if not os.path.isdir(dpath):
+                continue
+
+            # Collect memory dirs into global scope
+            mem = os.path.join(dpath, 'memory')
+            if os.path.isdir(mem) and os.listdir(mem):
+                label = 'memory' if d == '-' else 'memory (' + d + ')'
+                global_cats[label] = mem
+
+            # Reverse-map to real project path (skip home dir — already global)
+            real_path = _dir_name_to_path(d)
+            if real_path and real_path != _HOME and os.path.isdir(real_path):
+                seen_projects[real_path] = d
 
     dirs.append({
         'id': 'global',
         'label': 'Global',
-        'categories': {
-            'memory': memory_dir,
-            'skills': _dir_or_none(global_claude, 'skills'),
-            'agents': _dir_or_none(global_claude, 'agents'),
-            'hooks': _dir_or_none(global_claude, 'hooks'),
-        }
+        'categories': global_cats,
     })
 
-    # Project-specific scopes
-    project_dirs_str = _env('PROJECT_DIRS')
-    if project_dirs_str:
-        for pdir in project_dirs_str.split(','):
-            pdir = pdir.strip()
-            if not pdir:
-                continue
-            pdir = os.path.expanduser(pdir)
-            name = os.path.basename(pdir)
-            claude_dir = os.path.join(pdir, '.claude')
-            if os.path.isdir(claude_dir):
-                dirs.append({
-                    'id': name,
-                    'label': name,
-                    'categories': {
-                        'skills': _dir_or_none(claude_dir, 'skills'),
-                        'agents': _dir_or_none(claude_dir, 'agents'),
-                        'rules': _dir_or_none(claude_dir, 'rules'),
-                    }
-                })
+    # 3. Project scopes — scan <project>/.claude/ for known categories
+    for real_path in sorted(seen_projects.keys()):
+        claude_dir = os.path.join(real_path, '.claude')
+        if not os.path.isdir(claude_dir):
+            continue
+
+        project_cats = {}
+        for cat in _KNOWN_CATEGORIES:
+            if cat == 'memory':
+                continue  # already collected in global
+            path = os.path.join(claude_dir, cat)
+            if os.path.isdir(path):
+                project_cats[cat] = path
+
+        if project_cats:
+            name = os.path.basename(real_path)
+            dirs.append({
+                'id': name,
+                'label': name,
+                'categories': project_cats,
+            })
 
     return dirs
 
 
-def _dir_or_none(base, sub):
-    path = os.path.join(base, sub)
-    return path if os.path.isdir(path) else None
-
-
 BRAIN_DIRS = _build_brain_dirs()
+
+# ─── Git repositories (auto-discovered) ──────────────────
+
+def _discover_git_repos():
+    """Find git repos from ~/.claude/projects/ directory names."""
+    repos = []
+    seen = set()
+    projects_dir = os.path.join(_HOME, '.claude', 'projects')
+
+    if os.path.isdir(projects_dir):
+        for d in sorted(os.listdir(projects_dir)):
+            real_path = _dir_name_to_path(d)
+            if not real_path or real_path == _HOME or real_path in seen:
+                continue
+            if os.path.isdir(os.path.join(real_path, '.git')):
+                seen.add(real_path)
+                repos.append({
+                    'id': os.path.basename(real_path),
+                    'path': real_path,
+                })
+
+    # Also check claude-terminal itself
+    if os.path.isdir(os.path.join(_ROOT, '.git')) and _ROOT not in seen:
+        repos.append({
+            'id': os.path.basename(_ROOT),
+            'path': _ROOT,
+        })
+
+    return sorted(repos, key=lambda r: r['id'])
+
+
+GIT_REPOS = _discover_git_repos()
 
 # ─── Default settings ─────────────────────────────────────
 

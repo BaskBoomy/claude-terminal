@@ -1011,6 +1011,29 @@ html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden
 }
 
 /* Git card */
+.git-repo-chips {
+    display: flex; gap: 6px; margin-bottom: 10px;
+    overflow-x: auto; scrollbar-width: none;
+    padding-bottom: 2px;
+}
+.git-repo-chips::-webkit-scrollbar { display: none; }
+.git-repo-chip {
+    padding: 6px 14px; border-radius: 16px;
+    background: #2a251d; color: #a09888; border: 1px solid #3a352b;
+    font-size: 13px; font-weight: 500; white-space: nowrap;
+    cursor: pointer; transition: all 0.15s; position: relative;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.git-repo-chip.active {
+    background: #3a352b; color: #e8e6e3; border-color: #C15F3C;
+}
+.git-chip-badge {
+    display: inline-block; min-width: 16px; height: 16px;
+    line-height: 16px; text-align: center;
+    background: #C15F3C; color: #fff; border-radius: 8px;
+    font-size: 10px; font-weight: 700;
+    margin-left: 6px; padding: 0 4px;
+}
 .git-card {
     background: #201d18; border-radius: 12px; border: 1px solid #2a251d;
     overflow: hidden;

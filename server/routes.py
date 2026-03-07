@@ -425,87 +425,104 @@ def server_status(handler):
         handler.json_response(500, {'error': str(e)})
 
 
-def git_status(handler):
-    """Get git repository status."""
-    params = handler.query_params()
-    git_dir = params.get('dir', '') or config.GIT_DIR
-    if not git_dir:
-        handler.json_response(200, {'error': 'No GIT_DIR configured'})
-        return
+def _scan_git_repo(git_dir):
+    """Scan a single git repo and return status dict."""
+    branch_result = _run(['git', 'branch', '--show-current'], cwd=git_dir)
+    branch = branch_result.stdout.strip()
 
-    git_dir = os.path.expanduser(git_dir)
-    if not os.path.isdir(git_dir):
-        handler.json_response(200, {'error': f'Directory not found: {git_dir}'})
-        return
+    status_result = _run(['git', 'status', '--porcelain'], cwd=git_dir, timeout=5)
+    lines = [l for l in status_result.stdout.split('\n') if l.strip()]
 
-    # Security: validate path is not traversing outside home
-    real_dir = os.path.realpath(git_dir)
-    home = os.path.expanduser('~')
-    if not real_dir.startswith(home):
-        handler.json_response(400, {'error': 'Path not allowed'})
-        return
+    staged = modified = untracked = 0
+    files = []
+    for line in lines:
+        code = line[:2]
+        fname = line[3:]
+        if code[0] in 'AMDR':
+            staged += 1
+        if code[1] in 'MD':
+            modified += 1
+        if code == '??':
+            untracked += 1
+        files.append({'status': code.strip(), 'file': fname})
 
+    log_result = _run(
+        ['git', 'log', '--oneline', '--no-merges', '-10',
+         '--format=%h|||%s|||%ar'],
+        cwd=git_dir, timeout=5,
+    )
+    commits = []
+    for line in log_result.stdout.strip().split('\n'):
+        if '|||' not in line:
+            continue
+        parts = line.split('|||')
+        if len(parts) >= 3:
+            commits.append({
+                'hash': parts[0],
+                'message': parts[1],
+                'time': parts[2],
+                'ago': parts[2],
+            })
+
+    ahead = behind = 0
     try:
-        branch_result = _run(['git', 'branch', '--show-current'], cwd=git_dir)
-        branch = branch_result.stdout.strip()
-
-        status_result = _run(['git', 'status', '--porcelain'], cwd=git_dir, timeout=5)
-        lines = [l for l in status_result.stdout.split('\n') if l.strip()]
-
-        staged = modified = untracked = 0
-        files = []
-        for line in lines:
-            code = line[:2]
-            fname = line[3:]
-            if code[0] in 'AMDR':
-                staged += 1
-            if code[1] in 'MD':
-                modified += 1
-            if code == '??':
-                untracked += 1
-            files.append({'status': code.strip(), 'file': fname})
-
-        # Recent commits
-        log_result = _run(
-            ['git', 'log', '--oneline', '--no-merges', '-10',
-             '--format=%h|||%s|||%ar'],
+        ab_result = _run(
+            ['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'],
             cwd=git_dir, timeout=5,
         )
-        commits = []
-        for line in log_result.stdout.strip().split('\n'):
-            if '|||' not in line:
-                continue
-            parts = line.split('|||')
-            if len(parts) >= 3:
-                commits.append({
-                    'hash': parts[0],
-                    'message': parts[1],
-                    'time': parts[2],
-                })
+        parts = ab_result.stdout.strip().split()
+        if len(parts) == 2:
+            behind, ahead = int(parts[0]), int(parts[1])
+    except Exception:
+        pass
 
-        # Ahead/behind
-        ahead = behind = 0
+    total = staged + modified + untracked
+    return {
+        'branch': branch,
+        'changes': {'staged': staged, 'modified': modified, 'unstaged': modified, 'untracked': untracked, 'total': total},
+        'files': files[:50],
+        'commits': commits,
+        'ahead': ahead,
+        'behind': behind,
+    }
+
+
+def git_status(handler):
+    """Get git status for all auto-discovered repos."""
+    if not config.GIT_REPOS:
+        handler.json_response(200, {'repos': []})
+        return
+
+    repos = []
+    for repo in config.GIT_REPOS:
         try:
-            ab_result = _run(
-                ['git', 'rev-list', '--left-right', '--count', '@{u}...HEAD'],
-                cwd=git_dir, timeout=5,
-            )
-            parts = ab_result.stdout.strip().split()
-            if len(parts) == 2:
-                behind, ahead = int(parts[0]), int(parts[1])
+            data = _scan_git_repo(repo['path'])
+            data['id'] = repo['id']
+            data['path'] = repo['path']
+            repos.append(data)
         except Exception:
-            pass
+            repos.append({
+                'id': repo['id'],
+                'path': repo['path'],
+                'error': 'Failed to scan',
+            })
 
-        handler.json_response(200, {
-            'branch': branch,
-            'changes': {'staged': staged, 'modified': modified, 'untracked': untracked},
-            'files': files[:50],
-            'commits': commits,
-            'ahead': ahead,
-            'behind': behind,
-        })
-    except Exception as e:
-        handler.json_response(500, {'error': str(e)})
+    # Response includes repos array + top-level fields from first repo
+    # for backward compatibility with cached old frontend
+    response = {'repos': repos}
+    if repos and 'branch' in repos[0]:
+        first = repos[0]
+        response['branch'] = first.get('branch', '')
+        response['changes'] = first.get('changes', {})
+        response['commits'] = first.get('commits', [])
+        response['ahead'] = first.get('ahead', 0)
+        response['behind'] = first.get('behind', 0)
+        # Old frontend expects files as string array ("M  file.txt")
+        response['files'] = [
+            f'{f["status"]:2s} {f["file"]}' for f in first.get('files', [])
+        ]
+
+    handler.json_response(200, response)
 
 
 # Claude usage cache
