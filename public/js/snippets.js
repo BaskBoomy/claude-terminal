@@ -1,13 +1,14 @@
 import { sendText, sendKey, tmuxCmd } from './terminal.js';
 import { showConfirm, closeConfirm } from './utils.js';
+import { T } from './theme.js';
 
 export const SNIPPET_COLORS = {
-    default: { bg: '#2a251d', fg: '#e8e6e3', border: '#3a352b' },
-    green:   { bg: '#4caf50', fg: '#1a1815', border: '#4caf50' },
-    blue:    { bg: '#C15F3C', fg: '#fff',    border: '#C15F3C' },
-    red:     { bg: '#ff6b6b', fg: '#1a1815', border: '#ff6b6b' },
-    yellow:  { bg: '#f9e2af', fg: '#1a1815', border: '#f9e2af' },
-    purple:  { bg: '#cba6f7', fg: '#1a1815', border: '#cba6f7' },
+    get default() { return { bg: T.bgRaised(), fg: T.text(), border: T.border() }; },
+    green:   { bg: '#4caf50', fg: '#1A1917', border: '#4caf50' },
+    get blue() { return { bg: T.accent(), fg: T.white(), border: T.accent() }; },
+    get red() { return { bg: T.danger(), fg: '#1A1917', border: T.danger() }; },
+    yellow:  { bg: '#f9e2af', fg: '#1A1917', border: '#f9e2af' },
+    purple:  { bg: '#cba6f7', fg: '#1A1917', border: '#cba6f7' },
     teal:    { bg: '#388e3c', fg: '#fff',    border: '#388e3c' },
 };
 
