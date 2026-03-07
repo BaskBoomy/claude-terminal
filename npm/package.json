@@ -1,13 +1,14 @@
 {
   "name": "create-claude-terminal",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Set up Claude Terminal — access Claude Code from anywhere via browser",
   "bin": {
     "create-claude-terminal": "bin/create-claude-terminal.js"
   },
   "files": [
     "bin/",
-    "lib/"
+    "lib/",
+    "README.md"
   ],
   "keywords": ["claude", "terminal", "claude-code", "remote", "web-terminal", "pwa", "tmux", "ttyd"],
   "author": "BaskBoomy",
