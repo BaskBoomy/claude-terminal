@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=18">
+    <link rel="stylesheet" href="/css/style.css?v=19">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -38,10 +38,14 @@
                 <button class="preview-btn preview-nav-btn" id="preview-forward" title="앞으로">&#x25B6;</button>
                 <input id="preview-url" type="url" placeholder="https://example.com" />
                 <button class="preview-btn" id="preview-bookmark" title="북마크">&#x2606;</button>
-                <button class="preview-btn" id="preview-reload">&#x21BB;</button>
-                <button class="preview-btn" id="preview-clear" title="Clear cookies &amp; reload">&#x1F6AB;</button>
-                <button class="preview-btn" id="preview-open">&#x2197;</button>
-                <button class="preview-btn" id="viewport-toggle" title="뷰포트 전환">M</button>                <div id="preview-url-dropdown"></div>
+                <button class="preview-btn" id="preview-more" title="더보기">&#x22EF;</button>
+                <div id="preview-more-menu">
+                    <button class="preview-menu-item" id="preview-reload">&#x21BB; 새로고침</button>
+                    <button class="preview-menu-item" id="preview-clear">&#x1F6AB; 세션 초기화</button>
+                    <button class="preview-menu-item" id="preview-open">&#x2197; 새 창에서 열기</button>
+                    <button class="preview-menu-item" id="viewport-toggle">&#x1F4F1; 뷰포트: M</button>
+                </div>
+                <div id="preview-url-dropdown"></div>
             </div>
             <div id="preview-frames"></div>
         </div>
@@ -248,6 +252,6 @@ if ('serviceWorker' in navigator) {
         .catch(function() {});
 }
 </script>
-<script type="module" src="/js/app.js?v=9"></script>
+<script type="module" src="/js/app.js?v=12"></script>
 </body>
 </html>
