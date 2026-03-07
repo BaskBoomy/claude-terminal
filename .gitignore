@@ -1,5 +1,6 @@
 # Runtime data
 data/
+settings.json
 .env
 
 # Python
