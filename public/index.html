@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=19">
+    <link rel="stylesheet" href="/css/style.css?v=20">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -114,6 +114,7 @@
     </div>
     <div class="toolbar-row hidden" id="toolbar">
         <span id="snippet-btns"></span>
+        <button class="tool-btn" id="history-btn" style="padding:4px 8px; font-size:11px;">&#x1F4DC;</button>
         <button class="tool-btn" id="settings-btn" style="padding:6px 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="16" cy="12" r="2" fill="currentColor"/><circle cx="10" cy="18" r="2" fill="currentColor"/></svg></button>
     </div>
     <div class="toolbar-row hidden" id="keys-bar">
@@ -150,6 +151,13 @@
             <button id="send-btn">&#x23CE;</button>
         </div>
         <button id="toolbar-toggle">&#x25B2;</button>
+    </div>
+    <div id="send-history-panel">
+        <div id="send-history-header">
+            <span>전송 이력</span>
+            <button id="send-history-close">&times;</button>
+        </div>
+        <div id="send-history-list"></div>
     </div>
     <div id="copy-overlay">
         <div id="copy-overlay-header">
@@ -252,6 +260,6 @@ if ('serviceWorker' in navigator) {
         .catch(function() {});
 }
 </script>
-<script type="module" src="/js/app.js?v=12"></script>
+<script type="module" src="/js/app.js?v=13"></script>
 </body>
 </html>
