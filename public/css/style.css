@@ -352,9 +352,22 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     text-overflow: ellipsis;
     font-family: -apple-system, system-ui, sans-serif;
 }
+.url-dropdown-item { display: flex; align-items: center; gap: 8px; }
 .url-dropdown-item:active, .url-dropdown-item:hover {
     background: var(--bg-raised); color: var(--text);
 }
+.url-dropdown-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.url-dropdown-del {
+    flex-shrink: 0; width: 20px; height: 20px; border: none; background: none;
+    color: var(--text-subtle); font-size: 14px; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center; border-radius: 4px;
+}
+.url-dropdown-del:active { background: var(--border); color: var(--danger); }
+.url-dropdown-section {
+    padding: 4px 12px; font-size: 10px; color: var(--text-subtle);
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+#preview-bookmark.bookmarked { color: #f5a623; }
 
 /* =============================================
    Copy Mode Overlay
