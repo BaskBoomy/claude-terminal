@@ -4,6 +4,7 @@ let browserTabs = []; // [{id, url, label, history: string[], historyIndex: numb
 let activeTabId = null;
 let tabIdCounter = 0;
 let recentUrls = [];
+let bookmarks = [];
 var VIEWPORTS = ['mobile', 'tablet', 'desktop'];
 var VIEWPORT_WIDTHS = { mobile: 0, tablet: 768, desktop: 1280 };
 var VIEWPORT_LABELS = { mobile: 'M', tablet: 'Tab', desktop: 'PC' };
@@ -11,7 +12,7 @@ var currentViewport = 'mobile';
 
 // DOM refs
 let previewUrlInput, previewReload, previewOpen, previewClear;
-let previewBack, previewForward, viewportToggle;
+let previewBack, previewForward, viewportToggle, previewBookmark;
 let previewDropdown, previewFrames, browserTabsBar, browserTabAdd;
 
 function ensureProtocol(url) {
@@ -83,6 +84,31 @@ function saveRecentUrl(url) {
   try { localStorage.setItem('preview-recent-urls', JSON.stringify(recentUrls)); } catch (e) { /* ignore */ }
 }
 
+function saveBookmarks() {
+  try { localStorage.setItem('preview-bookmarks', JSON.stringify(bookmarks)); } catch (e) { /* ignore */ }
+}
+
+function toggleBookmark(url) {
+  if (!url) return;
+  var idx = bookmarks.indexOf(url);
+  if (idx >= 0) {
+    bookmarks.splice(idx, 1);
+  } else {
+    bookmarks.unshift(url);
+  }
+  saveBookmarks();
+  updateBookmarkBtn();
+}
+
+function updateBookmarkBtn() {
+  if (!previewBookmark) return;
+  var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+  var url = tab ? tab.url : '';
+  var isBookmarked = url && bookmarks.indexOf(url) >= 0;
+  previewBookmark.innerHTML = isBookmarked ? '&#x2605;' : '&#x2606;';
+  previewBookmark.classList.toggle('bookmarked', isBookmarked);
+}
+
 export function saveBrowserTabs() {
   var data = browserTabs.map(function (t) { return { url: t.url, label: t.label }; });
   try {
@@ -136,6 +162,7 @@ export function activateBrowserTab(id) {
   previewUrlInput.value = tab ? tab.url : '';
   saveBrowserTabs();
   updateNavButtons();
+  updateBookmarkBtn();
 }
 
 export function createBrowserTab(url, skipSave) {
@@ -197,6 +224,7 @@ export function navigateActiveTab(url) {
   renderBrowserTabs();
   saveBrowserTabs();
   updateNavButtons();
+  updateBookmarkBtn();
   closePreviewDropdown();
 }
 
@@ -215,21 +243,60 @@ export function restoreBrowserTabs() {
 
 // --- Dropdown helpers ---
 
+function makeDropdownItem(url, removable, onRemove) {
+  var item = document.createElement('div');
+  item.className = 'url-dropdown-item';
+  var text = document.createElement('span');
+  text.className = 'url-dropdown-text';
+  text.textContent = url;
+  item.appendChild(text);
+  if (removable && onRemove) {
+    var del = document.createElement('button');
+    del.className = 'url-dropdown-del';
+    del.innerHTML = '&times;';
+    del.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      onRemove(url);
+      renderPreviewDropdown();
+    });
+    item.appendChild(del);
+  }
+  item.addEventListener('mousedown', function (e) {
+    e.preventDefault();
+    navigateActiveTab(url);
+  });
+  return item;
+}
+
 function renderPreviewDropdown() {
   previewDropdown.innerHTML = '';
   var current = previewUrlInput.value;
-  var filtered = recentUrls.filter(function (u) { return u !== current; });
-  if (filtered.length === 0) return;
-  filtered.forEach(function (url) {
-    var item = document.createElement('div');
-    item.className = 'url-dropdown-item';
-    item.textContent = url;
-    item.addEventListener('mousedown', function (e) {
-      e.preventDefault();
-      navigateActiveTab(url);
+  var bm = bookmarks.filter(function (u) { return u !== current; });
+  var recent = recentUrls.filter(function (u) { return u !== current && bookmarks.indexOf(u) < 0; });
+  if (bm.length === 0 && recent.length === 0) return;
+  if (bm.length > 0) {
+    var sec = document.createElement('div');
+    sec.className = 'url-dropdown-section';
+    sec.textContent = 'Bookmarks';
+    previewDropdown.appendChild(sec);
+    bm.forEach(function (url) {
+      previewDropdown.appendChild(makeDropdownItem(url, true, function (u) {
+        bookmarks = bookmarks.filter(function (b) { return b !== u; });
+        saveBookmarks();
+        updateBookmarkBtn();
+      }));
     });
-    previewDropdown.appendChild(item);
-  });
+  }
+  if (recent.length > 0) {
+    var sec2 = document.createElement('div');
+    sec2.className = 'url-dropdown-section';
+    sec2.textContent = 'Recent';
+    previewDropdown.appendChild(sec2);
+    recent.forEach(function (url) {
+      previewDropdown.appendChild(makeDropdownItem(url, false));
+    });
+  }
 }
 
 function openPreviewDropdown() {
@@ -254,13 +321,15 @@ export function initPreview() {
   previewBack = document.getElementById('preview-back');
   previewForward = document.getElementById('preview-forward');
   viewportToggle = document.getElementById('viewport-toggle');
+  previewBookmark = document.getElementById('preview-bookmark');
   previewDropdown = document.getElementById('preview-url-dropdown');
   previewFrames = document.getElementById('preview-frames');
   browserTabsBar = document.getElementById('browser-tabs');
   browserTabAdd = document.getElementById('browser-tab-add');
 
-  // Load recent URLs from storage
+  // Load recent URLs and bookmarks from storage
   try { recentUrls = JSON.parse(localStorage.getItem('preview-recent-urls') || '[]'); } catch (e) { recentUrls = []; }
+  try { bookmarks = JSON.parse(localStorage.getItem('preview-bookmarks') || '[]'); } catch (e) { bookmarks = []; }
 
   // Restore saved tabs or create one empty
   restoreBrowserTabs();
@@ -279,6 +348,13 @@ export function initPreview() {
       navigateActiveTab(previewUrlInput.value.trim());
       previewUrlInput.blur();
     }
+  });
+
+  // Bookmark button
+  previewBookmark.addEventListener('click', function (e) {
+    e.preventDefault();
+    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    if (tab && tab.url) toggleBookmark(tab.url);
   });
 
   // Reload button
