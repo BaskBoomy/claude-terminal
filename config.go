@@ -34,6 +34,7 @@ type Config struct {
 	NotifyDir  string
 	SettingsFile string
 
+	TtydPort    int
 	TmuxSocket  string
 	TmuxSession string
 	ClaudeCmd   string
@@ -65,6 +66,7 @@ func LoadConfig(flagPort int, flagPassword string) *Config {
 		PublicDir:       filepath.Join(rootDir, "public"),
 		UploadDir:       envStr("UPLOAD_DIR", "/tmp/claude-uploads"),
 		NotifyDir:       envStr("NOTIFY_DIR", "/tmp/claude-notify"),
+		TtydPort:        envInt("TTYD_PORT", 7681),
 		TmuxSession:     envStr("TMUX_SESSION", "claude"),
 		ClaudeCmd:       envStr("CLAUDE_CMD", "claude --dangerously-skip-permissions"),
 		CookieName:      CookieName,
