@@ -1,0 +1,18 @@
+{
+  "name": "create-claude-terminal",
+  "version": "0.1.0",
+  "description": "Set up Claude Terminal — access Claude Code from anywhere via browser",
+  "bin": {
+    "create-claude-terminal": "bin/create-claude-terminal.js"
+  },
+  "keywords": ["claude", "terminal", "claude-code", "remote", "web-terminal"],
+  "author": "BaskBoomy",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BaskBoomy/claude-terminal"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
