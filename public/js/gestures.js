@@ -29,7 +29,6 @@ function _initEdgeSwipeBlockers(opts) {
 
     var startX, startY;
     var lastTapTime = 0;
-    var singleTapTimer = null;
 
     el.addEventListener('touchstart', function (e) {
       e.preventDefault();
@@ -50,26 +49,22 @@ function _initEdgeSwipeBlockers(opts) {
       if (dx >= TAP_THRESHOLD || dy >= TAP_THRESHOLD) return;
 
       var now = Date.now();
+      var tapX = t.clientX;
+      var tapY = t.clientY;
+
       if (now - lastTapTime < DOUBLE_TAP_MS) {
-        // Double tap detected
-        clearTimeout(singleTapTimer);
+        // Double tap — fire tab switch
         lastTapTime = 0;
         if (opts.onEdgeDoubleTap) {
           opts.onEdgeDoubleTap(side === 'right' ? 'next' : 'prev');
         }
       } else {
-        // Possible single tap — delay to check for double
+        // Single tap — pass through immediately (no delay)
         lastTapTime = now;
-        var tapX = t.clientX;
-        var tapY = t.clientY;
-        singleTapTimer = setTimeout(function () {
-          lastTapTime = 0;
-          // Pass through as click
-          el.style.pointerEvents = 'none';
-          var target = document.elementFromPoint(tapX, tapY);
-          el.style.pointerEvents = '';
-          if (target) target.click();
-        }, DOUBLE_TAP_MS);
+        el.style.pointerEvents = 'none';
+        var target = document.elementFromPoint(tapX, tapY);
+        el.style.pointerEvents = '';
+        if (target) target.click();
       }
     }, { passive: false });
   });
