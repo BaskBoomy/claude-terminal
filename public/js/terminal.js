@@ -254,16 +254,27 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
         clearInputBtn.addEventListener('mouseleave', cancelLongPress);
         clearInputBtn.addEventListener('touchcancel', cancelLongPress);
 
+        function copyInputText() {
+            if (!textInput.value) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(textInput.value)
+                    .then(function() { window.showToast && window.showToast('복사됨', 1500); })
+                    .catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+        }
+        function fallbackCopy() {
+            textInput.select();
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            window.showToast && window.showToast('복사됨', 1500);
+        }
         function startLongPress() {
             didLongPress = false;
             longPressTimer = setTimeout(function() {
                 didLongPress = true;
-                // Copy input text
-                if (textInput.value && navigator.clipboard) {
-                    navigator.clipboard.writeText(textInput.value).then(function() {
-                        window.showToast && window.showToast('복사됨', 1500);
-                    });
-                }
+                copyInputText();
             }, 500);
         }
         function endLongPress() {
