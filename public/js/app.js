@@ -541,13 +541,16 @@ function setupViewportResize() {
 }
 
 // ========================================
-// Unregister old service workers
+// Register service worker (network-first cache strategy)
 // ========================================
-function cleanupServiceWorkers() {
+function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function(regs) {
-            regs.forEach(function(r) { r.unregister(); });
-        });
+        navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+            .then(function(reg) {
+                // Force update check
+                reg.update();
+            })
+            .catch(function() {});
     }
 }
 
@@ -689,9 +692,7 @@ function setupTouchScroll() {
     // 17. Touch scroll on iframe load
     setupTouchScroll();
 
-    // 18. Cleanup old service workers
-    cleanupServiceWorkers();
+    // 18. Register service worker
+    registerServiceWorker();
 
-    // 19. Show body (was hidden until auth check passed)
-    document.body.style.visibility = 'visible';
 })();

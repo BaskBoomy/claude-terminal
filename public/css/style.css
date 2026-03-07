@@ -4,7 +4,7 @@
    Reset
    ============================================= */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden; visibility: hidden; overscroll-behavior: none; }
+html, body { height: 100%; background: #1a1815; color: #e8e6e3; overflow: hidden; overscroll-behavior: none; }
 
 /* =============================================
    Core Layout (#app, terminal, toolbar)
