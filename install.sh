@@ -135,7 +135,7 @@ After=network.target
 Type=simple
 User=$CURRENT_USER
 Environment=TMUX_SESSION=claude
-Environment=CLAUDE_CMD=claude --dangerously-skip-permissions
+Environment=CLAUDE_CMD=claude
 EnvironmentFile=$SCRIPT_DIR/.env
 ExecStart=$TTYD_BIN --port 7681 --base-path /ttyd --writable $SCRIPT_DIR/scripts/ttyd-start.sh
 Restart=on-failure
