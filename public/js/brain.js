@@ -246,7 +246,7 @@ export function loadBrainTree(done) {
         })
         .catch(function() {
             var ptr = treeItems.querySelector('[data-ptr]');
-            treeItems.innerHTML = '<div style="padding:40px 16px;text-align:center;color:#4a4538">\uB85C\uB4DC \uC2E4\uD328</div>';
+            treeItems.innerHTML = '<div style="padding:40px 16px;text-align:center;color:var(--border-light)">\uB85C\uB4DC \uC2E4\uD328</div>';
             if (ptr) treeItems.insertBefore(ptr, treeItems.firstChild);
             if (done) done();
         });

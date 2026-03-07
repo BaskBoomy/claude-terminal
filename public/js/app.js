@@ -373,7 +373,7 @@ function setupPlusMenu() {
         });
         closePlusMenu();
         // Green flash feedback
-        textInput.style.background = '#1a3a1a';
+        textInput.style.background = '#1a3a1a'; // green flash feedback
         setTimeout(function() { textInput.style.background = ''; }, 300);
     });
 
