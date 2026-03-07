@@ -109,12 +109,15 @@ async function installServer(config) {
 
   // Create ttyd start script
   const ttydScript = `#!/bin/bash
-if tmux has-session -t claude 2>/dev/null; then
-    exec tmux attach -t claude
+SESSION=\${TMUX_SESSION:-claude}
+CLAUDE_CMD=\${CLAUDE_CMD:-claude}
+
+if tmux has-session -t "$SESSION" 2>/dev/null; then
+    exec tmux attach -t "$SESSION"
 else
-    tmux new-session -d -s claude
-    tmux send-keys -t claude 'cd ~ && claude --dangerously-skip-permissions' Enter
-    exec tmux attach -t claude
+    tmux new-session -d -s "$SESSION"
+    tmux send-keys -t "$SESSION" "cd ~ && $CLAUDE_CMD" Enter
+    exec tmux attach -t "$SESSION"
 fi
 `;
   const scriptPath = path.join(installDir, 'ttyd-start.sh');
