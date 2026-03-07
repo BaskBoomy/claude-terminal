@@ -4,10 +4,15 @@ import { getCachedUsageData, getLastServerData } from './polling.js';
 // --- State ---
 let contentEl = null;
 let lastDashLoad = 0;
+let gitRepos = [];
+let selectedRepoId = null;
 
 // --- Init ---
 export function initDash() {
     contentEl = document.getElementById('dash-content');
+    try {
+        selectedRepoId = localStorage.getItem('dash-selected-repo');
+    } catch (e) {}
 }
 
 // --- Main loader ---
@@ -20,26 +25,51 @@ export function loadDashboard(done) {
     fetch('/api/git-status', { credentials: 'same-origin' })
         .then(function(r) { return r.ok ? r.json() : null; })
         .catch(function() { return null; })
-        .then(function(git) {
+        .then(function(data) {
+            gitRepos = (data && data.repos) || [];
+            // Auto-select first repo if none selected
+            if (!selectedRepoId && gitRepos.length > 0) {
+                selectedRepoId = gitRepos[0].id;
+            }
+
             var usage = getCachedUsageData();
             var server = getLastServerData();
             contentEl.innerHTML =
                 renderUsageSection(usage) +
-                renderGitSection(git) +
+                renderGitSection(gitRepos, selectedRepoId) +
                 renderServerSection(server);
 
-            var toggleBtn = contentEl.querySelector('.git-files-toggle');
-            if (toggleBtn) {
-                toggleBtn.addEventListener('click', function() {
-                    var sec = contentEl.querySelector('.git-files-section');
-                    if (sec) {
-                        var open = sec.classList.toggle('open');
-                        toggleBtn.textContent = open ? '▲ 파일 숨기기' : '▼ 변경 파일 보기';
-                    }
-                });
-            }
+            bindGitEvents();
             if (done) done();
         });
+}
+
+function bindGitEvents() {
+    // Repo chip click
+    var chips = contentEl.querySelectorAll('.git-repo-chip');
+    chips.forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            selectedRepoId = chip.dataset.repo;
+            try { localStorage.setItem('dash-selected-repo', selectedRepoId); } catch(e) {}
+            // Re-render git section only
+            var gitWrap = contentEl.querySelector('.dash-git-wrap');
+            if (gitWrap) {
+                gitWrap.outerHTML = renderGitSection(gitRepos, selectedRepoId);
+                bindGitEvents();
+            }
+        });
+    });
+    // File toggle
+    var toggleBtn = contentEl.querySelector('.git-files-toggle');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function() {
+            var sec = contentEl.querySelector('.git-files-section');
+            if (sec) {
+                var open = sec.classList.toggle('open');
+                toggleBtn.textContent = open ? '▲ 파일 숨기기' : '▼ 변경 파일 보기';
+            }
+        });
+    }
 }
 
 // --- Usage section ---
@@ -91,13 +121,37 @@ function renderUsageSection(data) {
 }
 
 // --- Git section ---
-function renderGitSection(git) {
-    var html = '<div class="dash-section">';
+function renderGitSection(repos, activeId) {
+    var html = '<div class="dash-git-wrap"><div class="dash-section">';
     html += '<div class="dash-section-title"><span>📦</span> Git Status</div>';
-    if (!git || git.error) {
-        html += '<div class="dash-empty">Git 정보를 불러올 수 없습니다</div>';
-        return html + '</div>';
+
+    if (!repos || repos.length === 0) {
+        html += '<div class="dash-empty">Git 레포지토리를 찾을 수 없습니다</div>';
+        return html + '</div></div>';
     }
+
+    // Repo selector chips
+    if (repos.length > 1) {
+        html += '<div class="git-repo-chips">';
+        repos.forEach(function(repo) {
+            var active = repo.id === activeId ? ' active' : '';
+            var badge = '';
+            if (repo.changes && repo.changes.total > 0) {
+                badge = '<span class="git-chip-badge">' + repo.changes.total + '</span>';
+            }
+            html += '<button class="git-repo-chip' + active + '" data-repo="' + escapeHtml(repo.id) + '">' + escapeHtml(repo.id) + badge + '</button>';
+        });
+        html += '</div>';
+    }
+
+    // Find selected repo
+    var git = repos.find(function(r) { return r.id === activeId; }) || repos[0];
+
+    if (git.error) {
+        html += '<div class="dash-empty">' + escapeHtml(git.error) + '</div>';
+        return html + '</div></div>';
+    }
+
     html += '<div class="git-card">';
     // Branch row
     html += '<div class="git-branch-row">';
@@ -113,19 +167,18 @@ function renderGitSection(git) {
         var c = git.changes;
         html += '<div class="git-changes-row">';
         html += '<div class="git-change-item"><div class="git-change-num" style="color:#8ab563">' + c.staged + '</div><div class="git-change-label">Staged</div></div>';
-        html += '<div class="git-change-item"><div class="git-change-num" style="color:#e8b84b">' + c.unstaged + '</div><div class="git-change-label">Modified</div></div>';
+        html += '<div class="git-change-item"><div class="git-change-num" style="color:#e8b84b">' + c.modified + '</div><div class="git-change-label">Modified</div></div>';
         html += '<div class="git-change-item"><div class="git-change-num" style="color:#6a6158">' + c.untracked + '</div><div class="git-change-label">Untracked</div></div>';
         html += '</div>';
 
         // File list (collapsed)
         if (git.files && git.files.length > 0) {
             html += '<div class="git-files-section">';
-            git.files.forEach(function(line) {
-                var st = line.substring(0, 2).trim() || '?';
-                var fname = line.substring(3);
+            git.files.forEach(function(f) {
+                var st = f.status || '?';
                 var stClass = st.replace(/[^A-Z?]/g, '').charAt(0);
                 if (stClass === '?') stClass = 'U';
-                html += '<div class="git-file-row"><span class="git-file-status ' + stClass + '">' + escapeHtml(st) + '</span><span class="git-file-name">' + escapeHtml(fname) + '</span></div>';
+                html += '<div class="git-file-row"><span class="git-file-status ' + stClass + '">' + escapeHtml(st) + '</span><span class="git-file-name">' + escapeHtml(f.file) + '</span></div>';
             });
             html += '</div>';
             html += '<button class="git-files-toggle">▼ 변경 파일 보기</button>';
@@ -139,12 +192,12 @@ function renderGitSection(git) {
             html += '<div class="git-commit-item">';
             html += '<span class="git-commit-hash">' + escapeHtml(c.hash) + '</span>';
             html += '<span class="git-commit-msg">' + escapeHtml(c.message) + '</span>';
-            html += '<span class="git-commit-ago">' + escapeHtml(c.ago) + '</span>';
+            html += '<span class="git-commit-ago">' + escapeHtml(c.time) + '</span>';
             html += '</div>';
         });
         html += '</div>';
     }
-    html += '</div></div>';
+    html += '</div></div></div>';
     return html;
 }
 
