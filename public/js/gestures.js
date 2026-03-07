@@ -10,14 +10,15 @@
 
 // ─── iOS Edge Swipe Prevention + Popstate Trap ───────────────────────────────
 
-export function initGestures() {
-  _initEdgeSwipeBlockers();
+export function initGestures(opts) {
+  _initEdgeSwipeBlockers(opts || {});
   _initPopstateTrap();
 }
 
-function _initEdgeSwipeBlockers() {
-  var EDGE = 30;
+function _initEdgeSwipeBlockers(opts) {
+  var EDGE = 50;
   var TAP_THRESHOLD = 10;
+  var DOUBLE_TAP_MS = 300;
 
   ['left', 'right'].forEach(function (side) {
     var el = document.createElement('div');
@@ -27,6 +28,8 @@ function _initEdgeSwipeBlockers() {
     document.body.appendChild(el);
 
     var startX, startY;
+    var lastTapTime = 0;
+    var singleTapTimer = null;
 
     el.addEventListener('touchstart', function (e) {
       e.preventDefault();
@@ -44,11 +47,29 @@ function _initEdgeSwipeBlockers() {
       var t = e.changedTouches[0];
       var dx = Math.abs(t.clientX - startX);
       var dy = Math.abs(t.clientY - startY);
-      if (dx < TAP_THRESHOLD && dy < TAP_THRESHOLD) {
-        el.style.pointerEvents = 'none';
-        var target = document.elementFromPoint(t.clientX, t.clientY);
-        el.style.pointerEvents = '';
-        if (target) target.click();
+      if (dx >= TAP_THRESHOLD || dy >= TAP_THRESHOLD) return;
+
+      var now = Date.now();
+      if (now - lastTapTime < DOUBLE_TAP_MS) {
+        // Double tap detected
+        clearTimeout(singleTapTimer);
+        lastTapTime = 0;
+        if (opts.onEdgeDoubleTap) {
+          opts.onEdgeDoubleTap(side === 'right' ? 'next' : 'prev');
+        }
+      } else {
+        // Possible single tap — delay to check for double
+        lastTapTime = now;
+        var tapX = t.clientX;
+        var tapY = t.clientY;
+        singleTapTimer = setTimeout(function () {
+          lastTapTime = 0;
+          // Pass through as click
+          el.style.pointerEvents = 'none';
+          var target = document.elementFromPoint(tapX, tapY);
+          el.style.pointerEvents = '';
+          if (target) target.click();
+        }, DOUBLE_TAP_MS);
       }
     }, { passive: false });
   });
