@@ -5,13 +5,18 @@
   "bin": {
     "create-claude-terminal": "bin/create-claude-terminal.js"
   },
-  "keywords": ["claude", "terminal", "claude-code", "remote", "web-terminal"],
+  "files": [
+    "bin/",
+    "lib/"
+  ],
+  "keywords": ["claude", "terminal", "claude-code", "remote", "web-terminal", "pwa", "tmux", "ttyd"],
   "author": "BaskBoomy",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/BaskBoomy/claude-terminal"
   },
+  "homepage": "https://github.com/BaskBoomy/claude-terminal#readme",
   "engines": {
     "node": ">=16"
   }
