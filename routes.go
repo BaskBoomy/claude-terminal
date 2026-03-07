@@ -68,6 +68,17 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/claude-usage", a.auth.RequireAuth(a.claudeUsage))
 	mux.HandleFunc("GET /api/notifications", a.auth.RequireAuth(a.notifications))
 	mux.HandleFunc("POST /upload", a.auth.RequireAuth(a.uploadFile))
+
+	// Launch tracker
+	mux.HandleFunc("GET /api/launch/status", a.auth.RequireAuth(a.launchStatus))
+	mux.HandleFunc("GET /api/launch/items", a.auth.RequireAuth(a.launchGetItems))
+	mux.HandleFunc("POST /api/launch/items", a.auth.RequireAuth(a.launchAddItem))
+	mux.HandleFunc("PATCH /api/launch/items/{id}", a.auth.RequireAuth(a.launchUpdateItem))
+	mux.HandleFunc("DELETE /api/launch/items/{id}", a.auth.RequireAuth(a.launchDeleteItem))
+	mux.HandleFunc("GET /api/launch/config", a.auth.RequireAuth(a.launchGetConfig))
+	mux.HandleFunc("PUT /api/launch/config", a.auth.RequireAuth(a.launchUpdateConfig))
+	mux.HandleFunc("GET /api/launch/history", a.auth.RequireAuth(a.launchGetHistory))
+	mux.HandleFunc("POST /api/launch/seed", a.auth.RequireAuth(a.launchSeed))
 }
 
 // --- JSON helpers ---
