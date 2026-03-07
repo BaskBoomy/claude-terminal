@@ -324,13 +324,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .preview-btn:active { background: var(--border); color: var(--text); }
-#preview-frames { position: relative; flex: 1; }
+.preview-nav-btn { font-size: 10px; width: 26px; height: 26px; }
+.preview-nav-btn:disabled { opacity: 0.3; cursor: default; }
+#preview-frames { position: relative; flex: 1; overflow: hidden; }
 .preview-iframe {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%; border: none;
     background: var(--bg); display: none;
+    transform-origin: top left;
 }
 .preview-iframe.active { display: block; }
+#viewport-toggle { font-size: 11px; width: auto; padding: 0 6px; font-family: -apple-system, system-ui, sans-serif; }
+#viewport-toggle.active { background: var(--accent); color: var(--white); border-color: var(--accent); }
 
 /* URL dropdown */
 #preview-url-dropdown {
