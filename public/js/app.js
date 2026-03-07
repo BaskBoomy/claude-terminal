@@ -8,6 +8,7 @@ import { initPreview } from './preview.js';
 import { initNotes, loadNotesList, setViewSwitcher as setNotesViewSwitcher } from './notes.js';
 import { initBrain, loadBrainTree, setViewSwitcher as setBrainViewSwitcher } from './brain.js';
 import { initDash, loadDashboard } from './dash.js';
+import { initLaunch, loadLaunch } from './launch.js';
 import { initSettings } from './settings.js';
 import { initCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
@@ -37,6 +38,7 @@ var brainContainer;
 var brainTreeView;
 var brainEditorView;
 var dashContainer;
+var launchContainer;
 var tmuxFab;
 var scrollIndicatorEl;
 var scrollBottomBtnEl;
@@ -55,6 +57,7 @@ function switchView(view) {
     var isNotes = view === 'notes';
     var isBrain = view === 'brain';
     var isDash = view === 'dash';
+    var isLaunch = view === 'launch';
 
     viewTabs.forEach(function(tab) {
         tab.classList.toggle('active', tab.dataset.view === view);
@@ -65,6 +68,7 @@ function switchView(view) {
     notesContainer.style.display = isNotes ? 'flex' : 'none';
     brainContainer.style.display = isBrain ? 'flex' : 'none';
     dashContainer.style.display = isDash ? 'flex' : 'none';
+    launchContainer.style.display = isLaunch ? 'flex' : 'none';
 
     // Hide all terminal-only chrome in non-terminal mode
     tmuxFab.style.display = isTerm ? '' : 'none';
@@ -86,6 +90,9 @@ function switchView(view) {
     }
     if (isDash) {
         loadDashboard();
+    }
+    if (isLaunch) {
+        loadLaunch();
     }
 }
 
@@ -573,8 +580,26 @@ function setupTouchScroll() {
     // 1. Auth check (redirects to /login.html if not authenticated)
     await initAuth();
 
-    // 2. iOS gestures (edge swipe blockers, popstate trap)
-    initGestures();
+    // 2. iOS gestures (edge swipe blockers, popstate trap) + edge double-tap view switching
+    initGestures({
+        onEdgeDoubleTap: function(direction) {
+            var tabs = Array.from(document.querySelectorAll('.view-tab'));
+            if (tabs.length === 0) return;
+            var currentIdx = -1;
+            for (var i = 0; i < tabs.length; i++) {
+                if (tabs[i].classList.contains('active')) { currentIdx = i; break; }
+            }
+            if (currentIdx < 0) return;
+            var nextIdx;
+            if (direction === 'next') {
+                nextIdx = (currentIdx + 1) % tabs.length;
+            } else {
+                nextIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+            }
+            var nextView = tabs[nextIdx].dataset.view;
+            if (nextView) switchView(nextView);
+        }
+    });
 
     // 3. Resolve DOM references
     viewTabs = document.querySelectorAll('.view-tab');
@@ -588,6 +613,7 @@ function setupTouchScroll() {
     brainTreeView = document.getElementById('brain-tree-view');
     brainEditorView = document.getElementById('brain-editor-view');
     dashContainer = document.getElementById('dash-container');
+    launchContainer = document.getElementById('launch-container');
     tmuxFab = document.getElementById('tmux-fab');
     scrollIndicatorEl = document.getElementById('scroll-indicator');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
@@ -605,6 +631,7 @@ function setupTouchScroll() {
     initNotes();
     initBrain();
     initDash();
+    initLaunch();
     initCopyMode();
 
     // 5b. Pull-to-refresh on brain tree and dashboard
@@ -618,6 +645,12 @@ function setupTouchScroll() {
     if (dashScroll) {
         setupPullToRefresh(dashScroll, function(done) {
             loadDashboard(done);
+        });
+    }
+    var launchScroll = document.getElementById('launch-scroll');
+    if (launchScroll) {
+        setupPullToRefresh(launchScroll, function(done) {
+            loadLaunch(done);
         });
     }
 
