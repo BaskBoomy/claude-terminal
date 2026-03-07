@@ -1,5 +1,17 @@
-self.addEventListener('install', function() { self.skipWaiting(); });
-self.addEventListener('activate', function(e) { e.waitUntil(self.clients.claim()); });
+// v2 — force cache clear on update
+var CACHE_VERSION = 'v2';
+
+self.addEventListener('install', function(e) {
+    e.waitUntil(
+        caches.keys().then(function(names) {
+            return Promise.all(names.map(function(name) { return caches.delete(name); }));
+        }).then(function() { return self.skipWaiting(); })
+    );
+});
+
+self.addEventListener('activate', function(e) {
+    e.waitUntil(self.clients.claim());
+});
 
 self.addEventListener('fetch', function(event) {
     var url = new URL(event.request.url);
