@@ -31,8 +31,19 @@ export function getInputHistory() {
 
 // --- Auto-resize textarea ---
 function autoResize() {
+    // Switch to multi-line mode for measurement
+    textInput.style.lineHeight = '1.4';
+    textInput.style.padding = '8px 44px 8px 14px';
     textInput.style.height = 'auto';
-    textInput.style.height = Math.min(textInput.scrollHeight, 120) + 'px';
+    var h = Math.min(textInput.scrollHeight, 120);
+    // If single line (content fits in ~38px), revert to centered mode
+    if (h <= 38) {
+        textInput.style.lineHeight = '';
+        textInput.style.padding = '';
+        textInput.style.height = '';
+    } else {
+        textInput.style.height = h + 'px';
+    }
 }
 
 function updateClearBtn() {
@@ -155,6 +166,8 @@ function actualSend(text, ta) {
     historyIndex = -1;
     textInput.value = '';
     textInput.style.height = '';
+    textInput.style.lineHeight = '';
+    textInput.style.padding = '';
     sessionStorage.removeItem('terminal-input');
     updateClearBtn();
 }
