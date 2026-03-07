@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>Claude Terminal</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a1815">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="app">
+    <div id="status-bar">
+        <span id="tmux-session-info">tmux: --</span>
+        <span style="flex:1"></span>
+        <span id="server-status-info"></span>
+        <span id="claude-usage-info"></span>
+    </div>
+    <div id="view-tabs">
+        <button class="view-tab active" data-view="terminal">Terminal</button>
+        <button class="view-tab" data-view="preview">Preview</button>
+        <button class="view-tab" data-view="notes">Notes</button>
+        <button class="view-tab" data-view="brain">Brain</button>
+        <button class="view-tab" data-view="dash">Dash</button>
+    </div>
+    <div id="terminal-wrap">
+        <iframe id="terminal-frame" src="/ttyd/"></iframe>
+        <div id="preview-container">
+            <div id="browser-tabs">
+                <button id="browser-tab-add">+</button>
+            </div>
+            <div id="preview-bar" style="position:relative">
+                <input id="preview-url" type="url" placeholder="https://dev.naught.kr" />
+                <button class="preview-btn" id="preview-reload">&#x21BB;</button>
+                <button class="preview-btn" id="preview-clear" title="Clear cookies &amp; reload">&#x1F6AB;</button>
+                <button class="preview-btn" id="preview-open">&#x2197;</button>
+                <div id="preview-url-dropdown"></div>
+            </div>
+            <div id="preview-frames"></div>
+        </div>
+        <div id="notes-container">
+            <div id="notes-list-view">
+                <div id="notes-list-header">
+                    <h3>Notes</h3>
+                    <button class="notes-header-btn" id="notes-new-btn">+ 새 메모</button>
+                </div>
+                <div id="notes-items"></div>
+            </div>
+            <div id="notes-editor-view">
+                <div id="notes-editor-header">
+                    <button id="notes-back-btn">&#x25C0; 목록</button>
+                    <input id="notes-title-input" type="text" placeholder="제목 없음" />
+                    <button id="notes-delete-btn" title="삭제">&#x1F5D1;</button>
+                </div>
+                <textarea id="notes-editor-textarea" placeholder="내용을 입력하세요..."></textarea>
+                <div id="notes-editor-footer">
+                    <button id="notes-send-claude-btn">Claude 전송</button>
+                    <div id="notes-editor-status">저장됨</div>
+                </div>
+            </div>
+        </div>
+        <div id="dash-container"><div id="dash-scroll"><div id="dash-content"></div></div></div>
+        <div id="brain-container">
+            <div id="brain-tree-view">
+                <div id="brain-tree-header">
+                    <h3>Brain</h3>
+                    <button class="notes-header-btn" id="brain-refresh-btn">&#x21BB; 새로고침</button>
+                </div>
+                <div id="brain-tree-items"></div>
+            </div>
+            <div id="brain-editor-view">
+                <div id="brain-editor-header">
+                    <button id="brain-back-btn">&#x25C0; 목록</button>
+                    <span id="brain-file-title"></span>
+                    <button id="brain-edit-toggle">편집</button>
+                </div>
+                <div id="brain-editor-content">
+                    <div id="brain-rendered"></div>
+                    <textarea id="brain-textarea" placeholder="내용을 입력하세요..."></textarea>
+                </div>
+                <div id="brain-editor-footer">
+                    <button id="brain-send-claude-btn">Claude 전송</button>
+                    <div id="brain-editor-status"></div>
+                </div>
+            </div>
+        </div>
+        <div id="scroll-indicator"></div>
+        <button id="scroll-bottom-btn" class="scroll-bottom-btn">&#x25BC;</button>
+        <div class="fab-area bottom-right" id="tmux-fab">
+            <div class="fab-panel" id="tmux-fab-panel">
+                <button class="fab-btn kill" data-key="tmux-kill">&#x2715;</button>
+                <div class="fab-sep"></div>
+                <button class="fab-btn" data-key="tmux-new">+Win</button>
+                <button class="fab-btn" data-key="tmux-prev">&#x25C0;</button>
+                <button class="fab-btn" data-key="tmux-next">&#x25B6;</button>
+                <button class="fab-btn" data-key="tmux-list">List</button>
+                <div class="fab-sep"></div>
+                <button class="fab-btn" id="copy-mode-btn">&#x1F4CB;</button>
+                <button class="fab-btn" onclick="location.reload()">&#x21BB;</button>
+            </div>
+            <button class="fab-circle green" id="tmux-fab-toggle">&#x2261;</button>
+        </div>
+    </div>
+    <div class="toolbar-row hidden" id="toolbar">
+        <span id="snippet-btns"></span>
+        <button class="tool-btn" id="settings-btn" style="padding:6px 10px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="6" r="2" fill="currentColor"/><circle cx="16" cy="12" r="2" fill="currentColor"/><circle cx="10" cy="18" r="2" fill="currentColor"/></svg></button>
+    </div>
+    <div class="toolbar-row hidden" id="keys-bar">
+        <button class="key-btn accent" data-key="ctrl-c">C-c</button>
+        <button class="key-btn" data-key="enter">&#x23CE;</button>
+        <button class="key-btn" data-key="backspace">&#x232B;</button>
+        <button class="key-btn" data-key="tab">Tab</button>
+        <button class="key-btn" data-key="esc">Esc</button>
+        <button class="key-btn" data-key="space">&#x2423;</button>
+        <div class="sep"></div>
+        <button class="key-btn" data-key="up">&#x25B2;</button>
+        <button class="key-btn" data-key="down">&#x25BC;</button>
+        <button class="key-btn" data-key="left">&#x25C0;</button>
+        <button class="key-btn" data-key="right">&#x25B6;</button>
+        <div class="sep"></div>
+        <button class="key-btn" data-key="ctrl-d">C-d</button>
+        <button class="key-btn" data-key="y">Y</button>
+        <button class="key-btn" data-key="n">N</button>
+    </div>
+    <div id="input-bar">
+        <button id="img-btn" class="input-btn" style="font-size:22px;font-weight:300">+</button>
+        <input id="file-input" type="file" accept="image/*">
+        <input id="file-input-any" type="file">
+        <div id="plus-menu">
+            <div class="pm-item" id="pm-attach">&#x1F4F7; 이미지 첨부</div>
+            <div class="pm-item" id="pm-attach-file">&#x1F4CE; 파일 첨부</div>
+            <div class="pm-item" id="pm-save-memo">&#x1F4DD; 메모로 저장</div>
+            <div class="pm-divider"></div>
+            <div id="pm-memo-list"></div>
+        </div>
+        <div class="input-wrap">
+            <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+            <button id="clear-input">&times;</button>
+        </div>
+        <button id="send-btn" class="input-btn primary">&#x23CE;</button>
+        <button id="toolbar-toggle" class="input-btn">&#x25B2;</button>
+    </div>
+    <div id="copy-overlay">
+        <div id="copy-overlay-header">
+            <button class="copy-header-btn" id="copy-close-btn">&#x25C0; 닫기</button>
+            <h3>터미널 복사</h3>
+            <button class="copy-header-btn" id="copy-history-btn">스크롤백</button>
+            <button class="copy-header-btn primary" id="copy-all-btn">전체 복사</button>
+        </div>
+        <textarea id="copy-text-area" readonly placeholder="로딩 중..."></textarea>
+        <div id="copy-status">
+            <span id="copy-status-text">텍스트를 선택한 후 복사하세요</span>
+        </div>
+    </div>
+    <div id="confirm-backdrop"></div>
+    <div id="confirm-dialog">
+        <div class="confirm-msg" id="confirm-msg"></div>
+        <div class="confirm-actions" id="confirm-actions"></div>
+    </div>
+    <div id="settings-backdrop"></div>
+    <div id="settings-sheet">
+        <div class="sheet-header" id="sheet-header">
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                <div class="sheet-handle"></div>
+                <div style="display:flex;align-items:center;width:100%">
+                    <span class="sheet-title">Settings</span>
+                    <button class="sheet-close" id="sheet-close">&times;</button>
+                </div>
+            </div>
+        </div>
+        <div class="sheet-body" id="sheet-body">
+            <div class="settings-section-title" style="margin-top:8px">General</div>
+            <div class="settings-group">
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Wake Lock</div>
+                        <div class="settings-item-desc">화면 자동 꺼짐 방지</div>
+                    </div>
+                    <label class="ios-toggle">
+                        <input type="checkbox" id="sh-wakeLock">
+                        <div class="tog-track"></div>
+                        <div class="tog-thumb"></div>
+                    </label>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Terminal Font</div>
+                        <div class="settings-item-desc">터미널 글자 크기 (기본 15)</div>
+                    </div>
+                    <div class="font-ctrl">
+                        <button id="sh-termfont-minus">&minus;</button>
+                        <span class="font-val" id="sh-termFontVal">15</span>
+                        <button id="sh-termfont-plus">+</button>
+                    </div>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Input Font</div>
+                        <div class="settings-item-desc">입력창 글자 크기</div>
+                    </div>
+                    <div class="font-ctrl">
+                        <button id="sh-font-minus">&minus;</button>
+                        <span class="font-val" id="sh-fontVal">16</span>
+                        <button id="sh-font-plus">+</button>
+                    </div>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label">Notification</div>
+                        <div class="settings-item-desc">백그라운드 시 Claude 응답 완료 알림</div>
+                    </div>
+                    <label class="ios-toggle">
+                        <input type="checkbox" id="sh-notification">
+                        <div class="tog-track"></div>
+                        <div class="tog-thumb"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section-title">Snippets</div>
+            <div id="sh-snippet-list"></div>
+            <button class="sn-add-btn" id="sh-add-snippet">+ Add Snippet</button>
+
+            <button class="settings-logout" id="sh-logout">&#x23FB; Log Out</button>
+        </div>
+        <div class="settings-save-bar">
+            <button class="settings-save-btn" id="sh-save-btn">Save</button>
+        </div>
+    </div>
+</div>
+<div id="toast"></div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
