@@ -1255,3 +1255,82 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     animation: ptr-spin 0.6s linear infinite;
 }
 @keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+/* =============================================
+   Launch Tracker
+   ============================================= */
+#launch-container {
+    display: none; flex-direction: column;
+    width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0;
+    background: var(--bg-deep);
+}
+#launch-scroll {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.launch-tabs {
+    display: flex; border-bottom: 1px solid var(--bg-raised);
+    padding: 0 16px; background: var(--bg);
+}
+.launch-tab {
+    flex: 1; padding: 10px 0; background: none; border: none;
+    color: var(--text-subtle); font-size: 13px; font-weight: 600;
+    cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+}
+.launch-tab.active {
+    color: var(--accent); border-bottom-color: var(--accent);
+}
+.launch-prio-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; padding: 16px;
+}
+.launch-prio-card {
+    padding: 12px; border-radius: 10px;
+    border: 1px solid var(--border);
+}
+.launch-area-hdr {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 0; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.launch-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 0 8px 24px;
+    border-top: 1px solid var(--bg-raised);
+}
+.launch-cb {
+    width: 18px; height: 18px; flex-shrink: 0;
+    accent-color: var(--accent); cursor: pointer;
+}
+.launch-prio-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 6px;
+    border-radius: 4px; flex-shrink: 0;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.launch-del-btn {
+    background: none; border: none; color: var(--text-subtle);
+    font-size: 16px; cursor: pointer; padding: 0 4px;
+    opacity: 0.4; transition: opacity 0.15s;
+}
+.launch-del-btn:hover, .launch-del-btn:active { opacity: 1; color: var(--danger); }
+.launch-btn {
+    padding: 8px 16px; border-radius: 8px;
+    background: var(--bg-raised); color: var(--text-muted);
+    border: 1px solid var(--border); font-size: 13px;
+    cursor: pointer; transition: all 0.15s;
+}
+.launch-btn:active { background: var(--border); }
+.launch-btn-primary {
+    background: var(--accent); color: var(--white);
+    border-color: var(--accent);
+}
+.launch-btn-primary:active { background: var(--accent-hover); }
+.launch-icon-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-muted); padding: 4px 10px;
+    border-radius: 6px; font-size: 12px; cursor: pointer;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.launch-icon-btn:active { background: var(--bg-raised); }
