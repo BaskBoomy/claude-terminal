@@ -468,7 +468,8 @@ function setupScrollControls() {
     scrollBottomBtn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        sendKey('Escape', 27); // exit tmux copy-mode
+        // Ask server to exit copy-mode safely (no keys sent to running process)
+        fetch('/api/tmux-scroll-bottom', { method: 'POST' }).catch(function() {});
         try {
             var viewport = frame.contentDocument.querySelector('.xterm-viewport');
             if (viewport) viewport.scrollTop = viewport.scrollHeight;

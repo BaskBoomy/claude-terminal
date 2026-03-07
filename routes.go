@@ -51,6 +51,7 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/settings", a.auth.RequireAuth(a.putSettings))
 	mux.HandleFunc("GET /api/tmux-session", a.auth.RequireAuth(a.tmuxSession))
 	mux.HandleFunc("GET /api/tmux-capture", a.auth.RequireAuth(a.tmuxCapture))
+	mux.HandleFunc("POST /api/tmux-scroll-bottom", a.auth.RequireAuth(a.tmuxScrollBottom))
 	mux.HandleFunc("GET /api/claude-sessions", a.auth.RequireAuth(a.claudeSessions))
 	mux.HandleFunc("POST /api/claude-send", a.auth.RequireAuth(a.claudeSend))
 	mux.HandleFunc("POST /api/claude-new", a.auth.RequireAuth(a.claudeNew))
@@ -258,6 +259,21 @@ func (a *API) tmuxCapture(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResponse(w, 200, M{"text": out})
+}
+
+func (a *API) tmuxScrollBottom(w http.ResponseWriter, r *http.Request) {
+	// Check if pane is in copy-mode
+	out, err := a.tmux("display-message", "-p", "#{pane_in_mode}")
+	if err != nil {
+		jsonResponse(w, 200, M{"ok": true, "copyMode": false})
+		return
+	}
+	inMode := strings.TrimSpace(out) == "1"
+	if inMode {
+		// Safe exit: send-keys -X cancel only affects copy-mode, not the running process
+		a.tmux("send-keys", "-X", "cancel")
+	}
+	jsonResponse(w, 200, M{"ok": true, "copyMode": inMode})
 }
 
 func (a *API) claudeSessions(w http.ResponseWriter, r *http.Request) {
