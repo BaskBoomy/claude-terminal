@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=13">
+    <link rel="stylesheet" href="/css/style.css?v=16">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -34,10 +34,13 @@
                 <button id="browser-tab-add">+</button>
             </div>
             <div id="preview-bar" style="position:relative">
+                <button class="preview-btn preview-nav-btn" id="preview-back" title="뒤로">&#x25C0;</button>
+                <button class="preview-btn preview-nav-btn" id="preview-forward" title="앞으로">&#x25B6;</button>
                 <input id="preview-url" type="url" placeholder="https://example.com" />
                 <button class="preview-btn" id="preview-reload">&#x21BB;</button>
                 <button class="preview-btn" id="preview-clear" title="Clear cookies &amp; reload">&#x1F6AB;</button>
                 <button class="preview-btn" id="preview-open">&#x2197;</button>
+                <button class="preview-btn" id="viewport-toggle" title="뷰포트 전환">PC</button>
                 <div id="preview-url-dropdown"></div>
             </div>
             <div id="preview-frames"></div>
@@ -245,6 +248,6 @@ if ('serviceWorker' in navigator) {
         .catch(function() {});
 }
 </script>
-<script type="module" src="/js/app.js?v=4"></script>
+<script type="module" src="/js/app.js?v=7"></script>
 </body>
 </html>
