@@ -1,4 +1,5 @@
 import { showToast, colorForPct, colorForTemp } from './utils.js';
+import { t } from './i18n.js';
 import { T } from './theme.js';
 
 // --- State ---
@@ -269,9 +270,9 @@ export function initPolling() {
                     var dpct = Math.round((1 - (d.tokensRemaining || 0) / (d.tokenLimit || 1)) * 100);
                     info.push('Daily: ' + dpct + '%');
                 }
-                showToast(info.join(' · ') || 'Usage refreshed');
+                showToast(info.join(' · ') || t('polling.usageRefreshed'));
             } else {
-                showToast('Usage refreshed');
+                showToast(t('polling.usageRefreshed'));
             }
         });
     }

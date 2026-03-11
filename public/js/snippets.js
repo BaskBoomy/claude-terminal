@@ -1,5 +1,6 @@
 import { sendText, sendKey, tmuxCmd } from './terminal.js';
 import { showConfirm, closeConfirm } from './utils.js';
+import { t } from './i18n.js';
 import { T } from './theme.js';
 
 export const SNIPPET_COLORS = {
@@ -35,9 +36,9 @@ export function renderSnippets(snippets) {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             if (sn.confirm) {
-                showConfirm('Run: ' + sn.command + '?', [
-                    { label: '\uc2e4\ud589', style: 'primary', action: () => runCmd(sn) },
-                    { label: '\ucde8\uc18c', style: 'cancel' }
+                showConfirm(t('snippets.runConfirm', { cmd: sn.command }), [
+                    { label: t('snippets.run'), style: 'primary', action: () => runCmd(sn) },
+                    { label: t('common.cancel'), style: 'cancel' }
                 ]);
                 return;
             }

@@ -1,4 +1,5 @@
 import { escapeHtml, colorForPct, colorForTemp } from './utils.js';
+import { t } from './i18n.js';
 import { T } from './theme.js';
 import { getCachedUsageData, getLastServerData } from './polling.js';
 
@@ -67,7 +68,7 @@ function bindGitEvents() {
             var sec = contentEl.querySelector('.git-files-section');
             if (sec) {
                 var open = sec.classList.toggle('open');
-                toggleBtn.textContent = open ? '▲ 파일 숨기기' : '▼ 변경 파일 보기';
+                toggleBtn.textContent = open ? t('dash.hideFiles') : t('dash.showFiles');
             }
         });
     }
@@ -79,8 +80,8 @@ function renderUsageSection(data) {
     html += '<div class="dash-section-title"><span>⚡</span> Claude Usage</div>';
     if (!data || data.error || !data.five_hour) {
         var errMsg = (data && data.error && data.error.indexOf('429') !== -1)
-            ? 'Rate limited — 잠시 후 자동 갱신됩니다'
-            : '사용량 정보 대기 중...';
+            ? t('dash.rateLimited')
+            : t('dash.usageWaiting');
         html += '<div class="dash-empty">' + errMsg + '</div>';
         return html + '</div>';
     }
@@ -101,7 +102,7 @@ function renderUsageSection(data) {
     html += '<div class="usage-card">';
     html += '<div class="usage-header">';
     html += '<div class="usage-pct">' + pct + '%<small> used</small></div>';
-    html += '<div class="usage-reset">리셋 ' + timeStr + '</div>';
+    html += '<div class="usage-reset">' + t('dash.reset', { time: timeStr }) + '</div>';
     html += '</div>';
     html += '<div class="usage-bar-bg"><div class="usage-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
 
@@ -127,7 +128,7 @@ function renderGitSection(repos, activeId) {
     html += '<div class="dash-section-title"><span>📦</span> Git Status</div>';
 
     if (!repos || repos.length === 0) {
-        html += '<div class="dash-empty">Git 레포지토리를 찾을 수 없습니다</div>';
+        html += '<div class="dash-empty">' + t('dash.noGitRepo') + '</div>';
         return html + '</div></div>';
     }
 
@@ -182,7 +183,7 @@ function renderGitSection(repos, activeId) {
                 html += '<div class="git-file-row"><span class="git-file-status ' + stClass + '">' + escapeHtml(st) + '</span><span class="git-file-name">' + escapeHtml(f.file) + '</span></div>';
             });
             html += '</div>';
-            html += '<button class="git-files-toggle">▼ 변경 파일 보기</button>';
+            html += '<button class="git-files-toggle">' + t('dash.showFiles') + '</button>';
         }
     }
 

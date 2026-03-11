@@ -8,6 +8,8 @@
  *   initTouchScroll(frame)                — touch scrolling for terminal iframe
  */
 
+import { t } from './i18n.js';
+
 // ─── iOS Edge Swipe Prevention + Popstate Trap ───────────────────────────────
 
 export function initGestures(opts) {
@@ -143,7 +145,7 @@ export function setupPullToRefresh(scrollEl, onRefresh) {
     indicator.className = 'ptr-indicator';
     indicator.setAttribute('data-ptr', '');
     indicator.innerHTML =
-      '<div class="ptr-spinner"></div><span>당겨서 새로고침</span>';
+      '<div class="ptr-spinner"></div><span>' + t('gestures.pullToRefresh') + '</span>';
     scrollEl.prepend(indicator);
   }
 
@@ -169,7 +171,7 @@ export function setupPullToRefresh(scrollEl, onRefresh) {
       indicator.className = 'ptr-indicator';
       indicator.setAttribute('data-ptr', '');
       indicator.innerHTML =
-        '<div class="ptr-spinner"></div><span>당겨서 새로고침</span>';
+        '<div class="ptr-spinner"></div><span>' + t('gestures.pullToRefresh') + '</span>';
       scrollEl.prepend(indicator);
     }
 
@@ -202,7 +204,7 @@ export function setupPullToRefresh(scrollEl, onRefresh) {
       indicator.style.opacity = '1';
       indicator.classList.add('refreshing');
       var span = indicator.querySelector('span');
-      if (span) span.textContent = '새로고침 중...';
+      if (span) span.textContent = t('gestures.refreshing');
 
       onRefresh(function done() {
         setTimeout(function () {
@@ -210,7 +212,7 @@ export function setupPullToRefresh(scrollEl, onRefresh) {
           _hideIndicator(indicator);
           indicator.classList.remove('refreshing');
           var span = indicator.querySelector('span');
-          if (span) span.textContent = '당겨서 새로고침';
+          if (span) span.textContent = t('gestures.pullToRefresh');
         }, 300);
       });
     } else {

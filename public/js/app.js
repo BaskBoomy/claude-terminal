@@ -9,11 +9,13 @@ import { initNotes, loadNotesList, setViewSwitcher as setNotesViewSwitcher } fro
 import { initBrain, loadBrainTree, setViewSwitcher as setBrainViewSwitcher } from './brain.js';
 import { initDash, loadDashboard } from './dash.js';
 import { initLaunch, loadLaunch } from './launch.js';
+import { initFiles, loadFiles } from './files.js';
 import { initSettings, subscribePush } from './settings.js';
 import { initCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
 import { renderSnippets } from './snippets.js';
 import { showToast, showConfirm, closeConfirm } from './utils.js';
+import { initI18n, t, translateDOM } from './i18n.js';
 
 // --- Make showToast globally available (used by some modules) ---
 window.showToast = showToast;
@@ -39,6 +41,7 @@ var brainTreeView;
 var brainEditorView;
 var dashContainer;
 var launchContainer;
+var filesContainer;
 var tmuxFab;
 var scrollIndicatorEl;
 var scrollBottomBtnEl;
@@ -58,6 +61,7 @@ function switchView(view) {
     var isBrain = view === 'brain';
     var isDash = view === 'dash';
     var isLaunch = view === 'launch';
+    var isFiles = view === 'files';
 
     viewTabs.forEach(function(tab) {
         tab.classList.toggle('active', tab.dataset.view === view);
@@ -69,6 +73,7 @@ function switchView(view) {
     brainContainer.style.display = isBrain ? 'flex' : 'none';
     dashContainer.style.display = isDash ? 'flex' : 'none';
     launchContainer.style.display = isLaunch ? 'flex' : 'none';
+    filesContainer.style.display = isFiles ? 'flex' : 'none';
 
     // Hide all terminal-only chrome in non-terminal mode
     tmuxFab.style.display = isTerm ? '' : 'none';
@@ -93,6 +98,9 @@ function switchView(view) {
     }
     if (isLaunch) {
         loadLaunch();
+    }
+    if (isFiles) {
+        loadFiles();
     }
 }
 
@@ -190,12 +198,12 @@ var KEYS = {
     'tmux-next': function() { tmuxCmd('n', 78); },
     'tmux-list': function() { tmuxCmd('w', 87); },
     'tmux-kill': function() {
-        showConfirm('\uD604\uC7AC \uC138\uC158\uC744 \uC885\uB8CC\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?', [
-            { label: '\uC885\uB8CC', style: 'primary', action: function() {
+        showConfirm(t('app.killConfirm'), [
+            { label: t('app.killLabel'), style: 'primary', action: function() {
                 tmuxCmd('&', 55);
                 setTimeout(function() { sendText('y'); }, 200);
             }},
-            { label: '\uCDE8\uC18C', style: 'cancel' }
+            { label: t('common.cancel'), style: 'cancel' }
         ]);
     }
 };
@@ -226,7 +234,7 @@ function setupPlusMenu() {
         if (!old.length) return;
         var pending = old.length;
         old.forEach(function(text) {
-            var title = text.split('\n')[0].substring(0, 50) || '\uBA54\uBAA8';
+            var title = text.split('\n')[0].substring(0, 50) || t('app.memo');
             fetch('/api/notes', {
                 method: 'POST', credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/json' },
@@ -256,7 +264,7 @@ function setupPlusMenu() {
         if (pmMemoCache.length === 0) {
             var empty = document.createElement('div');
             empty.className = 'pm-empty';
-            empty.textContent = '\uC800\uC7A5\uB41C \uBA54\uBAA8 \uC5C6\uC74C';
+            empty.textContent = t('app.noMemos');
             pmMemoList.appendChild(empty);
             return;
         }
@@ -265,7 +273,7 @@ function setupPlusMenu() {
             row.className = 'pm-memo-item';
             var text = document.createElement('span');
             text.className = 'pm-memo-text';
-            text.textContent = note.title || note.preview || '\uC81C\uBAA9 \uC5C6\uC74C';
+            text.textContent = note.title || note.preview || t('notes.untitled');
             var del = document.createElement('button');
             del.className = 'pm-memo-del';
             del.innerHTML = '&times;';
@@ -273,12 +281,12 @@ function setupPlusMenu() {
                 e.preventDefault();
                 e.stopPropagation();
                 closePlusMenu();
-                showConfirm('\uC774 \uBA54\uBAA8\uB97C \uC0AD\uC81C\uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?', [
-                    { label: '\uC0AD\uC81C', style: 'primary', action: function() {
+                showConfirm(t('notes.deleteConfirm'), [
+                    { label: t('common.delete'), style: 'primary', action: function() {
                         fetch('/api/notes/' + note.id, { method: 'DELETE', credentials: 'same-origin' })
                             .then(function() { fetchMemoList(renderMemos); notesListLoaded = false; });
                     }},
-                    { label: '\uCDE8\uC18C', style: 'cancel' }
+                    { label: t('common.cancel'), style: 'cancel' }
                 ]);
             }
             del.addEventListener('click', deleteMemo);
@@ -299,9 +307,9 @@ function setupPlusMenu() {
                             return;
                         }
                         closePlusMenu();
-                        showConfirm('\uC785\uB825\uCC3D\uC5D0 \uB0B4\uC6A9\uC774 \uC788\uC2B5\uB2C8\uB2E4.', [
-                            { label: '\uC800\uC7A5 \uD6C4 \uB36E\uC5B4\uC4F0\uAE30', style: 'primary', action: function() {
-                                var saveTitle = currentText.split('\n')[0].substring(0, 50) || '\uBA54\uBAA8';
+                        showConfirm(t('app.inputHasContent'), [
+                            { label: t('app.saveAndOverwrite'), style: 'primary', action: function() {
+                                var saveTitle = currentText.split('\n')[0].substring(0, 50) || t('app.memo');
                                 fetch('/api/notes', {
                                     method: 'POST', credentials: 'same-origin',
                                     headers: { 'Content-Type': 'application/json' },
@@ -312,13 +320,13 @@ function setupPlusMenu() {
                                 sessionStorage.setItem('terminal-input', textInput.value);
                                 textInput.focus();
                             }},
-                            { label: '\uADF8\uB0E5 \uB36E\uC5B4\uC4F0\uAE30', style: 'secondary', action: function() {
+                            { label: t('app.justOverwrite'), style: 'secondary', action: function() {
                                 textInput.value = memoContent;
                                 autoResize();
                                 sessionStorage.setItem('terminal-input', textInput.value);
                                 textInput.focus();
                             }},
-                            { label: '\uCDE8\uC18C', style: 'cancel' }
+                            { label: t('common.cancel'), style: 'cancel' }
                         ]);
                     });
             });
@@ -329,7 +337,7 @@ function setupPlusMenu() {
     }
 
     function openPlusMenu() {
-        pmMemoList.innerHTML = '<div class="pm-empty">\uBD88\uB7EC\uC624\uB294 \uC911...</div>';
+        pmMemoList.innerHTML = '<div class="pm-empty">' + t('common.loading') + '</div>';
         plusMenu.classList.add('open');
         fetchMemoList(renderMemos);
     }
@@ -376,7 +384,7 @@ function setupPlusMenu() {
     pmSaveMemo.addEventListener('click', function() {
         var text = textInput.value.trim();
         if (!text) return;
-        var title = text.split('\n')[0].substring(0, 50) || '\uBA54\uBAA8';
+        var title = text.split('\n')[0].substring(0, 50) || t('app.memo');
         fetch('/api/notes', {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
@@ -587,6 +595,15 @@ function setupTouchScroll() {
     // 1. Auth check (redirects to /login.html if not authenticated)
     await initAuth();
 
+    // 1b. Load settings and init i18n before rendering any UI text
+    var _initSettings = {};
+    try {
+        _initSettings = await fetch('/api/settings').then(function(r) { return r.json(); });
+    } catch(e) {}
+    var lang = (_initSettings.general && _initSettings.general.language) || 'en';
+    await initI18n(lang);
+    translateDOM();
+
     // 2. iOS gestures (edge swipe blockers, popstate trap) + edge double-tap view switching
     initGestures({
         onEdgeDoubleTap: function(direction) {
@@ -621,6 +638,7 @@ function setupTouchScroll() {
     brainEditorView = document.getElementById('brain-editor-view');
     dashContainer = document.getElementById('dash-container');
     launchContainer = document.getElementById('launch-container');
+    filesContainer = document.getElementById('files-container');
     tmuxFab = document.getElementById('tmux-fab');
     scrollIndicatorEl = document.getElementById('scroll-indicator');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
@@ -639,6 +657,7 @@ function setupTouchScroll() {
     initBrain();
     initDash();
     initLaunch();
+    initFiles();
     initCopyMode();
 
     // 5b. Pull-to-refresh on brain tree and dashboard
@@ -652,6 +671,12 @@ function setupTouchScroll() {
     if (dashScroll) {
         setupPullToRefresh(dashScroll, function(done) {
             loadDashboard(done);
+        });
+    }
+    var filesItems = document.getElementById('files-items');
+    if (filesItems) {
+        setupPullToRefresh(filesItems, function(done) {
+            loadFiles(done);
         });
     }
     var launchScroll = document.getElementById('launch-scroll');

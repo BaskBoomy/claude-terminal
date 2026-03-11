@@ -588,6 +588,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     border-left: 1px solid var(--border); border-right: 1px solid var(--border);
     height: 30px; line-height: 30px;
 }
+.settings-select {
+    background: var(--bg-raised); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 8px; font-size: 13px; outline: none;
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23A9A39A' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 6px center; padding-right: 24px;
+}
+.settings-select:focus { border-color: var(--accent); }
 
 /* Snippet card in sheet */
 .sn-card {
@@ -1391,3 +1399,246 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     font-family: 'SF Mono', 'Cascadia Code', monospace;
 }
 .launch-icon-btn:active { background: var(--bg-raised); }
+
+/* =============================================
+   Files Explorer
+   ============================================= */
+#files-container {
+    display: none; flex-direction: column;
+    width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0;
+    background: var(--bg-deep);
+}
+
+/* Header / Toolbar */
+#files-header { flex-shrink: 0; }
+#files-toolbar {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 8px; background: var(--bg);
+    border-bottom: 1px solid var(--bg-raised);
+}
+.files-toolbar-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); cursor: pointer; padding: 5px 8px; font-size: 14px;
+    flex-shrink: 0; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.files-toolbar-btn:active { background: var(--bg-raised); color: var(--text); }
+#files-filter {
+    flex: 1; min-width: 0; background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 13px; padding: 5px 10px;
+    outline: none; font-family: -apple-system, system-ui, sans-serif;
+}
+#files-filter:focus { border-color: var(--accent); }
+#files-filter::placeholder { color: var(--text-subtle); }
+
+/* Path bar / Breadcrumb */
+#files-path-bar {
+    padding: 6px 8px; background: var(--bg);
+    border-bottom: 1px solid var(--bg-raised);
+    overflow: hidden;
+}
+#files-breadcrumb {
+    display: flex; align-items: center; gap: 2px;
+    overflow-x: auto; scrollbar-width: none;
+    white-space: nowrap;
+}
+#files-breadcrumb::-webkit-scrollbar { display: none; }
+.files-crumb {
+    background: none; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 12px; padding: 3px 6px; border-radius: 4px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    flex-shrink: 0;
+}
+.files-crumb:active, .files-crumb.active { color: var(--text); background: var(--bg-raised); }
+.files-crumb-sep {
+    color: var(--text-subtle); font-size: 11px; flex-shrink: 0;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.files-section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--accent); padding: 10px 16px 4px;
+}
+
+/* File list */
+#files-list-view { display: flex; flex-direction: column; height: 100%; }
+#files-items {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.files-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-bottom: 1px solid var(--bg);
+    cursor: pointer; transition: background 0.1s;
+    touch-action: manipulation;
+}
+.files-item:active { background: var(--bg-raised); }
+.files-item.selected { background: rgba(201, 100, 66, 0.15); }
+.files-item-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+.files-item-info { flex: 1; min-width: 0; }
+.files-item-name {
+    font-size: 14px; color: var(--text); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.files-item-meta {
+    font-size: 11px; color: var(--text-subtle); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.files-item-arrow {
+    color: var(--border-light); font-size: 10px; flex-shrink: 0;
+}
+.files-dl-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px;
+    flex-shrink: 0; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+.files-dl-btn:active { background: var(--bg-raised); color: var(--text); }
+.files-empty {
+    padding: 40px 16px; text-align: center;
+    color: var(--border-light); font-size: 14px;
+}
+.files-divider {
+    height: 1px; background: var(--bg-raised); margin: 4px 0;
+}
+
+/* Select bar */
+#files-select-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--bg);
+    border-top: 1px solid var(--bg-raised); flex-shrink: 0;
+}
+#files-select-count {
+    flex: 1; font-size: 13px; color: var(--text-muted);
+}
+.files-select-btn {
+    background: var(--accent); border: none; color: var(--white);
+    font-size: 12px; padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; font-weight: 600;
+    font-family: -apple-system, system-ui, sans-serif;
+}
+.files-select-btn.cancel {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+}
+
+/* Preview view */
+#files-preview-view { display: none; flex-direction: column; height: 100%; }
+#files-preview-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--bg);
+    border-bottom: 1px solid var(--bg-raised); flex-shrink: 0;
+}
+#files-preview-back {
+    background: none; border: none; color: var(--accent); cursor: pointer;
+    font-size: 14px; padding: 4px 8px; flex-shrink: 0;
+    font-family: -apple-system, system-ui, sans-serif;
+}
+#files-preview-title {
+    flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+#files-preview-body {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--bg-deep);
+}
+#files-preview-footer {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--bg);
+    border-top: 1px solid var(--bg-raised); flex-shrink: 0;
+    overflow-x: auto;
+}
+.files-action-btn {
+    background: var(--accent); border: none; color: var(--white);
+    font-size: 13px; padding: 7px 14px; border-radius: 8px;
+    cursor: pointer; font-weight: 600; white-space: nowrap;
+    font-family: -apple-system, system-ui, sans-serif;
+    touch-action: manipulation; flex-shrink: 0;
+}
+.files-action-btn:active { background: var(--accent-hover); }
+.files-action-btn.secondary {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+}
+.files-action-btn.secondary:active { background: var(--bg-raised); color: var(--text); }
+
+/* Text preview */
+.files-preview-text {
+    padding: 12px 16px; font-size: 13px; line-height: 1.6;
+    color: var(--text-muted); white-space: pre-wrap; word-break: break-all;
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* Image preview */
+.files-img-wrap {
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px; min-height: 200px;
+}
+.files-preview-img {
+    max-width: 100%; max-height: 60vh; border-radius: 8px;
+    object-fit: contain;
+}
+
+/* Binary info */
+.files-binary-info {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px;
+    padding: 40px 16px; text-align: center; color: var(--text-muted);
+}
+.files-binary-icon { font-size: 48px; }
+.files-binary-size { font-size: 13px; color: var(--text-subtle); }
+
+/* Edit textarea */
+.files-edit-textarea {
+    flex: 1; width: 100%; border: none; outline: none; resize: none;
+    background: var(--bg-deep); color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 13px; line-height: 1.6; padding: 12px 16px;
+    box-sizing: border-box;
+}
+
+/* Loading */
+.files-loading {
+    padding: 40px 16px; text-align: center;
+    color: var(--text-subtle); font-size: 14px;
+}
+
+/* QR overlay */
+.files-qr-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7); z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+}
+.files-qr-modal {
+    background: var(--bg-raised); border-radius: 16px;
+    padding: 24px; max-width: 320px; width: 90%;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.files-qr-title {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    text-align: center; word-break: break-all;
+}
+.files-qr-img {
+    width: 200px; height: 200px; border-radius: 8px; background: #fff;
+}
+.files-qr-url {
+    font-size: 11px; color: var(--text-subtle); word-break: break-all;
+    text-align: center; font-family: 'SF Mono', 'Cascadia Code', monospace;
+    max-height: 48px; overflow: hidden;
+}
+.files-qr-note {
+    font-size: 12px; color: var(--text-muted);
+}
+.files-qr-actions {
+    display: flex; gap: 8px; width: 100%;
+}
+.files-qr-btn {
+    flex: 1; padding: 10px; border-radius: 8px; border: none;
+    background: var(--accent); color: var(--white); font-size: 14px;
+    font-weight: 600; cursor: pointer;
+    font-family: -apple-system, system-ui, sans-serif;
+}
+.files-qr-btn.cancel {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+}
+.files-qr-btn:active { opacity: 0.8; }

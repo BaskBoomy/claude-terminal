@@ -1,5 +1,6 @@
 // terminal.js — ES module for terminal/xterm integration
 import { showToast } from './utils.js';
+import { t } from './i18n.js';
 
 let frame = null;
 let textInput = null;
@@ -36,7 +37,7 @@ export function openSendHistory() {
     if (!panel || !list) return;
     list.innerHTML = '';
     if (inputHistory.length === 0) {
-        list.innerHTML = '<div style="padding:20px 14px;color:var(--text-subtle);font-size:13px;">이력 없음</div>';
+        list.innerHTML = '<div style="padding:20px 14px;color:var(--text-subtle);font-size:13px;">' + t('terminal.noHistory') + '</div>';
     } else {
         // Show most recent first
         for (var i = inputHistory.length - 1; i >= 0; i--) {
@@ -50,7 +51,7 @@ export function openSendHistory() {
                 var copyBtn = document.createElement('button');
                 copyBtn.className = 'send-history-copy';
                 copyBtn.innerHTML = '&#x1F4CB;';
-                copyBtn.title = '입력창에 붙여넣기';
+                copyBtn.title = t('terminal.pasteToInput');
                 copyBtn.addEventListener('click', function(e) {
                     e.stopPropagation();
                     textInput.value = text;
@@ -186,7 +187,7 @@ function doSendInput(text) {
                 actualSend(text, ta2);
             } else if (retries >= 3) {
                 clearInterval(retryTimer);
-                showToast('전송 실패 — 텍스트 보존됨', 2000);
+                showToast(t('terminal.sendFailed'), 2000);
                 textInput.style.background = '#3a1515';
                 setTimeout(function () { textInput.style.background = ''; }, 600);
                 // Don't clear input — user can retry
@@ -235,7 +236,7 @@ function actualSend(text, ta) {
             clearInput();
         } else {
             // Enter failed — keep text in input
-            showToast('전송 실패 — 텍스트 보존됨', 2000);
+            showToast(t('terminal.sendFailed'), 2000);
         }
     }, 80);
 }
@@ -323,18 +324,18 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             try {
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(text).then(function() {
-                        showToast('복사됨', 1500);
+                        showToast(t('terminal.copied'), 1500);
                     }).catch(function() {
                         fallbackCopy(text);
-                        showToast('복사됨', 1500);
+                        showToast(t('terminal.copied'), 1500);
                     });
                 } else {
                     fallbackCopy(text);
-                    showToast('복사됨', 1500);
+                    showToast(t('terminal.copied'), 1500);
                 }
             } catch(e) {
                 fallbackCopy(text);
-                showToast('복사됨', 1500);
+                showToast(t('terminal.copied'), 1500);
             }
         }
         function fallbackCopy(text) {
