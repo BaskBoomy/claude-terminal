@@ -31,10 +31,10 @@ var AREAS = [
 ];
 
 var PRIO_COLORS = {
-    'P0': { bg: '#3a1a1a', text: '#ff6b6b', label: 'Blocker' },
-    'P1': { bg: '#3a2a1a', text: '#e8b84b', label: 'Must' },
-    'P2': { bg: '#1a2a3a', text: '#6ba3ff', label: 'Nice' },
-    'P3': { bg: '#1a3a2a', text: '#6bbb6b', label: 'Later' },
+    'P0': { bg: '#3a1a1a', text: '#ff6b6b', label: '\uBE14\uB85C\uCEE4' },
+    'P1': { bg: '#3a2a1a', text: '#e8b84b', label: '\uD544\uC218' },
+    'P2': { bg: '#1a2a3a', text: '#6ba3ff', label: '\uAD8C\uC7A5' },
+    'P3': { bg: '#1a3a2a', text: '#6bbb6b', label: '\uD6C4\uC21C\uC704' },
 };
 
 // --- Init ---
@@ -56,7 +56,7 @@ export function loadLaunch(done) {
         render();
         if (done) done();
     }).catch(function() {
-        contentEl.innerHTML = '<div class="dash-empty">Launch data unavailable</div>';
+        contentEl.innerHTML = '<div class="dash-empty">런칭 데이터를 불러올 수 없습니다</div>';
         if (done) done();
     });
 }
@@ -76,9 +76,9 @@ function render() {
 function renderEmpty() {
     return '<div class="dash-section" style="text-align:center;padding:60px 16px">' +
         '<div style="font-size:48px;margin-bottom:16px">\uD83D\uDE80</div>' +
-        '<div style="font-size:16px;color:' + T.text() + ';margin-bottom:8px">Launch Tracker</div>' +
-        '<div style="font-size:13px;color:' + T.textMuted() + ';margin-bottom:24px">Initialize the checklist with default items for your SaaS launch.</div>' +
-        '<button id="launch-seed-btn" class="launch-btn launch-btn-primary">Initialize Checklist</button>' +
+        '<div style="font-size:16px;color:' + T.text() + ';margin-bottom:8px">\uB7F0\uCE6D \uD2B8\uB798\uCEE4</div>' +
+        '<div style="font-size:13px;color:' + T.textMuted() + ';margin-bottom:24px">SaaS \uC624\uD508 \uC900\uBE44 \uCCB4\uD06C\uB9AC\uC2A4\uD2B8\uB97C \uCD08\uAE30\uD654\uD569\uB2C8\uB2E4.</div>' +
+        '<button id="launch-seed-btn" class="launch-btn launch-btn-primary">\uCCB4\uD06C\uB9AC\uC2A4\uD2B8 \uCD08\uAE30\uD654</button>' +
         '</div>';
 }
 
@@ -97,7 +97,7 @@ function renderHeader() {
     html += '</div>';
 
     if (!editingDate) {
-        html += '<button id="launch-date-edit-btn" class="launch-icon-btn" title="Change date">' + escapeHtml(s.targetDate) + ' \u270F</button>';
+        html += '<button id="launch-date-edit-btn" class="launch-icon-btn" title="\uB0A0\uC9DC \uBCC0\uACBD">' + escapeHtml(s.targetDate) + ' \u270F</button>';
     }
     html += '</div>';
 
@@ -106,10 +106,10 @@ function renderHeader() {
 
     // Stats row
     html += '<div style="display:flex;gap:4px;margin-top:8px;font-size:11px;color:' + T.textSubtle() + ';font-family:\'SF Mono\',monospace">';
-    html += '<span>' + s.done + '/' + s.total + ' done</span>';
+    html += '<span>' + s.done + '/' + s.total + ' \uC644\uB8CC</span>';
     html += '<span style="flex:1"></span>';
     if (s.blockers > 0) {
-        html += '<span style="color:' + T.danger() + '">' + s.blockers + ' blocker' + (s.blockers > 1 ? 's' : '') + '</span>';
+        html += '<span style="color:' + T.danger() + '">\uBE14\uB85C\uCEE4 ' + s.blockers + '\uAC1C</span>';
     }
     html += '</div>';
 
@@ -124,12 +124,12 @@ function renderHeader() {
 
 function renderDateEditForm(currentDate) {
     return '<div class="launch-date-form" style="margin-top:12px;padding:12px;background:' + T.bgDeep() + ';border-radius:8px;border:1px solid ' + T.border() + '">' +
-        '<div style="font-size:12px;color:' + T.textMuted() + ';margin-bottom:8px">Change target date</div>' +
+        '<div style="font-size:12px;color:' + T.textMuted() + ';margin-bottom:8px">\uBAA9\uD45C\uC77C \uBCC0\uACBD</div>' +
         '<input type="date" id="launch-new-date" value="' + currentDate + '" style="width:100%;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:14px;margin-bottom:8px">' +
-        '<input type="text" id="launch-date-reason" placeholder="Reason for change..." style="width:100%;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:13px;margin-bottom:8px">' +
+        '<input type="text" id="launch-date-reason" placeholder="\uBCC0\uACBD \uC0AC\uC720\uB97C \uC785\uB825\uD558\uC138\uC694..." style="width:100%;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:13px;margin-bottom:8px">' +
         '<div style="display:flex;gap:8px">' +
-        '<button id="launch-date-save" class="launch-btn launch-btn-primary" style="flex:1">Save</button>' +
-        '<button id="launch-date-cancel" class="launch-btn" style="flex:1">Cancel</button>' +
+        '<button id="launch-date-save" class="launch-btn launch-btn-primary" style="flex:1">\uC800\uC7A5</button>' +
+        '<button id="launch-date-cancel" class="launch-btn" style="flex:1">\uCDE8\uC18C</button>' +
         '</div></div>';
 }
 
@@ -137,8 +137,8 @@ function renderSubTabs() {
     var ov = subView === 'overview' ? ' active' : '';
     var cl = subView === 'checklist' ? ' active' : '';
     return '<div class="launch-tabs">' +
-        '<button class="launch-tab' + ov + '" data-sub="overview">Overview</button>' +
-        '<button class="launch-tab' + cl + '" data-sub="checklist">Checklist</button>' +
+        '<button class="launch-tab' + ov + '" data-sub="overview">\uC694\uC57D</button>' +
+        '<button class="launch-tab' + cl + '" data-sub="checklist">\uCCB4\uD06C\uB9AC\uC2A4\uD2B8</button>' +
         '</div>';
 }
 
@@ -167,7 +167,7 @@ function renderOverview() {
     var blockers = items.filter(function(it) { return !it.done && it.priority === 'P0'; });
     if (blockers.length > 0) {
         html += '<div class="dash-section">';
-        html += '<div class="dash-section-title"><span>\u26A0</span> Blockers</div>';
+        html += '<div class="dash-section-title"><span>\u26A0</span> 블로커</div>';
         blockers.forEach(function(it) {
             html += renderItemRow(it);
         });
@@ -184,7 +184,7 @@ function renderOverview() {
     var upcoming = undone.slice(0, 10);
     if (upcoming.length > 0) {
         html += '<div class="dash-section">';
-        html += '<div class="dash-section-title"><span>\uD83D\uDCCB</span> Up Next</div>';
+        html += '<div class="dash-section-title"><span>\uD83D\uDCCB</span> 다음 할 일</div>';
         upcoming.forEach(function(it) {
             html += renderItemRow(it);
         });
@@ -197,7 +197,7 @@ function renderOverview() {
     var recent = completed.slice(0, 5);
     if (recent.length > 0) {
         html += '<div class="dash-section">';
-        html += '<div class="dash-section-title"><span>\u2705</span> Recently Done</div>';
+        html += '<div class="dash-section-title"><span>\u2705</span> 최근 완료</div>';
         recent.forEach(function(it) {
             html += renderItemRow(it);
         });
@@ -249,7 +249,7 @@ function renderChecklist() {
 
     // Add item button
     html += '<div class="dash-section" style="text-align:center;padding:24px">';
-    html += '<button id="launch-add-btn" class="launch-btn">+ Add Item</button>';
+    html += '<button id="launch-add-btn" class="launch-btn">+ 항목 추가</button>';
     html += '</div>';
 
     return html;
@@ -264,7 +264,7 @@ function renderItemRow(it) {
     html += '<input type="checkbox" class="launch-cb" data-id="' + it.id + '"' + checked + '>';
     html += '<span style="font-size:13px;flex:1;' + textStyle + '">' + escapeHtml(it.title) + '</span>';
     html += '<span class="launch-prio-badge" style="background:' + c.bg + ';color:' + c.text + '">' + it.priority + '</span>';
-    html += '<button class="launch-del-btn" data-id="' + it.id + '" title="Delete">\u00D7</button>';
+    html += '<button class="launch-del-btn" data-id="' + it.id + '" title="삭제">\u00D7</button>';
     html += '</div>';
     return html;
 }
@@ -299,13 +299,13 @@ function bindEvents() {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
             var id = btn.dataset.id;
-            showConfirm('Delete this item?', [
-                { label: 'Delete', style: 'primary', action: function() {
+            showConfirm('이 항목을 삭제하시겠습니까?', [
+                { label: '삭제', style: 'primary', action: function() {
                     fetch('/api/launch/items/' + id, {
                         method: 'DELETE', credentials: 'same-origin'
                     }).then(function() { lastLoad = 0; loadLaunch(); });
                 }},
-                { label: 'Cancel', style: 'cancel' }
+                { label: '취소', style: 'cancel' }
             ]);
         });
     });
@@ -336,8 +336,8 @@ function bindEvents() {
             var reason = document.getElementById('launch-date-reason').value;
             if (!newDate) return;
 
-            showConfirm('Change target date to ' + newDate + '?', [
-                { label: 'Confirm', style: 'primary', action: function() {
+            showConfirm('목표일을 ' + newDate + '(으)로 변경하시겠습니까?', [
+                { label: '확인', style: 'primary', action: function() {
                     fetch('/api/launch/config', {
                         method: 'PUT', credentials: 'same-origin',
                         headers: { 'Content-Type': 'application/json' },
@@ -346,10 +346,10 @@ function bindEvents() {
                         editingDate = false;
                         lastLoad = 0;
                         loadLaunch();
-                        showToast('Target date updated');
+                        showToast('목표일이 변경되었습니다');
                     });
                 }},
-                { label: 'Cancel', style: 'cancel' }
+                { label: '취소', style: 'cancel' }
             ]);
         });
     }
@@ -373,13 +373,13 @@ function bindSeedBtn() {
     if (btn) {
         btn.addEventListener('click', function() {
             btn.disabled = true;
-            btn.textContent = 'Initializing...';
+            btn.textContent = '초기화 중...';
             fetch('/api/launch/seed', {
                 method: 'POST', credentials: 'same-origin'
             }).then(function() {
                 lastLoad = 0;
                 loadLaunch();
-                showToast('Checklist initialized');
+                showToast('체크리스트가 초기화되었습니다');
             });
         });
     }
@@ -391,16 +391,16 @@ function showAddForm() {
     }).join('');
 
     var formHtml = '<div class="dash-section" id="launch-add-form-wrap" style="padding:16px">' +
-        '<div style="font-size:13px;font-weight:600;color:' + T.text() + ';margin-bottom:12px">Add Item</div>' +
-        '<input type="text" id="launch-add-title" placeholder="Title" style="width:100%;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:13px;margin-bottom:8px">' +
+        '<div style="font-size:13px;font-weight:600;color:' + T.text() + ';margin-bottom:12px">항목 추가</div>' +
+        '<input type="text" id="launch-add-title" placeholder="제목" style="width:100%;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:13px;margin-bottom:8px">' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
         '<select id="launch-add-area" style="flex:1;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:13px">' + areaOptions + '</select>' +
         '<select id="launch-add-prio" style="width:70px;padding:8px;background:' + T.bgRaised() + ';color:' + T.text() + ';border:1px solid ' + T.border() + ';border-radius:6px;font-size:13px">' +
         '<option value="P0">P0</option><option value="P1" selected>P1</option><option value="P2">P2</option><option value="P3">P3</option></select>' +
         '</div>' +
         '<div style="display:flex;gap:8px">' +
-        '<button id="launch-add-save" class="launch-btn launch-btn-primary" style="flex:1">Add</button>' +
-        '<button id="launch-add-cancel" class="launch-btn" style="flex:1">Cancel</button>' +
+        '<button id="launch-add-save" class="launch-btn launch-btn-primary" style="flex:1">추가</button>' +
+        '<button id="launch-add-cancel" class="launch-btn" style="flex:1">취소</button>' +
         '</div></div>';
 
     // Replace the add button section
@@ -418,7 +418,7 @@ function showAddForm() {
             var title = document.getElementById('launch-add-title').value.trim();
             var area = document.getElementById('launch-add-area').value;
             var priority = document.getElementById('launch-add-prio').value;
-            if (!title) { showToast('Title required'); return; }
+            if (!title) { showToast('제목을 입력하세요'); return; }
 
             // Find area label
             var areaLabel = area;
@@ -433,7 +433,7 @@ function showAddForm() {
             }).then(function() {
                 lastLoad = 0;
                 loadLaunch();
-                showToast('Item added');
+                showToast('항목이 추가되었습니다');
             });
         });
     }
