@@ -1,5 +1,6 @@
 // Settings Bottom Sheet — ES module
 import { showConfirm, closeConfirm, showToast } from './utils.js';
+import { disableEdgeZones, enableEdgeZones } from './gestures.js';
 
 var shSettings = { general: { wakeLock: false, fontSize: 16, notification: false }, snippets: [] };
 
@@ -97,10 +98,14 @@ function renderSettingsSnippets() {
                 '</div>' +
             '</div>';
 
-        // Accordion toggle
+        // Accordion toggle (suppress during drag)
         var header = card.querySelector('.sn-header');
+        var wasDragged = false;
+        card.addEventListener('dragstart', function() { wasDragged = true; });
+        card.addEventListener('dragend', function() { setTimeout(function() { wasDragged = false; }, 0); });
         header.addEventListener('click', function(e) {
             if (e.target.closest('.sn-handle')) return;
+            if (wasDragged) return;
             card.classList.toggle('expanded');
             if (card.classList.contains('expanded')) {
                 var ta2 = card.querySelector('textarea');
@@ -256,6 +261,7 @@ function openSettings() {
     shBackdrop.classList.add('open');
     shSheet.classList.add('open');
     document.body.style.overflow = 'hidden';
+    disableEdgeZones();
 }
 
 function closeSettings() {
@@ -264,6 +270,7 @@ function closeSettings() {
     shBackdrop.classList.remove('open');
     shSheet.classList.remove('open');
     document.body.style.overflow = '';
+    enableEdgeZones();
 }
 
 // --- Init ---

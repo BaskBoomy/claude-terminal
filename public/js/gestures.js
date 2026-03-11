@@ -15,6 +15,31 @@ export function initGestures(opts) {
   _initPopstateTrap();
 }
 
+var _edgeOverlays = [];
+
+export function disableEdgeZones() {
+  _edgeOverlays.forEach(function(el) { el.style.pointerEvents = 'none'; });
+}
+export function enableEdgeZones() {
+  _edgeOverlays.forEach(function(el) { el.style.pointerEvents = ''; });
+}
+
+// Recalculate edge overlay height to stop above bottom UI areas
+function _updateEdgeHeight() {
+  var ids = ['input-bar', 'toolbar', 'keys-bar'];
+  var minTop = window.innerHeight;
+  for (var i = 0; i < ids.length; i++) {
+    var area = document.getElementById(ids[i]);
+    if (area && !area.classList.contains('hidden')) {
+      var r = area.getBoundingClientRect();
+      if (r.top < minTop) minTop = r.top;
+    }
+  }
+  _edgeOverlays.forEach(function(el) {
+    el.style.height = Math.max(0, minTop) + 'px';
+  });
+}
+
 function _initEdgeSwipeBlockers(opts) {
   var EDGE = 50;
   var TAP_THRESHOLD = 10;
@@ -26,6 +51,7 @@ function _initEdgeSwipeBlockers(opts) {
       'position:fixed;top:0;' + side + ':0;width:' + EDGE +
       'px;height:100%;z-index:9999;touch-action:none;-webkit-touch-callout:none;';
     document.body.appendChild(el);
+    _edgeOverlays.push(el);
 
     var startX, startY;
     var lastTapTime = 0;
@@ -67,6 +93,13 @@ function _initEdgeSwipeBlockers(opts) {
         if (target) target.click();
       }
     }, { passive: false });
+  });
+
+  // Initial height calc + keep updated on resize and DOM changes
+  setTimeout(_updateEdgeHeight, 100);
+  window.addEventListener('resize', _updateEdgeHeight);
+  new MutationObserver(_updateEdgeHeight).observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['class']
   });
 }
 
