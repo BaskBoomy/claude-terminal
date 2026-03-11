@@ -1,4 +1,5 @@
 import { showToast, showConfirm, closeConfirm, escapeHtml, formatDate } from './utils.js';
+import { t } from './i18n.js';
 
 // --- DOM refs ---
 let notesContainer;
@@ -38,7 +39,7 @@ function formatNoteDate(ts) {
 
 function renderNotesList(notes) {
     if (!notes.length) {
-        notesItems.innerHTML = '<div class="note-item-empty">메모가 없습니다</div>';
+        notesItems.innerHTML = '<div class="note-item-empty">' + t('notes.empty') + '</div>';
         return;
     }
     notesItems.innerHTML = '';
@@ -46,7 +47,7 @@ function renderNotesList(notes) {
         const el = document.createElement('div');
         el.className = 'note-item';
         el.innerHTML =
-            '<div class="note-item-title">' + escapeHtml(n.title || '제목 없음') + '</div>' +
+            '<div class="note-item-title">' + escapeHtml(n.title || t('notes.untitled')) + '</div>' +
             '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
             '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>';
         el.addEventListener('click', () => openNote(n.id));
@@ -55,7 +56,7 @@ function renderNotesList(notes) {
 }
 
 function scheduleNoteSave() {
-    notesEditorStatus.textContent = '수정됨';
+    notesEditorStatus.textContent = t('notes.modified');
     notesEditorStatus.classList.remove('saved');
     clearTimeout(notesSaveTimer);
     notesSaveTimer = setTimeout(saveCurrentNote, 1500);
@@ -83,7 +84,7 @@ export function initNotes() {
     // Back button
     notesBackBtn.addEventListener('click', () => {
         clearTimeout(notesSaveTimer);
-        if (currentNoteId && notesEditorStatus.textContent !== '저장됨') {
+        if (currentNoteId && notesEditorStatus.textContent !== t('notes.saved')) {
             saveCurrentNote();
         }
         currentNoteId = null;
@@ -109,9 +110,9 @@ export function initNotes() {
     // Delete note
     notesDeleteBtn.addEventListener('click', () => {
         if (!currentNoteId) return;
-        showConfirm('이 메모를 삭제하시겠습니까?', [
+        showConfirm(t('notes.deleteConfirm'), [
             {
-                label: '삭제', className: 'primary', action: () => {
+                label: t('common.delete'), className: 'primary', action: () => {
                     fetch('/api/notes/' + currentNoteId, {
                         method: 'DELETE',
                         credentials: 'same-origin'
@@ -123,7 +124,7 @@ export function initNotes() {
                     });
                 }
             },
-            { label: '취소', className: 'cancel' }
+            { label: t('common.cancel'), className: 'cancel' }
         ]);
     });
 
@@ -148,7 +149,7 @@ export function openNote(id) {
             currentNoteId = id;
             notesTitleInput.value = data.title || '';
             notesEditorTextarea.value = data.content || '';
-            notesEditorStatus.textContent = '저장됨';
+            notesEditorStatus.textContent = t('notes.saved');
             notesEditorStatus.classList.add('saved');
             notesListView.style.display = 'none';
             notesEditorView.style.display = 'flex';
@@ -157,7 +158,7 @@ export function openNote(id) {
 
 export function saveCurrentNote() {
     if (!currentNoteId) return;
-    notesEditorStatus.textContent = '저장 중...';
+    notesEditorStatus.textContent = t('notes.saving');
     notesEditorStatus.classList.remove('saved');
     fetch('/api/notes/' + currentNoteId, {
         method: 'PUT',
@@ -169,14 +170,14 @@ export function saveCurrentNote() {
         })
     }).then(r => {
         if (r.ok) {
-            notesEditorStatus.textContent = '저장됨';
+            notesEditorStatus.textContent = t('notes.saved');
             notesEditorStatus.classList.add('saved');
         } else {
-            notesEditorStatus.textContent = '저장 실패';
+            notesEditorStatus.textContent = t('notes.saveFailed');
             notesEditorStatus.classList.remove('saved');
         }
     }).catch(() => {
-        notesEditorStatus.textContent = '저장 실패';
+        notesEditorStatus.textContent = t('notes.saveFailed');
         notesEditorStatus.classList.remove('saved');
     });
 }
@@ -187,12 +188,12 @@ export function sendNoteToClaudeDialog() {
     if (!content) return;
 
     // Save before sending
-    if (notesEditorStatus.textContent !== '저장됨') {
+    if (notesEditorStatus.textContent !== t('notes.saved')) {
         clearTimeout(notesSaveTimer);
         saveCurrentNote();
     }
 
-    const noteText = '--- Note: ' + (title || '제목 없음') + ' ---\n' + content;
+    const noteText = '--- Note: ' + (title || t('notes.untitled')) + ' ---\n' + content;
 
     // Fetch running Claude sessions
     fetch('/api/claude-sessions', { credentials: 'same-origin' })
@@ -221,7 +222,7 @@ export function sendNoteToClaudeDialog() {
 
             // New session option
             buttons.push({
-                label: '+ 새 세션',
+                label: t('notes.newSession'),
                 className: 'primary',
                 action: () => {
                     fetch('/api/claude-new', {
@@ -235,17 +236,17 @@ export function sendNoteToClaudeDialog() {
                 }
             });
 
-            buttons.push({ label: '취소', className: 'cancel' });
+            buttons.push({ label: t('common.cancel'), className: 'cancel' });
 
             const dialogTitle = sessions.length > 0
-                ? '전송할 Claude 세션 선택 (' + sessions.length + '개 실행 중)'
-                : '실행 중인 Claude 세션이 없습니다';
+                ? t('notes.selectSession', { n: sessions.length })
+                : t('notes.noSession');
             showConfirm(dialogTitle, buttons);
         })
         .catch(() => {
-            showConfirm('Claude Code에 전송', [
+            showConfirm(t('notes.sendToClaudeTitle'), [
                 {
-                    label: '새 세션으로 실행', className: 'primary', action: () => {
+                    label: t('notes.runNewSession'), className: 'primary', action: () => {
                         fetch('/api/claude-new', {
                             method: 'POST',
                             credentials: 'same-origin',
@@ -256,7 +257,7 @@ export function sendNoteToClaudeDialog() {
                         });
                     }
                 },
-                { label: '취소', className: 'cancel' }
+                { label: t('common.cancel'), className: 'cancel' }
             ]);
         });
 }

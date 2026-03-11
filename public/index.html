@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=22">
+    <link rel="stylesheet" href="/css/style.css?v=24">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -27,6 +27,7 @@
         <button class="view-tab" data-view="brain">Brain</button>
         <button class="view-tab" data-view="dash">Dash</button>
         <button class="view-tab" data-view="launch">Launch</button>
+        <button class="view-tab" data-view="files">Files</button>
     </div>
     <div id="terminal-wrap">
         <iframe id="terminal-frame" src="/ttyd/"></iframe>
@@ -35,16 +36,16 @@
                 <button id="browser-tab-add">+</button>
             </div>
             <div id="preview-bar" style="position:relative">
-                <button class="preview-btn preview-nav-btn" id="preview-back" title="뒤로">&#x25C0;</button>
-                <button class="preview-btn preview-nav-btn" id="preview-forward" title="앞으로">&#x25B6;</button>
+                <button class="preview-btn preview-nav-btn" id="preview-back" data-i18n-title="preview.back" title="Back">&#x25C0;</button>
+                <button class="preview-btn preview-nav-btn" id="preview-forward" data-i18n-title="preview.forward" title="Forward">&#x25B6;</button>
                 <input id="preview-url" type="url" placeholder="https://example.com" />
-                <button class="preview-btn" id="preview-bookmark" title="북마크">&#x2606;</button>
-                <button class="preview-btn" id="preview-more" title="더보기">&#x22EF;</button>
+                <button class="preview-btn" id="preview-bookmark" data-i18n-title="preview.bookmark" title="Bookmark">&#x2606;</button>
+                <button class="preview-btn" id="preview-more" data-i18n-title="preview.more" title="More">&#x22EF;</button>
                 <div id="preview-more-menu">
-                    <button class="preview-menu-item" id="preview-reload">&#x21BB; 새로고침</button>
-                    <button class="preview-menu-item" id="preview-clear">&#x1F6AB; 세션 초기화</button>
-                    <button class="preview-menu-item" id="preview-open">&#x2197; 새 창에서 열기</button>
-                    <button class="preview-menu-item" id="viewport-toggle">&#x1F4F1; 뷰포트: M</button>
+                    <button class="preview-menu-item" id="preview-reload" data-i18n="preview.reload">&#x21BB; Reload</button>
+                    <button class="preview-menu-item" id="preview-clear" data-i18n="preview.clearSession">&#x1F6AB; Clear Session</button>
+                    <button class="preview-menu-item" id="preview-open" data-i18n="preview.openNewWindow">&#x2197; Open in New Window</button>
+                    <button class="preview-menu-item" id="viewport-toggle" data-i18n="preview.viewport">&#x1F4F1; Viewport: M</button>
                 </div>
                 <div id="preview-url-dropdown"></div>
             </div>
@@ -54,20 +55,20 @@
             <div id="notes-list-view">
                 <div id="notes-list-header">
                     <h3>Notes</h3>
-                    <button class="notes-header-btn" id="notes-new-btn">+ 새 메모</button>
+                    <button class="notes-header-btn" id="notes-new-btn" data-i18n="notes.newNote">+ New Note</button>
                 </div>
                 <div id="notes-items"></div>
             </div>
             <div id="notes-editor-view">
                 <div id="notes-editor-header">
-                    <button id="notes-back-btn">&#x25C0; 목록</button>
-                    <input id="notes-title-input" type="text" placeholder="제목 없음" />
-                    <button id="notes-delete-btn" title="삭제">&#x1F5D1;</button>
+                    <button id="notes-back-btn" data-i18n="notes.backToList">&#x25C0; List</button>
+                    <input id="notes-title-input" type="text" data-i18n-placeholder="notes.titlePlaceholder" placeholder="Untitled" />
+                    <button id="notes-delete-btn" data-i18n-title="common.delete" title="Delete">&#x1F5D1;</button>
                 </div>
-                <textarea id="notes-editor-textarea" placeholder="내용을 입력하세요..."></textarea>
+                <textarea id="notes-editor-textarea" data-i18n-placeholder="notes.contentPlaceholder" placeholder="Start writing..."></textarea>
                 <div id="notes-editor-footer">
-                    <button id="notes-send-claude-btn">Claude 전송</button>
-                    <div id="notes-editor-status">저장됨</div>
+                    <button id="notes-send-claude-btn" data-i18n="notes.sendToClaude">Send to Claude</button>
+                    <div id="notes-editor-status" data-i18n="notes.saved">Saved</div>
                 </div>
             </div>
         </div>
@@ -77,24 +78,55 @@
             <div id="brain-tree-view">
                 <div id="brain-tree-header">
                     <h3>Brain</h3>
-                    <button class="notes-header-btn" id="brain-refresh-btn">&#x21BB; 새로고침</button>
+                    <button class="notes-header-btn" id="brain-refresh-btn" data-i18n="brain.refresh">&#x21BB; Refresh</button>
                 </div>
                 <div id="brain-tree-items"></div>
             </div>
             <div id="brain-editor-view">
                 <div id="brain-editor-header">
-                    <button id="brain-back-btn">&#x25C0; 목록</button>
+                    <button id="brain-back-btn" data-i18n="brain.backToList">&#x25C0; List</button>
                     <span id="brain-file-title"></span>
-                    <button id="brain-edit-toggle">편집</button>
+                    <button id="brain-edit-toggle" data-i18n="brain.edit">Edit</button>
                 </div>
                 <div id="brain-editor-content">
                     <div id="brain-rendered"></div>
-                    <textarea id="brain-textarea" placeholder="내용을 입력하세요..."></textarea>
+                    <textarea id="brain-textarea" data-i18n-placeholder="brain.contentPlaceholder" placeholder="Start writing..."></textarea>
                 </div>
                 <div id="brain-editor-footer">
-                    <button id="brain-send-claude-btn">Claude 전송</button>
+                    <button id="brain-send-claude-btn" data-i18n="brain.sendToClaude">Send to Claude</button>
                     <div id="brain-editor-status"></div>
                 </div>
+            </div>
+        </div>
+        <div id="files-container">
+            <div id="files-list-view">
+                <div id="files-header">
+                    <div id="files-toolbar">
+                        <button class="files-toolbar-btn" id="files-home-btn" data-i18n-title="files.home" title="Home">&#x1F3E0;</button>
+                        <button class="files-toolbar-btn" id="files-up-btn" data-i18n-title="files.upDir" title="Up">&#x2B06;</button>
+                        <button class="files-toolbar-btn" id="files-recent-btn" data-i18n-title="files.recent" title="Recent">&#x1F552;</button>
+                        <input id="files-filter" type="text" data-i18n-placeholder="files.search" placeholder="Search files..." />
+                        <button class="files-toolbar-btn" id="files-upload-btn" data-i18n-title="files.upload" title="Upload">&#x2B06;&#xFE0F;</button>
+                        <button class="files-toolbar-btn" id="files-refresh-btn" data-i18n-title="files.refresh" title="Refresh">&#x21BB;</button>
+                    </div>
+                    <div id="files-path-bar">
+                        <div id="files-breadcrumb"></div>
+                    </div>
+                </div>
+                <div id="files-items"></div>
+                <div id="files-select-bar" style="display:none">
+                    <span id="files-select-count"></span>
+                    <button class="files-select-btn" id="files-select-zip" data-i18n="files.zipDownload">ZIP Download</button>
+                    <button class="files-select-btn cancel" id="files-select-cancel" data-i18n="common.cancel">Cancel</button>
+                </div>
+            </div>
+            <div id="files-preview-view" style="display:none">
+                <div id="files-preview-header">
+                    <button id="files-preview-back" data-i18n="files.backToList">&#x25C0; List</button>
+                    <span id="files-preview-title"></span>
+                </div>
+                <div id="files-preview-body"></div>
+                <div id="files-preview-footer"></div>
             </div>
         </div>
         <div id="scroll-indicator"></div>
@@ -141,14 +173,14 @@
         <input id="file-input" type="file" accept="image/*">
         <input id="file-input-any" type="file">
         <div id="plus-menu">
-            <div class="pm-item" id="pm-attach">&#x1F4F7; 이미지 첨부</div>
-            <div class="pm-item" id="pm-attach-file">&#x1F4CE; 파일 첨부</div>
-            <div class="pm-item" id="pm-save-memo">&#x1F4DD; 메모로 저장</div>
+            <div class="pm-item" id="pm-attach" data-i18n="app.attachImage">&#x1F4F7; Attach Image</div>
+            <div class="pm-item" id="pm-attach-file" data-i18n="app.attachFile">&#x1F4CE; Attach File</div>
+            <div class="pm-item" id="pm-save-memo" data-i18n="app.saveAsMemo">&#x1F4DD; Save as Memo</div>
             <div class="pm-divider"></div>
             <div id="pm-memo-list"></div>
         </div>
         <div class="input-wrap">
-            <textarea id="text-input" rows="1" placeholder="입력 후 Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+            <textarea id="text-input" rows="1" data-i18n-placeholder="terminal.inputPlaceholder" placeholder="Type then Shift+Enter..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
             <button id="clear-input">&times;</button>
             <button id="send-btn">&#x23CE;</button>
         </div>
@@ -156,21 +188,21 @@
     </div>
     <div id="send-history-panel">
         <div id="send-history-header">
-            <span>전송 이력</span>
+            <span data-i18n="terminal.sendHistory">Send History</span>
             <button id="send-history-close">&times;</button>
         </div>
         <div id="send-history-list"></div>
     </div>
     <div id="copy-overlay">
         <div id="copy-overlay-header">
-            <button class="copy-header-btn" id="copy-close-btn">&#x25C0; 닫기</button>
-            <h3>터미널 복사</h3>
-            <button class="copy-header-btn" id="copy-history-btn">스크롤백</button>
-            <button class="copy-header-btn primary" id="copy-all-btn">전체 복사</button>
+            <button class="copy-header-btn" id="copy-close-btn" data-i18n="copy.close">&#x25C0; Close</button>
+            <h3 data-i18n="copy.title">Terminal Copy</h3>
+            <button class="copy-header-btn" id="copy-history-btn" data-i18n="copy.scrollback">Scrollback</button>
+            <button class="copy-header-btn primary" id="copy-all-btn" data-i18n="copy.copyAll">Copy All</button>
         </div>
-        <textarea id="copy-text-area" readonly placeholder="로딩 중..."></textarea>
+        <textarea id="copy-text-area" readonly data-i18n-placeholder="copy.loadingPlaceholder" placeholder="Loading..."></textarea>
         <div id="copy-status">
-            <span id="copy-status-text">텍스트를 선택한 후 복사하세요</span>
+            <span id="copy-status-text" data-i18n="copy.selectAndCopy">Select text then copy</span>
         </div>
     </div>
     <div id="confirm-backdrop"></div>
@@ -195,7 +227,7 @@
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Wake Lock</div>
-                        <div class="settings-item-desc">화면 자동 꺼짐 방지</div>
+                        <div class="settings-item-desc" data-i18n="settings.wakeLockDesc">Prevent screen from turning off</div>
                     </div>
                     <label class="ios-toggle">
                         <input type="checkbox" id="sh-wakeLock">
@@ -207,7 +239,7 @@
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Terminal Font</div>
-                        <div class="settings-item-desc">터미널 글자 크기 (기본 15)</div>
+                        <div class="settings-item-desc" data-i18n="settings.termFontDesc">Terminal font size (default 15)</div>
                     </div>
                     <div class="font-ctrl">
                         <button id="sh-termfont-minus">&minus;</button>
@@ -219,7 +251,7 @@
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Input Font</div>
-                        <div class="settings-item-desc">입력창 글자 크기</div>
+                        <div class="settings-item-desc" data-i18n="settings.inputFontDesc">Input font size</div>
                     </div>
                     <div class="font-ctrl">
                         <button id="sh-font-minus">&minus;</button>
@@ -231,13 +263,24 @@
                 <div class="settings-item">
                     <div>
                         <div class="settings-item-label">Notification</div>
-                        <div class="settings-item-desc">백그라운드 시 Claude 응답 완료 알림</div>
+                        <div class="settings-item-desc" data-i18n="settings.notificationDesc">Notify when Claude response completes in background</div>
                     </div>
                     <label class="ios-toggle">
                         <input type="checkbox" id="sh-notification">
                         <div class="tog-track"></div>
                         <div class="tog-thumb"></div>
                     </label>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-item-label" data-i18n="settings.language">Language</div>
+                        <div class="settings-item-desc" data-i18n="settings.languageDesc">Interface language</div>
+                    </div>
+                    <select id="sh-language" class="settings-select">
+                        <option value="en">English</option>
+                        <option value="ko">한국어</option>
+                    </select>
                 </div>
             </div>
 
@@ -262,6 +305,6 @@ if ('serviceWorker' in navigator) {
         .catch(function() {});
 }
 </script>
-<script type="module" src="/js/app.js?v=14"></script>
+<script type="module" src="/js/app.js?v=16"></script>
 </body>
 </html>

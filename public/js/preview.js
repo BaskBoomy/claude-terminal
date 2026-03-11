@@ -1,4 +1,5 @@
 // preview.js — Multi-tab browser preview (ES module)
+import { t } from './i18n.js';
 
 let browserTabs = []; // [{id, url, label, history: string[], historyIndex: number}]
 let activeTabId = null;
@@ -26,7 +27,7 @@ function labelFromUrl(url) {
     var h = new URL(url).hostname;
     return h.replace(/^www\./, '') || url;
   } catch (e) {
-    return url || 'New Tab';
+    return url || t('preview.newTab');
   }
 }
 
@@ -128,7 +129,7 @@ export function renderBrowserTabs() {
 
     var label = document.createElement('span');
     label.className = 'browser-tab-label';
-    label.textContent = tab.label || 'New Tab';
+    label.textContent = tab.label || t('preview.newTab');
     btn.appendChild(label);
 
     var closeBtn = document.createElement('span');
@@ -300,7 +301,7 @@ function renderStaticDropdown() {
   if (bm.length > 0) {
     var sec = document.createElement('div');
     sec.className = 'url-dropdown-section';
-    sec.textContent = 'Bookmarks';
+    sec.textContent = t('preview.bookmarks');
     previewDropdown.appendChild(sec);
     bm.forEach(function (url) {
       previewDropdown.appendChild(makeDropdownItem(url, true, function (u) {
@@ -313,7 +314,7 @@ function renderStaticDropdown() {
   if (recent.length > 0) {
     var sec2 = document.createElement('div');
     sec2.className = 'url-dropdown-section';
-    sec2.textContent = 'Recent';
+    sec2.textContent = t('preview.recent');
     previewDropdown.appendChild(sec2);
     recent.forEach(function (url) {
       previewDropdown.appendChild(makeDropdownItem(url, false));
@@ -410,7 +411,7 @@ export function initPreview() {
     newIframe.id = activeTabId;
     newIframe.src = tab.url;
     previewFrames.appendChild(newIframe);
-    if (typeof window.showToast === 'function') window.showToast('Session cleared');
+    if (typeof window.showToast === 'function') window.showToast(t('preview.sessionCleared'));
   });
 
   // Open in new window
@@ -442,7 +443,7 @@ export function initPreview() {
     var idx = VIEWPORTS.indexOf(currentViewport);
     currentViewport = VIEWPORTS[(idx + 1) % VIEWPORTS.length];
     applyViewport();
-    viewportToggle.innerHTML = '&#x1F4F1; 뷰포트: ' + VIEWPORT_LABELS[currentViewport];
+    viewportToggle.textContent = t('preview.viewport').replace('M', VIEWPORT_LABELS[currentViewport]);
     closeMoreMenu();
   });
 

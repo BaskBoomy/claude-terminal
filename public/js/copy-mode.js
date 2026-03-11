@@ -1,6 +1,7 @@
 // copy-mode.js — ES module for terminal copy mode overlay
 
 import { showToast } from './utils.js';
+import { t } from './i18n.js';
 
 let copyOverlay = null;
 let copyTextArea = null;
@@ -72,11 +73,11 @@ export function openCopyMode(withHistory) {
 
             // Update history button label
             if (copyHistoryBtn) {
-                copyHistoryBtn.textContent = withHistory ? '현재 화면' : '히스토리';
+                copyHistoryBtn.textContent = withHistory ? t('copy.currentScreen') : t('copy.history');
             }
         })
         .catch(function (err) {
-            showStatus(err.message || '캡처 실패', true);
+            showStatus(err.message || t('copy.captureFailed'), true);
         });
 }
 
@@ -103,15 +104,15 @@ function copyAllText() {
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text)
             .then(function () {
-                showStatus('복사됨!');
+                showStatus(t('copy.copied'));
             })
             .catch(function () {
                 fallbackCopy(text);
-                showStatus('복사됨!');
+                showStatus(t('copy.copied'));
             });
     } else {
         fallbackCopy(text);
-        showStatus('복사됨!');
+        showStatus(t('copy.copied'));
     }
 }
 

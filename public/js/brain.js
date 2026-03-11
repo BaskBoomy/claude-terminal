@@ -1,4 +1,5 @@
 import { showConfirm, closeConfirm, escapeHtml, formatBytes } from './utils.js';
+import { t } from './i18n.js';
 
 let treeView, editorView, treeItems, refreshBtn, backBtn;
 let fileTitle, editToggle, rendered, textarea;
@@ -158,14 +159,14 @@ export function initBrain() {
     editToggle.addEventListener('click', function() {
         isEditing = !isEditing;
         if (isEditing) {
-            editToggle.textContent = '\uBBF8\uB9AC\uBCF4\uAE30';
+            editToggle.textContent = t('brain.preview');
             editToggle.classList.add('editing');
             rendered.style.display = 'none';
             textarea.style.display = 'block';
             editorFooter.style.display = 'flex';
             textarea.focus();
         } else {
-            editToggle.textContent = '\uD3B8\uC9D1';
+            editToggle.textContent = t('brain.edit');
             editToggle.classList.remove('editing');
             rendered.innerHTML = renderMarkdown(textarea.value);
             rendered.style.display = '';
@@ -175,7 +176,7 @@ export function initBrain() {
     });
 
     textarea.addEventListener('input', function() {
-        editorStatus.textContent = '\uC218\uC815\uB428';
+        editorStatus.textContent = t('notes.modified');
         editorStatus.classList.remove('saved');
         clearTimeout(saveTimer);
         saveTimer = setTimeout(saveBrainFile, 1500);
@@ -183,7 +184,7 @@ export function initBrain() {
 
     backBtn.addEventListener('click', function() {
         clearTimeout(saveTimer);
-        if (isEditing && editorStatus.textContent === '\uC218\uC815\uB428') {
+        if (isEditing && editorStatus.textContent === t('notes.modified')) {
             saveBrainFile();
         }
         currentFile = null;
@@ -196,7 +197,7 @@ export function initBrain() {
     sendClaudeBtn.addEventListener('click', function() {
         var content = textarea.value.trim();
         if (!content) return;
-        if (isEditing && editorStatus.textContent !== '\uC800\uC7A5\uB428') {
+        if (isEditing && editorStatus.textContent !== t('notes.saved')) {
             clearTimeout(saveTimer);
             saveBrainFile();
         }
@@ -221,7 +222,7 @@ export function initBrain() {
                     });
                 });
                 buttons.push({
-                    label: '+ \uC0C8 \uC138\uC158', className: 'primary',
+                    label: t('notes.newSession'), className: 'primary',
                     action: function() {
                         fetch('/api/claude-new', {
                             method: 'POST', credentials: 'same-origin',
@@ -232,9 +233,9 @@ export function initBrain() {
                         });
                     }
                 });
-                buttons.push({ label: '\uCDE8\uC18C', className: 'cancel' });
+                buttons.push({ label: t('common.cancel'), className: 'cancel' });
                 showConfirm(
-                    sessions.length ? '\uC804\uC1A1\uD560 Claude \uC138\uC158 (' + sessions.length + '\uAC1C)' : '\uC2E4\uD589 \uC911\uC778 \uC138\uC158 \uC5C6\uC74C',
+                    sessions.length ? t('notes.selectSession', { n: sessions.length }) : t('notes.noSession'),
                     buttons
                 );
             });
@@ -251,7 +252,7 @@ export function loadBrainTree(done) {
         })
         .catch(function() {
             var ptr = treeItems.querySelector('[data-ptr]');
-            treeItems.innerHTML = '<div style="padding:40px 16px;text-align:center;color:var(--border-light)">\uB85C\uB4DC \uC2E4\uD328</div>';
+            treeItems.innerHTML = '<div style="padding:40px 16px;text-align:center;color:var(--border-light)">' + t('brain.loadFailed') + '</div>';
             if (ptr) treeItems.insertBefore(ptr, treeItems.firstChild);
             if (done) done();
         });
@@ -268,7 +269,7 @@ export function openBrainFile(dir, file) {
             rendered.innerHTML = renderMarkdown(data.content || '');
             // Reset to view mode
             isEditing = false;
-            editToggle.textContent = '\uD3B8\uC9D1';
+            editToggle.textContent = t('brain.edit');
             editToggle.classList.remove('editing');
             editToggle.style.display = data.writable ? '' : 'none';
             rendered.style.display = '';
@@ -283,7 +284,7 @@ export function openBrainFile(dir, file) {
 
 export function saveBrainFile() {
     if (!currentFile) return;
-    editorStatus.textContent = '\uC800\uC7A5 \uC911...';
+    editorStatus.textContent = t('notes.saving');
     fetch('/api/brain/write', {
         method: 'PUT',
         credentials: 'same-origin',
@@ -295,13 +296,13 @@ export function saveBrainFile() {
         })
     }).then(function(r) {
         if (r.ok) {
-            editorStatus.textContent = '\uC800\uC7A5\uB428';
+            editorStatus.textContent = t('notes.saved');
             editorStatus.classList.add('saved');
         } else {
-            editorStatus.textContent = '\uC800\uC7A5 \uC2E4\uD328';
+            editorStatus.textContent = t('notes.saveFailed');
         }
     }).catch(function() {
-        editorStatus.textContent = '\uC800\uC7A5 \uC2E4\uD328';
+        editorStatus.textContent = t('notes.saveFailed');
     });
 }
 

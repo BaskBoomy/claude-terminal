@@ -1,6 +1,7 @@
 // Settings Bottom Sheet — ES module
 import { showConfirm, closeConfirm, showToast } from './utils.js';
 import { disableEdgeZones, enableEdgeZones } from './gestures.js';
+import { t, setLocale, getLocale, translateDOM } from './i18n.js';
 
 var shSettings = { general: { wakeLock: false, fontSize: 16, notification: false }, snippets: [] };
 
@@ -84,6 +85,8 @@ function applySettingsToSheet() {
     document.getElementById('sh-fontVal').textContent = shSettings.general.fontSize || 16;
     document.getElementById('sh-termFontVal').textContent = shSettings.general.termFontSize || 15;
     document.getElementById('sh-notification').checked = !!shSettings.general.notification;
+    var langSelect = document.getElementById('sh-language');
+    if (langSelect) langSelect.value = shSettings.general.language || getLocale();
 }
 
 // --- Snippet rendering ---
@@ -101,7 +104,7 @@ function renderSettingsSnippets() {
                 '" style="background:' + SH_COLORS[c] + '" data-color="' + c + '"></div>';
         }).join('');
 
-        var displayLabel = sn.label || 'Untitled';
+        var displayLabel = sn.label || t('notes.untitled');
         var labelClass = sn.label ? 'sn-header-label' : 'sn-header-label empty';
         var dotColor = SH_COLORS[sn.color] || SH_COLORS['default'];
         var cmdPreview = sn.command ? sn.command.split('\n')[0] : '';
@@ -131,7 +134,7 @@ function renderSettingsSnippets() {
                 '<div class="sn-field">' +
                     '<div class="sn-opts-row">' +
                         '<div class="sn-opt-item">' +
-                            '<span>\uD655\uC778</span>' +
+                            '<span>' + t('settings.confirmLabel') + '</span>' +
                             '<label class="sn-mini-toggle">' +
                                 '<input type="checkbox"' + (sn.confirm ? ' checked' : '') + ' data-field="confirm">' +
                                 '<div class="mt-track"></div>' +
@@ -139,7 +142,7 @@ function renderSettingsSnippets() {
                             '</label>' +
                         '</div>' +
                         '<div class="sn-opt-item">' +
-                            '<span>\uC0C8\uCC3D</span>' +
+                            '<span>' + t('settings.newWindowLabel') + '</span>' +
                             '<label class="sn-mini-toggle">' +
                                 '<input type="checkbox"' + (sn.newWindow ? ' checked' : '') + ' data-field="newWindow">' +
                                 '<div class="mt-track"></div>' +
@@ -410,7 +413,7 @@ function initSettings(callbacks) {
         if (toggle.checked) {
             if (!('Notification' in window) || !('PushManager' in window)) {
                 toggle.checked = false;
-                showToast('이 브라우저는 푸시 알림을 지원하지 않습니다');
+                showToast(t('settings.pushNotSupported'));
                 return;
             }
             Notification.requestPermission().then(function(perm) {
@@ -418,17 +421,17 @@ function initSettings(callbacks) {
                     subscribePush().then(function(ok) {
                         if (ok) {
                             shSettings.general.notification = true;
-                            showToast('푸시 알림이 활성화되었습니다');
+                            showToast(t('settings.pushEnabled'));
                         } else {
                             toggle.checked = false;
                             shSettings.general.notification = false;
-                            showToast('푸시 구독에 실패했습니다');
+                            showToast(t('settings.pushFailed'));
                         }
                     });
                 } else {
                     toggle.checked = false;
                     shSettings.general.notification = false;
-                    showToast('알림 권한이 거부되었습니다');
+                    showToast(t('settings.pushDenied'));
                 }
             });
         } else {
@@ -436,6 +439,14 @@ function initSettings(callbacks) {
             unsubscribePush();
         }
     });
+
+    // --- Language ---
+    var langSelect = document.getElementById('sh-language');
+    if (langSelect) {
+        langSelect.addEventListener('change', function() {
+            shSettings.general.language = this.value;
+        });
+    }
 
     // --- Add snippet ---
     document.getElementById('sh-add-snippet').addEventListener('click', function() {
@@ -459,7 +470,7 @@ function initSettings(callbacks) {
     // --- Save ---
     document.getElementById('sh-save-btn').addEventListener('click', function() {
         var btn = this;
-        btn.textContent = 'Saving...';
+        btn.textContent = t('common.saving');
         btn.disabled = true;
 
         fetch('/api/settings', {
@@ -469,32 +480,40 @@ function initSettings(callbacks) {
         })
         .then(function(r) { return r.json(); })
         .then(function() {
+            // Apply language change
+            var newLang = shSettings.general.language;
+            if (newLang && newLang !== getLocale()) {
+                setLocale(newLang).then(function() {
+                    translateDOM();
+                    document.documentElement.lang = newLang;
+                });
+            }
             if (_callbacks.onSave) _callbacks.onSave(shSettings);
 
-            btn.textContent = 'Saved!';
+            btn.textContent = t('common.saved');
             btn.classList.add('saved');
             setTimeout(function() {
-                btn.textContent = 'Save';
+                btn.textContent = t('common.save');
                 btn.classList.remove('saved');
                 btn.disabled = false;
             }, 1500);
         })
         .catch(function() {
-            btn.textContent = 'Error';
+            btn.textContent = t('common.error');
             btn.disabled = false;
-            setTimeout(function() { btn.textContent = 'Save'; }, 2000);
+            setTimeout(function() { btn.textContent = t('common.save'); }, 2000);
         });
     });
 
     // --- Logout ---
     document.getElementById('sh-logout').addEventListener('click', function() {
-        showConfirm('\uB85C\uADF8\uC544\uC6C3 \uD558\uC2DC\uACA0\uC2B5\uB2C8\uAE4C?', [
-            { label: '\uB85C\uADF8\uC544\uC6C3', style: 'primary', action: function() {
+        showConfirm(t('settings.logoutConfirm'), [
+            { label: t('common.logout'), style: 'primary', action: function() {
                 fetch('/api/auth/logout', { method: 'POST' })
                     .then(function() { if (_callbacks.onLogout) _callbacks.onLogout(); })
                     .catch(function() { if (_callbacks.onLogout) _callbacks.onLogout(); });
             }},
-            { label: '\uCDE8\uC18C', style: 'cancel' }
+            { label: t('common.cancel'), style: 'cancel' }
         ]);
     });
 }
