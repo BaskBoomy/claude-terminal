@@ -97,7 +97,7 @@ func jsonResponse(w http.ResponseWriter, code int, data any) {
 }
 
 func readJSON(r *http.Request) (M, error) {
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20)) // 1MB max
 	if err != nil {
 		return nil, err
 	}
@@ -241,8 +241,8 @@ func (a *API) putSettings(w http.ResponseWriter, r *http.Request) {
 	os.MkdirAll(filepath.Dir(a.cfg.SettingsFile), 0755)
 	data, _ := json.MarshalIndent(body, "", "  ")
 	tmpFile := a.cfg.SettingsFile + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0644); err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+	if err := os.WriteFile(tmpFile, data, 0600); err != nil {
+		jsonResponse(w, 500, M{"error": "Failed to save settings"})
 		return
 	}
 	os.Rename(tmpFile, a.cfg.SettingsFile)
@@ -273,7 +273,7 @@ func (a *API) tmuxCapture(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := a.tmux(args...)
 	if err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to capture pane"})
 		return
 	}
 	jsonResponse(w, 200, M{"text": out})
@@ -344,7 +344,7 @@ func (a *API) claudeSend(w http.ResponseWriter, r *http.Request) {
 
 	tmpFile, err := os.CreateTemp("", "claude-send-*.txt")
 	if err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to create temp file"})
 		return
 	}
 	tmpFile.WriteString(text)
@@ -353,11 +353,11 @@ func (a *API) claudeSend(w http.ResponseWriter, r *http.Request) {
 	defer os.Remove(tmpPath)
 
 	if _, err := a.tmux("load-buffer", tmpPath); err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to load buffer"})
 		return
 	}
 	if _, err := a.tmux("paste-buffer", "-t", target); err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to paste buffer"})
 		return
 	}
 	jsonResponse(w, 200, M{"ok": true})
@@ -373,18 +373,19 @@ func (a *API) claudeNew(w http.ResponseWriter, r *http.Request) {
 
 	tmpFile, err := os.CreateTemp("", "claude-new-*.txt")
 	if err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to create temp file"})
 		return
 	}
 	tmpFile.WriteString(text)
 	tmpPath := tmpFile.Name()
 	tmpFile.Close()
 
-	cmd := fmt.Sprintf("cat '%s' | %s -p; rm -f '%s'", tmpPath, a.cfg.ClaudeCmd, tmpPath)
-	out, err := a.tmux("new-window", "-P", "-F", "#{window_index}", "-n", "claude", fmt.Sprintf("bash -c \"%s\"", cmd))
+	// Use a script with explicit args to avoid shell injection
+	script := fmt.Sprintf("cat %q | %q -p; rm -f %q", tmpPath, a.cfg.ClaudeCmd, tmpPath)
+	out, err := a.tmux("new-window", "-P", "-F", "#{window_index}", "-n", "claude", "bash", "-c", script)
 	if err != nil {
 		os.Remove(tmpPath)
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to create window"})
 		return
 	}
 	windowIdx := strings.TrimSpace(out)
@@ -540,7 +541,7 @@ func (a *API) brainRead(w http.ResponseWriter, r *http.Request) {
 
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to read file"})
 		return
 	}
 	info, _ := os.Stat(fullPath)
@@ -573,7 +574,7 @@ func (a *API) brainWrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to write file"})
 		return
 	}
 	jsonResponse(w, 200, M{"ok": true})
@@ -798,7 +799,7 @@ func (a *API) claudeUsage(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.usageOk = false
 		a.usageCacheTs = time.Now()
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 500, M{"error": "Failed to fetch usage"})
 		return
 	}
 	defer resp.Body.Close()
@@ -849,19 +850,12 @@ func (a *API) notifications(w http.ResponseWriter, r *http.Request) {
 // ═══════════════════════════════════════════════════════════
 
 func (a *API) uploadFile(w http.ResponseWriter, r *http.Request) {
-	length := r.ContentLength
-	if length <= 0 {
-		jsonResponse(w, 400, M{"error": "No content"})
-		return
-	}
-	if length > 100*1024*1024 {
-		jsonResponse(w, 413, M{"error": "File too large"})
-		return
-	}
+	const maxUpload = 100 * 1024 * 1024 // 100MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxUpload)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		jsonResponse(w, 500, M{"error": err.Error()})
+		jsonResponse(w, 413, M{"error": "Upload too large"})
 		return
 	}
 
@@ -890,4 +884,11 @@ func (a *API) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 func round1(f float64) float64 {
 	return float64(int(f*10+0.5)) / 10
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n]
 }

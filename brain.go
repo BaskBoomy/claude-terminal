@@ -178,8 +178,31 @@ func scanBrainDir(dir string) []BrainFile {
 	return files
 }
 
+// ValidDir checks if dirpath is one of the known brain directories.
+func (b *Brain) ValidDir(dirpath string) bool {
+	abs, err := filepath.Abs(dirpath)
+	if err != nil {
+		return false
+	}
+	for _, scope := range b.Scan() {
+		for _, cat := range scope.Categories {
+			catAbs, err := filepath.Abs(cat.Dir)
+			if err != nil {
+				continue
+			}
+			if abs == catAbs {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (b *Brain) ResolvePath(dirpath, filename string) (string, bool) {
 	if dirpath == "" || filename == "" {
+		return "", false
+	}
+	if !b.ValidDir(dirpath) {
 		return "", false
 	}
 	if strings.Contains(filename, "..") || strings.Contains(filename, "\\") {

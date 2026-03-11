@@ -183,7 +183,7 @@ func (pm *PushManager) SendPush(title, body string, ts int64) {
 			TTL:             60,
 		})
 		if err != nil {
-			log.Printf("[push] send error to %s: %v", sub.Endpoint[:40], err)
+			log.Printf("[push] send error to %s: %v", truncate(sub.Endpoint, 40), err)
 			continue
 		}
 		resp.Body.Close()
@@ -197,7 +197,7 @@ func (pm *PushManager) SendPush(title, body string, ts int64) {
 	// Clean up stale subscriptions
 	for _, ep := range staleEndpoints {
 		pm.RemoveSubscription(ep)
-		log.Printf("[push] removed stale subscription: %s", ep[:40])
+		log.Printf("[push] removed stale subscription: %s", truncate(ep, 40))
 	}
 }
 
@@ -220,6 +220,7 @@ func (a *API) pushSubscribe(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, 503, M{"error": "push not available"})
 		return
 	}
+	r.Body = http.MaxBytesReader(w, r.Body, 4096) // 4KB max for subscription
 	var sub PushSubscription
 	if err := json.NewDecoder(r.Body).Decode(&sub); err != nil || sub.Endpoint == "" {
 		jsonResponse(w, 400, M{"error": "invalid subscription"})

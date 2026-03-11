@@ -46,7 +46,12 @@ function renderMarkdown(md) {
         // Blockquote
         .replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>')
         // Links
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, text, url) {
+            if (/^https?:\/\//.test(url) || url.startsWith('./') || url.startsWith('/') || url.startsWith('#')) {
+                return '<a href="' + url + '">' + text + '</a>';
+            }
+            return text + ' (' + url + ')';
+        });
 
     // Tables
     html = html.replace(/((?:^\|.+\|$\n?)+)/gm, function(tableBlock) {

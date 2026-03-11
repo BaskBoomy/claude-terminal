@@ -63,6 +63,11 @@ func main() {
 
 	// Main handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "same-origin")
+
 		path := r.URL.Path
 
 		// ttyd proxy: /ttyd/*
@@ -193,7 +198,7 @@ func tunnelWebSocket(w http.ResponseWriter, r *http.Request, targetHost string) 
 	}
 	clientConn, clientBuf, err := hj.Hijack()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Connection error", http.StatusInternalServerError)
 		return
 	}
 	defer clientConn.Close()
