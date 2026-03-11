@@ -226,7 +226,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 #view-tabs {
     display: flex; background: var(--bg);
     border-bottom: 1px solid var(--bg-raised); flex-shrink: 0;
+    overflow-x: auto; scrollbar-width: none;
+    touch-action: pan-x;
 }
+#view-tabs::-webkit-scrollbar { display: none; }
 .view-tab {
     padding: 8px 16px; font-size: 14px;
     background: none; border: none; border-bottom: 2px solid transparent;
@@ -235,6 +238,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     -webkit-tap-highlight-color: transparent;
     transition: color 0.15s, border-color 0.15s, transform 0.15s, opacity 0.15s;
     user-select: none; -webkit-user-select: none;
+    flex-shrink: 0; white-space: nowrap;
 }
 .view-tab.dragging { opacity: 0.3; }
 .view-tab.tab-shifting { transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1); }
