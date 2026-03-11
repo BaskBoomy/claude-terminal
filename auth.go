@@ -144,6 +144,10 @@ func (a *Auth) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func getClientIP(r *http.Request) string {
+	// Prefer X-Real-IP (set by nginx, single trusted value)
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		return trimSpace(realIP)
+	}
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		parts := splitFirst(forwarded, ",")
 		return trimSpace(parts)
