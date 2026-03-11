@@ -263,6 +263,17 @@ func (a *API) pushTest(w http.ResponseWriter, r *http.Request) {
 
 // ─── File Watcher — push on new notification files ───────────────────────────
 
+const pushDebounceMs = 4000 // 4 seconds debounce
+
+// Events worth sending a push for (others are intermediate tool calls)
+var pushWorthy = map[string]bool{
+	"Response complete": true,
+	"response_complete": true,
+	"done":              true,
+	"error":             true,
+	"timeout":           true,
+}
+
 func (pm *PushManager) WatchNotifyDir(notifyDir string) {
 	os.MkdirAll(notifyDir, 0755)
 
@@ -281,7 +292,12 @@ func (pm *PushManager) WatchNotifyDir(notifyDir string) {
 					return
 				}
 				if event.Op&fsnotify.Create != 0 && strings.HasSuffix(event.Name, ".json") {
-					pm.handleNewNotification(event.Name)
+					body, ts, worthy := pm.parseNotification(event.Name)
+					if body == "" || !worthy {
+						continue
+					}
+					log.Printf("[push] sending: %s", body)
+					pm.SendPush("Claude Terminal", body, ts)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -299,14 +315,15 @@ func (pm *PushManager) WatchNotifyDir(notifyDir string) {
 	}
 }
 
-func (pm *PushManager) handleNewNotification(path string) {
+// parseNotification reads a notification file and returns body, ts, and whether it's push-worthy.
+func (pm *PushManager) parseNotification(path string) (string, int64, bool) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return
+		return "", 0, false
 	}
 	var n map[string]any
 	if json.Unmarshal(data, &n) != nil {
-		return
+		return "", 0, false
 	}
 
 	session, _ := n["session"].(string)
@@ -323,6 +340,6 @@ func (pm *PushManager) handleNewNotification(path string) {
 		body = "[" + label + "] Done"
 	}
 
-	log.Printf("[push] new notification: %s", body)
-	pm.SendPush("Claude Terminal", body, int64(ts))
+	worthy := pushWorthy[message]
+	return body, int64(ts), worthy
 }

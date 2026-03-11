@@ -9,7 +9,7 @@ import { initNotes, loadNotesList, setViewSwitcher as setNotesViewSwitcher } fro
 import { initBrain, loadBrainTree, setViewSwitcher as setBrainViewSwitcher } from './brain.js';
 import { initDash, loadDashboard } from './dash.js';
 import { initLaunch, loadLaunch } from './launch.js';
-import { initSettings } from './settings.js';
+import { initSettings, subscribePush } from './settings.js';
 import { initCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
 import { renderSnippets } from './snippets.js';
@@ -155,10 +155,13 @@ function applyGeneral(general) {
             }
         });
     }
-    // Notification polling
+    // Notification polling + push re-subscribe
     if (general.notification) {
         setNotifyEnabled(true);
         startNotifyPolling();
+        if ('PushManager' in window && Notification.permission === 'granted') {
+            subscribePush();
+        }
     } else {
         setNotifyEnabled(false);
         stopNotifyPolling();

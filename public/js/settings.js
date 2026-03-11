@@ -499,4 +499,4 @@ function initSettings(callbacks) {
     });
 }
 
-export { initSettings, openSettings, closeSettings };
+export { initSettings, openSettings, closeSettings, subscribePush };
