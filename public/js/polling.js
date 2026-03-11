@@ -192,22 +192,9 @@ function notifyPoll() {
             var sessionLabel = latest.session || '';
             if (latest.window) sessionLabel += ':' + latest.window;
             var body = '[' + sessionLabel + '] ' + (latest.message || 'Done');
-            if (document.visibilityState === 'hidden') {
-                if ('Notification' in window && Notification.permission === 'granted') {
-                    try {
-                        var notif = new Notification('Claude Terminal', {
-                            body: body,
-                            icon: '/icon-192.png',
-                            tag: 'claude-notify-' + latest.ts,
-                            renotify: true
-                        });
-                        notif.onclick = function() {
-                            window.focus();
-                            notif.close();
-                        };
-                    } catch(e) {}
-                }
-            } else {
+            // Push notifications are handled by SW via Web Push API.
+            // Only show in-app toast when the app is in the foreground.
+            if (document.visibilityState !== 'hidden') {
                 showToast(body, 2000);
             }
         })

@@ -4,6 +4,58 @@ import { disableEdgeZones, enableEdgeZones } from './gestures.js';
 
 var shSettings = { general: { wakeLock: false, fontSize: 16, notification: false }, snippets: [] };
 
+// ─── Push Subscription ──────────────────────────────────────────────────────
+
+function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var rawData = atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+}
+
+function subscribePush() {
+    return navigator.serviceWorker.ready.then(function(reg) {
+        return fetch('/api/push/vapid-key', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                return reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+                });
+            })
+            .then(function(subscription) {
+                return fetch('/api/push/subscribe', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(subscription.toJSON())
+                }).then(function() { return true; });
+            });
+    }).catch(function(err) {
+        console.error('[push] subscribe failed:', err);
+        return false;
+    });
+}
+
+function unsubscribePush() {
+    navigator.serviceWorker.ready.then(function(reg) {
+        return reg.pushManager.getSubscription();
+    }).then(function(sub) {
+        if (!sub) return;
+        var endpoint = sub.endpoint;
+        return sub.unsubscribe().then(function() {
+            return fetch('/api/push/subscribe', {
+                method: 'DELETE', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint: endpoint })
+            });
+        });
+    }).catch(function(err) {
+        console.error('[push] unsubscribe failed:', err);
+    });
+}
+
 function _cv(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function getSHColors() {
     return {
@@ -356,23 +408,32 @@ function initSettings(callbacks) {
     document.getElementById('sh-notification').addEventListener('change', function() {
         var toggle = this;
         if (toggle.checked) {
-            if (!('Notification' in window)) {
+            if (!('Notification' in window) || !('PushManager' in window)) {
                 toggle.checked = false;
-                showToast('\uC774 \uBE0C\uB77C\uC6B0\uC800\uB294 \uC54C\uB9BC\uC744 \uC9C0\uC6D0\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4');
+                showToast('이 브라우저는 푸시 알림을 지원하지 않습니다');
                 return;
             }
             Notification.requestPermission().then(function(perm) {
                 if (perm === 'granted') {
-                    shSettings.general.notification = true;
-                    showToast('\uC54C\uB9BC\uC774 \uD65C\uC131\uD654\uB418\uC5C8\uC2B5\uB2C8\uB2E4');
+                    subscribePush().then(function(ok) {
+                        if (ok) {
+                            shSettings.general.notification = true;
+                            showToast('푸시 알림이 활성화되었습니다');
+                        } else {
+                            toggle.checked = false;
+                            shSettings.general.notification = false;
+                            showToast('푸시 구독에 실패했습니다');
+                        }
+                    });
                 } else {
                     toggle.checked = false;
                     shSettings.general.notification = false;
-                    showToast('\uC54C\uB9BC \uAD8C\uD55C\uC774 \uAC70\uBD80\uB418\uC5C8\uC2B5\uB2C8\uB2E4');
+                    showToast('알림 권한이 거부되었습니다');
                 }
             });
         } else {
             shSettings.general.notification = false;
+            unsubscribePush();
         }
     });
 
