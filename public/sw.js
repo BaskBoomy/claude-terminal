@@ -33,7 +33,7 @@ self.addEventListener('push', function(e) {
                 body: data.message || '',
                 icon: '/icon-192.png',
                 badge: '/icon-192.png',
-                tag: 'claude-' + (data.ts || Date.now()),
+                tag: 'claude-terminal',
                 renotify: true,
                 vibrate: [200, 100, 200]
             });
