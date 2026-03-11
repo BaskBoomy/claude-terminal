@@ -361,6 +361,10 @@ function setupPlusMenu() {
         closePlusMenu();
         fileInputAny.click();
     });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files[0]) uploadImage(fileInput.files[0]);
+        fileInput.value = '';
+    });
     fileInputAny.addEventListener('change', function() {
         if (fileInputAny.files[0]) uploadImage(fileInputAny.files[0]);
         fileInputAny.value = '';
