@@ -1,5 +1,5 @@
 // v3 — network-first for all app assets
-var CACHE_VERSION = 'v3';
+var CACHE_VERSION = 'v4';
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
@@ -14,6 +14,44 @@ self.addEventListener('activate', function(e) {
         caches.keys().then(function(names) {
             return Promise.all(names.map(function(name) { return caches.delete(name); }));
         }).then(function() { return self.clients.claim(); })
+    );
+});
+
+// ─── Push Notification ───────────────────────────────────────────────────────
+
+self.addEventListener('push', function(e) {
+    var data = {};
+    try { data = e.data.json(); } catch(err) {
+        data = { title: 'Claude Terminal', message: e.data ? e.data.text() : '' };
+    }
+    e.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clients) {
+            // Skip push notification if any app window is visible (foreground)
+            var hasFocused = clients.some(function(c) { return c.visibilityState === 'visible'; });
+            if (hasFocused) return;
+            return self.registration.showNotification(data.title || 'Claude Terminal', {
+                body: data.message || '',
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                tag: 'claude-' + (data.ts || Date.now()),
+                renotify: true,
+                vibrate: [200, 100, 200]
+            });
+        })
+    );
+});
+
+self.addEventListener('notificationclick', function(e) {
+    e.notification.close();
+    e.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clients) {
+            for (var i = 0; i < clients.length; i++) {
+                if (clients[i].url.indexOf(self.location.origin) !== -1) {
+                    return clients[i].focus();
+                }
+            }
+            return self.clients.openWindow('/');
+        })
     );
 });
 

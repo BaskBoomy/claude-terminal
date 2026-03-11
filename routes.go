@@ -25,6 +25,7 @@ type API struct {
 	cfg   *Config
 	auth  *Auth
 	brain *Brain
+	push  *PushManager
 
 	// Usage cache
 	usageCache   any
@@ -68,6 +69,12 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/claude-usage", a.auth.RequireAuth(a.claudeUsage))
 	mux.HandleFunc("GET /api/notifications", a.auth.RequireAuth(a.notifications))
 	mux.HandleFunc("POST /upload", a.auth.RequireAuth(a.uploadFile))
+
+	// Push notifications
+	mux.HandleFunc("GET /api/push/vapid-key", a.auth.RequireAuth(a.pushVAPIDKey))
+	mux.HandleFunc("POST /api/push/subscribe", a.auth.RequireAuth(a.pushSubscribe))
+	mux.HandleFunc("DELETE /api/push/subscribe", a.auth.RequireAuth(a.pushUnsubscribe))
+	mux.HandleFunc("POST /api/push/test", a.auth.RequireAuth(a.pushTest))
 
 	// Launch tracker
 	mux.HandleFunc("GET /api/launch/status", a.auth.RequireAuth(a.launchStatus))
