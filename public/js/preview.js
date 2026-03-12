@@ -57,7 +57,7 @@ function applyViewport() {
 }
 
 function updateNavButtons() {
-  var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+  var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
   if (!tab) {
     if (previewBack) previewBack.disabled = true;
     if (previewForward) previewForward.disabled = true;
@@ -104,7 +104,7 @@ function toggleBookmark(url) {
 
 function updateBookmarkBtn() {
   if (!previewBookmark) return;
-  var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+  var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
   var url = tab ? tab.url : '';
   var isBookmarked = url && bookmarks.indexOf(url) >= 0;
   previewBookmark.innerHTML = isBookmarked ? '&#x2605;' : '&#x2606;';
@@ -112,16 +112,16 @@ function updateBookmarkBtn() {
 }
 
 export function saveBrowserTabs() {
-  var data = browserTabs.map(function (t) { return { url: t.url, label: t.label }; });
+  var data = browserTabs.map(function (tb) { return { url: tb.url, label: tb.label }; });
   try {
     localStorage.setItem('browser-tabs', JSON.stringify(data));
-    localStorage.setItem('browser-active-idx', String(browserTabs.findIndex(function (t) { return t.id === activeTabId; })));
+    localStorage.setItem('browser-active-idx', String(browserTabs.findIndex(function (tb) { return tb.id === activeTabId; })));
   } catch (e) { /* ignore */ }
 }
 
 export function renderBrowserTabs() {
   // Remove existing tab buttons (keep the + button)
-  browserTabsBar.querySelectorAll('.browser-tab').forEach(function (t) { t.remove(); });
+  browserTabsBar.querySelectorAll('.browser-tab').forEach(function (el) { el.remove(); });
   browserTabs.forEach(function (tab) {
     var btn = document.createElement('button');
     btn.className = 'browser-tab' + (tab.id === activeTabId ? ' active' : '');
@@ -156,11 +156,11 @@ export function activateBrowserTab(id) {
     f.classList.toggle('active', f.id === id);
   });
   // Update tab bar active state
-  browserTabsBar.querySelectorAll('.browser-tab').forEach(function (t) {
-    t.classList.toggle('active', t.dataset.tabId === id);
+  browserTabsBar.querySelectorAll('.browser-tab').forEach(function (el) {
+    el.classList.toggle('active', el.dataset.tabId === id);
   });
   // Update address bar
-  var tab = browserTabs.find(function (t) { return t.id === id; });
+  var tab = browserTabs.find(function (tb) { return tb.id === id; });
   previewUrlInput.value = tab ? tab.url : '';
   saveBrowserTabs();
   updateNavButtons();
@@ -179,17 +179,17 @@ export function createBrowserTab(url, skipSave) {
   iframe.id = id;
   if (fullUrl) iframe.src = fullUrl;
   iframe.addEventListener('load', function () {
-    var t = browserTabs.find(function (bt) { return bt.id === id; });
-    if (!t) return;
+    var tb = browserTabs.find(function (bt) { return bt.id === id; });
+    if (!tb) return;
     try {
       var newUrl = iframe.contentWindow.location.href;
-      if (newUrl && newUrl !== 'about:blank' && newUrl !== t.url) {
-        t.url = newUrl;
-        t.label = labelFromUrl(newUrl);
+      if (newUrl && newUrl !== 'about:blank' && newUrl !== tb.url) {
+        tb.url = newUrl;
+        tb.label = labelFromUrl(newUrl);
         // Push to history if navigated within iframe
-        t.history = t.history.slice(0, t.historyIndex + 1);
-        t.history.push(newUrl);
-        t.historyIndex = t.history.length - 1;
+        tb.history = tb.history.slice(0, tb.historyIndex + 1);
+        tb.history.push(newUrl);
+        tb.historyIndex = tb.history.length - 1;
         if (id === activeTabId) {
           previewUrlInput.value = newUrl;
           updateNavButtons();
@@ -211,7 +211,7 @@ export function createBrowserTab(url, skipSave) {
 }
 
 export function closeBrowserTab(id) {
-  var idx = browserTabs.findIndex(function (t) { return t.id === id; });
+  var idx = browserTabs.findIndex(function (tb) { return tb.id === id; });
   if (idx === -1) return;
   browserTabs.splice(idx, 1);
   var iframe = document.getElementById(id);
@@ -233,7 +233,7 @@ export function closeBrowserTab(id) {
 export function navigateActiveTab(url) {
   if (!url) return;
   url = ensureProtocol(url);
-  var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+  var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
   if (!tab) return;
   // Truncate forward history and push new URL
   tab.history = tab.history.slice(0, tab.historyIndex + 1);
@@ -382,14 +382,14 @@ export function initPreview() {
   // Bookmark button
   previewBookmark.addEventListener('click', function (e) {
     e.preventDefault();
-    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
     if (tab && tab.url) toggleBookmark(tab.url);
   });
 
   // Reload button
   previewReload.addEventListener('click', function (e) {
     e.preventDefault();
-    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
     if (tab && tab.url) {
       var iframe = document.getElementById(activeTabId);
       if (iframe) iframe.src = tab.url;
@@ -399,7 +399,7 @@ export function initPreview() {
   // Clear cookies & reload — destroy iframe and recreate
   previewClear.addEventListener('click', function (e) {
     e.preventDefault();
-    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
     if (!tab || !tab.url) return;
     var oldIframe = document.getElementById(activeTabId);
     if (!oldIframe) return;
@@ -417,21 +417,21 @@ export function initPreview() {
   // Open in new window
   previewOpen.addEventListener('click', function (e) {
     e.preventDefault();
-    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
     if (tab && tab.url) window.open(tab.url, '_blank');
   });
 
   // Back/Forward buttons
   previewBack.addEventListener('click', function (e) {
     e.preventDefault();
-    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
     if (!tab || tab.historyIndex <= 0) return;
     tab.historyIndex--;
     navigateWithoutHistory(tab, tab.history[tab.historyIndex]);
   });
   previewForward.addEventListener('click', function (e) {
     e.preventDefault();
-    var tab = browserTabs.find(function (t) { return t.id === activeTabId; });
+    var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
     if (!tab || tab.historyIndex >= tab.history.length - 1) return;
     tab.historyIndex++;
     navigateWithoutHistory(tab, tab.history[tab.historyIndex]);
