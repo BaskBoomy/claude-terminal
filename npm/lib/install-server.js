@@ -178,8 +178,9 @@ async function installServer(config) {
   ].join('\n') + '\n';
   fs.writeFileSync(path.join(installDir, '.env'), envContent, { mode: 0o600 });
 
-  // Create ttyd start script
+  // Create ttyd start script (with PATH fix for macOS launchd)
   const ttydScript = `#!/bin/bash
+export PATH="/opt/homebrew/bin:/usr/local/bin:\$PATH"
 SESSION=\${TMUX_SESSION:-claude}
 CLAUDE_CMD=\${CLAUDE_CMD:-claude}
 
@@ -187,7 +188,7 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
     exec tmux attach -t "$SESSION"
 else
     tmux new-session -d -s "$SESSION"
-    tmux send-keys -t "$SESSION" "cd ~ && $CLAUDE_CMD" Enter
+    tmux send-keys -t "$SESSION" "cd ~ && \$CLAUDE_CMD" Enter
     exec tmux attach -t "$SESSION"
 fi
 `;
