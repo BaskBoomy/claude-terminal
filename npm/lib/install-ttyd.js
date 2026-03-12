@@ -3,22 +3,9 @@ const https = require('https');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { createSpinner, exec } = require('./ui');
 
 const TTYD_VERSION = '1.7.7';
-
-function getTtydUrl() {
-  const platform = process.platform;
-  const arch = process.arch;
-
-  if (platform === 'linux') {
-    if (arch === 'arm64' || arch === 'aarch64') {
-      return `https://github.com/nicm/tmux/releases/latest/download/ttyd.aarch64`;
-    }
-    return `https://github.com/nicm/tmux/releases/latest/download/ttyd.x86_64`;
-  }
-  // macOS — use Homebrew
-  return null;
-}
 
 function download(url, dest) {
   return new Promise((resolve, reject) => {
@@ -41,46 +28,49 @@ function download(url, dest) {
   });
 }
 
-async function installTtyd() {
-  console.log('\n  Installing ttyd...');
+function findBrew() {
+  const paths = ['/opt/homebrew/bin/brew', '/usr/local/bin/brew'];
+  for (const p of paths) {
+    try { require('fs').accessSync(p, require('fs').constants.X_OK); return p; } catch {}
+  }
+  return 'brew';
+}
 
+async function installTtyd() {
   if (process.platform === 'darwin') {
-    console.log('  Running: brew install ttyd');
+    const brew = findBrew();
+    const spinner = createSpinner('Installing ttyd via Homebrew...').start();
     try {
-      execSync('brew install ttyd', { stdio: 'inherit' });
-      console.log('  ✅ ttyd installed via Homebrew');
+      await exec(`HOMEBREW_NO_AUTO_UPDATE=1 ${brew} install ttyd`, { timeout: 120000 });
+      spinner.succeed('ttyd installed via Homebrew');
     } catch {
-      throw new Error('Failed to install ttyd. Please install manually: brew install ttyd');
+      spinner.fail('Failed to install ttyd');
+      throw new Error('Please install manually: brew install ttyd');
     }
     return;
   }
 
-  // Linux: download binary from GitHub
-  const url = getTtydUrl();
-  if (!url) {
-    throw new Error('Unsupported platform for ttyd. Please install manually.');
-  }
-
-  // Download from tsl0922/ttyd releases
+  // Linux: download binary
   const arch = (process.arch === 'arm64' || process.arch === 'aarch64') ? 'aarch64' : 'x86_64';
-  const realUrl = `https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${arch}`;
+  const url = `https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${arch}`;
+
+  const spinner = createSpinner(`Downloading ttyd ${TTYD_VERSION} (${arch})`).start();
 
   const tmpPath = path.join(os.tmpdir(), 'ttyd');
-  console.log(`  Downloading ttyd ${TTYD_VERSION} for ${arch}...`);
-  await download(realUrl, tmpPath);
-
+  await download(url, tmpPath);
   fs.chmodSync(tmpPath, 0o755);
+
+  spinner.update('Installing ttyd...');
 
   // Install to /usr/local/bin
   try {
-    execSync(`sudo mv ${tmpPath} /usr/local/bin/ttyd`, { stdio: 'inherit' });
-    console.log('  ✅ ttyd installed to /usr/local/bin/ttyd');
+    await exec(`sudo mv ${tmpPath} /usr/local/bin/ttyd`);
+    spinner.succeed('ttyd installed to /usr/local/bin/ttyd');
   } catch {
-    // Try without sudo
     const localBin = path.join(process.env.HOME, '.local', 'bin');
     fs.mkdirSync(localBin, { recursive: true });
     fs.renameSync(tmpPath, path.join(localBin, 'ttyd'));
-    console.log(`  ✅ ttyd installed to ${localBin}/ttyd`);
+    spinner.succeed(`ttyd installed to ${localBin}/ttyd`);
   }
 }
 

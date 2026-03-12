@@ -3,6 +3,7 @@ const https = require('https');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { c, color, S, createSpinner, exec, sectionStart, sectionItem, sectionEnd } = require('./ui');
 
 const REPO = 'BaskBoomy/claude-terminal';
 
@@ -45,56 +46,124 @@ function download(url, dest) {
   });
 }
 
+function commandExists(cmd) {
+  try {
+    execSync(`which ${cmd}`, { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function tryInstallGo() {
+  if (process.platform === 'darwin' && commandExists('brew')) {
+    const spinner = createSpinner('Installing Go via Homebrew...').start();
+    try {
+      await exec('brew install go', { timeout: 300000 });
+      spinner.succeed('Go installed');
+      return true;
+    } catch {
+      spinner.fail('Failed to install Go');
+      return false;
+    }
+  }
+
+  if (process.platform === 'linux') {
+    const arch = process.arch === 'x64' ? 'amd64' : 'arm64';
+    const goUrl = `https://go.dev/dl/go1.22.5.linux-${arch}.tar.gz`;
+    const spinner = createSpinner('Installing Go...').start();
+    try {
+      await exec(`curl -sL ${goUrl} | sudo tar -C /usr/local -xzf -`, { timeout: 300000 });
+      process.env.PATH = `/usr/local/go/bin:${process.env.PATH}`;
+      spinner.succeed('Go installed to /usr/local/go');
+      return true;
+    } catch {
+      spinner.fail('Failed to install Go');
+      return false;
+    }
+  }
+
+  return false;
+}
+
 async function installServer(config) {
   const { installDir, password, port, domain, claudeCmd } = config;
 
-  console.log(`\n  Installing Claude Terminal to ${installDir}...`);
+  sectionStart('Installing Server');
+
   fs.mkdirSync(installDir, { recursive: true });
   fs.mkdirSync(path.join(installDir, 'data'), { recursive: true });
 
-  // Download binary from GitHub releases
+  // Check latest release
   const assetName = getAssetName();
   const releaseUrl = `https://api.github.com/repos/${REPO}/releases/latest`;
 
   let downloadUrl;
+  const checkSpinner = createSpinner('Checking latest release...').start();
   try {
-    const releaseData = execSync(`curl -sL ${releaseUrl}`, { encoding: 'utf8' });
+    const releaseData = execSync(`curl -sL ${releaseUrl}`, { encoding: 'utf8', timeout: 15000 });
     const release = JSON.parse(releaseData);
     const asset = release.assets.find(a => a.name === assetName);
     if (asset) {
       downloadUrl = asset.browser_download_url;
+      checkSpinner.succeed(`Found ${color(c.dim, assetName)}`);
+    } else {
+      checkSpinner.warn('No pre-built binary — will build from source');
     }
   } catch {
-    // Fallback: no release yet
+    checkSpinner.warn('No release found — will build from source');
   }
 
   if (!downloadUrl) {
-    // No release yet — clone and build
-    console.log('  No pre-built binary found. Cloning and building...');
+    // Need Go
+    if (!commandExists('go')) {
+      if (!await tryInstallGo() || !commandExists('go')) {
+        throw new Error(
+          'Go is required to build from source. Install: https://go.dev/dl/\n' +
+          '  Or create a GitHub release with pre-built binaries.'
+        );
+      }
+    }
+
+    const spinner = createSpinner('Building from source...').start();
     const tmpDir = path.join(os.tmpdir(), 'claude-terminal-build');
-    execSync(`rm -rf ${tmpDir}`);
-    execSync(`git clone --depth 1 https://github.com/${REPO}.git ${tmpDir}`, { stdio: 'inherit' });
-    execSync('go build -ldflags="-s -w" -o claude-terminal .', { cwd: tmpDir, stdio: 'inherit' });
-    fs.copyFileSync(path.join(tmpDir, 'claude-terminal'), path.join(installDir, 'claude-terminal'));
-
-    // Copy public directory
-    copyDirSync(path.join(tmpDir, 'public'), path.join(installDir, 'public'));
-
-    execSync(`rm -rf ${tmpDir}`);
+    try {
+      await exec(`rm -rf ${tmpDir}`);
+      spinner.update('Cloning repository...');
+      await exec(`git clone --depth 1 https://github.com/${REPO}.git ${tmpDir}`, { timeout: 60000 });
+      spinner.update('Compiling Go binary...');
+      await exec('go build -ldflags="-s -w" -o claude-terminal .', { cwd: tmpDir, timeout: 300000 });
+      fs.copyFileSync(path.join(tmpDir, 'claude-terminal'), path.join(installDir, 'claude-terminal'));
+      copyDirSync(path.join(tmpDir, 'public'), path.join(installDir, 'public'));
+      await exec(`rm -rf ${tmpDir}`);
+      spinner.succeed('Built from source');
+    } catch (err) {
+      spinner.fail('Build failed');
+      throw err;
+    }
   } else {
-    console.log(`  Downloading ${assetName}...`);
+    // Download binary
+    const spinner = createSpinner(`Downloading ${assetName}`).start();
     const binPath = path.join(installDir, 'claude-terminal');
     await download(downloadUrl, binPath);
     fs.chmodSync(binPath, 0o755);
+    spinner.succeed('Binary downloaded');
 
-    // Also need public dir — clone it
-    console.log('  Downloading frontend assets...');
+    // Frontend assets
+    const assetSpinner = createSpinner('Downloading frontend assets...').start();
     const tmpDir = path.join(os.tmpdir(), 'claude-terminal-assets');
-    execSync(`rm -rf ${tmpDir}`);
-    execSync(`git clone --depth 1 --filter=blob:none --sparse https://github.com/${REPO}.git ${tmpDir}`, { stdio: 'ignore' });
-    execSync('git sparse-checkout set public', { cwd: tmpDir, stdio: 'ignore' });
-    copyDirSync(path.join(tmpDir, 'public'), path.join(installDir, 'public'));
-    execSync(`rm -rf ${tmpDir}`);
+    try {
+      await exec(`rm -rf ${tmpDir}`);
+      assetSpinner.update('Cloning frontend assets...');
+      await exec(`git clone --depth 1 --filter=blob:none --sparse https://github.com/${REPO}.git ${tmpDir}`, { timeout: 60000 });
+      await exec('git sparse-checkout set public', { cwd: tmpDir });
+      copyDirSync(path.join(tmpDir, 'public'), path.join(installDir, 'public'));
+      await exec(`rm -rf ${tmpDir}`);
+      assetSpinner.succeed('Frontend assets downloaded');
+    } catch (err) {
+      assetSpinner.fail('Failed to download frontend assets');
+      throw err;
+    }
   }
 
   fs.chmodSync(path.join(installDir, 'claude-terminal'), 0o755);
@@ -125,7 +194,9 @@ fi
   const scriptPath = path.join(installDir, 'ttyd-start.sh');
   fs.writeFileSync(scriptPath, ttydScript, { mode: 0o755 });
 
-  console.log('  ✅ Server installed');
+  sectionItem(color(c.green, S.check), `Installed to ${color(c.dim, installDir)}`);
+  sectionEnd(color(c.green, S.check), 'Config & scripts created');
+  console.log('');
 }
 
 function copyDirSync(src, dest) {
