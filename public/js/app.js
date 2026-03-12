@@ -389,14 +389,21 @@ function setupPlusMenu() {
             method: 'POST', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ title: title, content: text })
-        }).then(function() {
-            fetchMemoList(renderMemos);
-            notesListLoaded = false;
+        }).then(function(res) {
+            if (res.ok) {
+                fetchMemoList(renderMemos);
+                notesListLoaded = false;
+                showToast(t('app.memoSaved'), 2000);
+                textInput.value = '';
+                textInput.style.height = '';
+                textInput.style.lineHeight = '';
+                textInput.style.padding = '';
+                sessionStorage.removeItem('terminal-input');
+                var clearBtn = document.getElementById('clear-input');
+                if (clearBtn) clearBtn.classList.remove('visible');
+            }
         });
         closePlusMenu();
-        // Green flash feedback
-        textInput.style.background = '#1a3a1a'; // green flash feedback
-        setTimeout(function() { textInput.style.background = ''; }, 300);
     });
 
     // Close menu on outside click

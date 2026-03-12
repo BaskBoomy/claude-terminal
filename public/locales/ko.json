@@ -57,7 +57,8 @@
     "sendFailed": "전송 실패 — 텍스트 보존됨",
     "inputPlaceholder": "입력 후 Shift+Enter...",
     "sendHistory": "전송 이력",
-    "copied": "복사됨"
+    "copied": "복사됨",
+    "clearConfirm": "입력 내용을 지우시겠습니까?"
   },
   "brain": {
     "refresh": "↻ 새로고침",
@@ -187,6 +188,7 @@
     "attachFile": "📎 파일 첨부",
     "saveAsMemo": "📝 메모로 저장",
     "noMemos": "저장된 메모 없음",
+    "memoSaved": "메모로 저장되었습니다",
     "memo": "메모",
     "inputHasContent": "입력창에 내용이 있습니다.",
     "saveAndOverwrite": "저장 후 덮어쓰기",
