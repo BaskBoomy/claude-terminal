@@ -14,7 +14,7 @@ import { initSettings, subscribePush } from './settings.js';
 import { initCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
 import { renderSnippets } from './snippets.js';
-import { showToast, showConfirm, closeConfirm } from './utils.js';
+import { showToast, showConfirm, closeConfirm, isMobile } from './utils.js';
 import { initI18n, t, translateDOM } from './i18n.js';
 
 // --- Make showToast globally available (used by some modules) ---
@@ -290,7 +290,6 @@ function setupPlusMenu() {
                 ]);
             }
             del.addEventListener('click', deleteMemo);
-            del.addEventListener('touchend', deleteMemo);
             row.addEventListener('click', function() {
                 // Fetch full content, then paste into input
                 fetch('/api/notes/' + note.id, { credentials: 'same-origin' })
@@ -358,10 +357,6 @@ function setupPlusMenu() {
         e.preventDefault();
         togglePlusMenu();
     });
-    imgBtn.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        togglePlusMenu();
-    });
 
     pmAttach.addEventListener('click', function() {
         closePlusMenu();
@@ -409,6 +404,12 @@ function setupPlusMenu() {
     // Close menu on outside click
     document.addEventListener('click', function(e) {
         if (!e.target.closest('#plus-menu') && !e.target.closest('#img-btn')) {
+            closePlusMenu();
+        }
+    });
+    // Close menu on Escape (desktop keyboard UX)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && plusMenu.classList.contains('open')) {
             closePlusMenu();
         }
     });
@@ -511,13 +512,12 @@ function setupScrollControls() {
 // Prevent focus stealing (keep virtual keyboard open)
 // ========================================
 function setupFocusPrevention() {
+    // Only on mobile — keeps virtual keyboard open when tapping buttons.
+    // On desktop this breaks button focus and keyboard navigation.
+    if (!isMobile) return;
+
     var SELECTOR = 'button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add, .send-history-item, .send-history-copy';
 
-    document.addEventListener('mousedown', function(e) {
-        if (e.target.id === 'preview-url') return;
-        var t = e.target.closest(SELECTOR);
-        if (t && t.id !== 'text-input') e.preventDefault();
-    });
     document.addEventListener('touchstart', function(e) {
         if (e.target.id === 'preview-url') return;
         var t = e.target.closest(SELECTOR);
@@ -547,8 +547,9 @@ function setupVisibilityHandlers() {
         fetchServerStatus();
         fetchTmuxSession();
 
-        // Reload iframe if away for 5+ seconds
-        if (hiddenAt && Date.now() - hiddenAt > 5000) {
+        // Reload iframe if away too long (mobile: 5s, desktop: 30min)
+        var reloadThreshold = isMobile ? 5000 : 1800000;
+        if (hiddenAt && Date.now() - hiddenAt > reloadThreshold) {
             frame.src = getTtydUrl();
         }
         hiddenAt = 0;
@@ -559,6 +560,9 @@ function setupVisibilityHandlers() {
 // iOS Visual Viewport resize (keyboard)
 // ========================================
 function setupViewportResize() {
+    // iOS virtual keyboard handling — desktop doesn't need this
+    if (!isMobile) return;
+
     var app = document.getElementById('app');
     if (window.visualViewport) {
         function onViewportResize() {
@@ -667,30 +671,32 @@ function setupTouchScroll() {
     initFiles();
     initCopyMode();
 
-    // 5b. Pull-to-refresh on brain tree and dashboard
-    var brainTreeItems = document.getElementById('brain-tree-items');
-    if (brainTreeItems) {
-        setupPullToRefresh(brainTreeItems, function(done) {
-            loadBrainTree(done);
-        });
-    }
-    var dashScroll = document.getElementById('dash-scroll');
-    if (dashScroll) {
-        setupPullToRefresh(dashScroll, function(done) {
-            loadDashboard(done);
-        });
-    }
-    var filesItems = document.getElementById('files-items');
-    if (filesItems) {
-        setupPullToRefresh(filesItems, function(done) {
-            loadFiles(done);
-        });
-    }
-    var launchScroll = document.getElementById('launch-scroll');
-    if (launchScroll) {
-        setupPullToRefresh(launchScroll, function(done) {
-            loadLaunch(done);
-        });
+    // 5b. Pull-to-refresh on brain tree and dashboard (mobile only)
+    if (isMobile) {
+        var brainTreeItems = document.getElementById('brain-tree-items');
+        if (brainTreeItems) {
+            setupPullToRefresh(brainTreeItems, function(done) {
+                loadBrainTree(done);
+            });
+        }
+        var dashScroll = document.getElementById('dash-scroll');
+        if (dashScroll) {
+            setupPullToRefresh(dashScroll, function(done) {
+                loadDashboard(done);
+            });
+        }
+        var filesItems = document.getElementById('files-items');
+        if (filesItems) {
+            setupPullToRefresh(filesItems, function(done) {
+                loadFiles(done);
+            });
+        }
+        var launchScroll = document.getElementById('launch-scroll');
+        if (launchScroll) {
+            setupPullToRefresh(launchScroll, function(done) {
+                loadLaunch(done);
+            });
+        }
     }
 
     // 6. Wire view switcher callbacks for notes and brain
@@ -778,8 +784,8 @@ function setupTouchScroll() {
     // 16. iOS virtual viewport resize handling
     setupViewportResize();
 
-    // 17. Touch scroll on iframe load
-    setupTouchScroll();
+    // 17. Touch scroll on iframe load (mobile only)
+    if (isMobile) setupTouchScroll();
 
     // 18. Register service worker
     registerServiceWorker();

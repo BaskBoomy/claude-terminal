@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=25">
+    <link rel="stylesheet" href="/css/style.css?v=26">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -305,6 +305,13 @@ if ('serviceWorker' in navigator) {
         .catch(function() {});
 }
 </script>
-<script type="module" src="/js/app.js?v=16"></script>
+<script>
+// Allow zoom on desktop (remove mobile viewport lock)
+if (!('ontouchstart' in window) || navigator.maxTouchPoints === 0) {
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp) vp.content = 'width=device-width, initial-scale=1.0';
+}
+</script>
+<script type="module" src="/js/app.js?v=17"></script>
 </body>
 </html>

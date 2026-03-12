@@ -9,12 +9,16 @@
  */
 
 import { t } from './i18n.js';
+import { isMobile } from './utils.js';
 
 // ─── iOS Edge Swipe Prevention + Popstate Trap ───────────────────────────────
 
 export function initGestures(opts) {
-  _initEdgeSwipeBlockers(opts || {});
-  _initPopstateTrap();
+  // Edge swipe blockers and popstate trap only needed on mobile
+  if (isMobile) {
+    _initEdgeSwipeBlockers(opts || {});
+    _initPopstateTrap();
+  }
 }
 
 var _edgeOverlays = [];

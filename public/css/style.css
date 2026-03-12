@@ -25,7 +25,8 @@
 /* =============================================
    Reset
    ============================================= */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; overscroll-behavior: none; }
 
 /* =============================================
@@ -1649,3 +1650,22 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     background: none; border: 1px solid var(--border); color: var(--text-muted);
 }
 .files-qr-btn:active { opacity: 0.8; }
+
+/* =============================================
+   Desktop Overrides (non-touch, hover-capable devices)
+   ============================================= */
+@media (hover: hover) and (pointer: fine) {
+    /* Use vh instead of dvh — desktop has no virtual keyboard */
+    #app { height: 100vh; }
+
+    /* Remove mobile keyboard padding from input bar */
+    #input-bar { padding-bottom: 6px; }
+
+    /* Send history / settings sheet — better sizing for large screens */
+    #send-history-panel { max-height: 50vh; }
+    #settings-sheet { max-height: 80vh; max-width: 480px; left: 50%; right: auto; transform: translateX(-50%) translateY(100%); }
+    #settings-sheet.open { transform: translateX(-50%) translateY(0); }
+
+    /* File preview image — use more screen space */
+    .files-preview-img { max-height: 80vh; }
+}
