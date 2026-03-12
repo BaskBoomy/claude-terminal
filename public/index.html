@@ -13,7 +13,48 @@
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
-<div id="app">
+<!-- PWA Install Prompt (shown only in browser, hidden in standalone/PWA) -->
+<div id="pwa-install-overlay">
+    <div class="pwa-card">
+        <div class="pwa-icon"><img src="/icon-192.png" alt="Claude Terminal" width="80" height="80"></div>
+        <h1 class="pwa-title">Claude Terminal</h1>
+        <p class="pwa-desc" id="pwa-desc">Install as an app for the best experience.</p>
+
+        <!-- Chrome/Android: native install button -->
+        <button class="pwa-install-btn" id="pwa-install-btn" style="display:none">Install App</button>
+
+        <!-- iOS Safari instructions -->
+        <div class="pwa-instructions" id="pwa-ios-instructions" style="display:none">
+            <div class="pwa-step">
+                <span class="pwa-step-icon">&#x2B06;&#xFE0F;</span>
+                <span>Tap the <strong>Share</strong> button in Safari</span>
+            </div>
+            <div class="pwa-step">
+                <span class="pwa-step-icon">&#x2795;</span>
+                <span>Select <strong>"Add to Home Screen"</strong></span>
+            </div>
+            <div class="pwa-step">
+                <span class="pwa-step-icon">&#x2705;</span>
+                <span>Tap <strong>"Add"</strong> to install</span>
+            </div>
+        </div>
+
+        <!-- Generic browser instructions -->
+        <div class="pwa-instructions" id="pwa-generic-instructions" style="display:none">
+            <div class="pwa-step">
+                <span class="pwa-step-icon">&#x22EF;</span>
+                <span>Open browser menu (<strong>&#x22EE;</strong> or <strong>&#x22EF;</strong>)</span>
+            </div>
+            <div class="pwa-step">
+                <span class="pwa-step-icon">&#x2B07;&#xFE0F;</span>
+                <span>Select <strong>"Install App"</strong> or <strong>"Add to Home Screen"</strong></span>
+            </div>
+        </div>
+
+        <button class="pwa-skip" id="pwa-skip">Continue in browser</button>
+    </div>
+</div>
+<div id="app" style="display:none">
     <div id="status-bar">
         <span id="tmux-session-info">tmux: --</span>
         <span style="flex:1"></span>

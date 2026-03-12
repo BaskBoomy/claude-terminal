@@ -1652,6 +1652,57 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .files-qr-btn:active { opacity: 0.8; }
 
 /* =============================================
+   PWA Install Prompt
+   ============================================= */
+#pwa-install-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+}
+#pwa-install-overlay.hidden { display: none; }
+.pwa-card {
+    width: 100%; max-width: 380px; text-align: center;
+}
+.pwa-icon { margin-bottom: 16px; }
+.pwa-icon img { border-radius: 20px; }
+.pwa-title {
+    font-size: 24px; font-weight: 700; color: var(--text);
+    margin-bottom: 8px;
+}
+.pwa-desc {
+    font-size: 15px; color: var(--text-muted); margin-bottom: 28px;
+    line-height: 1.5;
+}
+.pwa-install-btn {
+    width: 100%; padding: 14px;
+    background: var(--accent); color: var(--white); border: none;
+    border-radius: 12px; font-size: 16px; font-weight: 700;
+    cursor: pointer; margin-bottom: 20px;
+    transition: background 0.15s;
+}
+.pwa-install-btn:active { background: var(--accent-hover); }
+.pwa-instructions {
+    text-align: left; margin-bottom: 24px;
+    background: var(--bg-raised); border-radius: 12px;
+    padding: 16px; border: 1px solid var(--border);
+}
+.pwa-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; font-size: 14px; color: var(--text);
+    line-height: 1.4;
+}
+.pwa-step + .pwa-step { border-top: 1px solid var(--border); }
+.pwa-step-icon { font-size: 20px; flex-shrink: 0; width: 28px; text-align: center; }
+.pwa-step strong { color: var(--accent); }
+.pwa-skip {
+    background: none; border: none; color: var(--text-subtle);
+    font-size: 13px; cursor: pointer; padding: 8px 16px;
+    text-decoration: underline; text-underline-offset: 3px;
+}
+.pwa-skip:active { color: var(--text-muted); }
+
+/* =============================================
    Desktop Overrides (non-touch, hover-capable devices)
    ============================================= */
 @media (hover: hover) and (pointer: fine) {
