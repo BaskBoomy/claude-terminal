@@ -95,7 +95,7 @@ function renderSettingsSnippets() {
     list.innerHTML = '';
     (shSettings.snippets || []).forEach(function(sn, i) {
         var card = document.createElement('div');
-        card.className = 'sn-card';
+        card.className = 'sn-card' + (sn.hidden ? ' hidden' : '');
         card.draggable = true;
         card.dataset.idx = i;
 
@@ -110,9 +110,11 @@ function renderSettingsSnippets() {
         var cmdPreview = sn.command ? sn.command.split('\n')[0] : '';
         if (cmdPreview.length > 30) cmdPreview = cmdPreview.substring(0, 30) + '…';
 
+        var visIcon = sn.hidden ? '&#x1F6AB;' : '&#x1F441;';
         card.innerHTML =
             '<div class="sn-header">' +
                 '<span class="sn-handle">&#x2630;</span>' +
+                '<button class="sn-visibility" data-action="toggle-visibility">' + visIcon + '</button>' +
                 '<div class="sn-color-dot" style="background:' + dotColor + '"></div>' +
                 '<span class="' + labelClass + '">' + escHtml(displayLabel) + '</span>' +
                 '<span class="sn-header-cmd">' + escHtml(cmdPreview) + '</span>' +
@@ -145,6 +147,14 @@ function renderSettingsSnippets() {
                             '<span>' + t('settings.newWindowLabel') + '</span>' +
                             '<label class="sn-mini-toggle">' +
                                 '<input type="checkbox"' + (sn.newWindow ? ' checked' : '') + ' data-field="newWindow">' +
+                                '<div class="mt-track"></div>' +
+                                '<div class="mt-thumb"></div>' +
+                            '</label>' +
+                        '</div>' +
+                        '<div class="sn-opt-item">' +
+                            '<span>' + t('settings.hiddenLabel') + '</span>' +
+                            '<label class="sn-mini-toggle">' +
+                                '<input type="checkbox"' + (sn.hidden ? ' checked' : '') + ' data-field="hidden">' +
                                 '<div class="mt-track"></div>' +
                                 '<div class="mt-thumb"></div>' +
                             '</label>' +
@@ -194,6 +204,12 @@ function renderSettingsSnippets() {
             }
             else if (field === 'confirm') shSettings.snippets[i].confirm = el.checked;
             else if (field === 'newWindow') shSettings.snippets[i].newWindow = el.checked;
+            else if (field === 'hidden') {
+                shSettings.snippets[i].hidden = el.checked;
+                card.classList.toggle('hidden', el.checked);
+                var visBtn = card.querySelector('.sn-visibility');
+                if (visBtn) visBtn.innerHTML = el.checked ? '&#x1F6AB;' : '&#x1F441;';
+            }
         });
 
         // Click delegation (delete, color)
@@ -202,6 +218,15 @@ function renderSettingsSnippets() {
             if (t.dataset.action === 'delete') {
                 shSettings.snippets.splice(i, 1);
                 renderSettingsSnippets();
+            }
+            if (t.dataset.action === 'toggle-visibility') {
+                e.stopPropagation();
+                shSettings.snippets[i].hidden = !shSettings.snippets[i].hidden;
+                var isHidden = shSettings.snippets[i].hidden;
+                card.classList.toggle('hidden', isHidden);
+                t.innerHTML = isHidden ? '&#x1F6AB;' : '&#x1F441;';
+                var hiddenCheckbox = card.querySelector('input[data-field="hidden"]');
+                if (hiddenCheckbox) hiddenCheckbox.checked = isHidden;
             }
             if (t.dataset.color !== undefined) {
                 shSettings.snippets[i].color = t.dataset.color;

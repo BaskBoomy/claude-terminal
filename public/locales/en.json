@@ -29,7 +29,8 @@
     "confirmLabel": "Confirm",
     "newWindowLabel": "New Win",
     "language": "Language",
-    "languageDesc": "Interface language"
+    "languageDesc": "Interface language",
+    "hiddenLabel": "Hidden"
   },
   "notes": {
     "empty": "No notes",

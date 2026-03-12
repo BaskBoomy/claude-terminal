@@ -26,6 +26,7 @@ export function renderSnippets(snippets) {
     const container = document.getElementById('snippet-btns');
     container.innerHTML = '';
     snippets.forEach((sn) => {
+        if (sn.hidden) return;
         const btn = document.createElement('button');
         btn.className = 'tool-btn';
         btn.textContent = sn.label;
