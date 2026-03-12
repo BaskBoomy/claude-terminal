@@ -1,6 +1,7 @@
 {
   "name": "Claude Terminal",
   "short_name": "Terminal",
+  "description": "Mobile terminal for Claude Code — full-screen PWA with push notifications",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1A1917",
@@ -10,6 +11,12 @@
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     }

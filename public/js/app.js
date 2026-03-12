@@ -605,9 +605,9 @@ function setupTouchScroll() {
 // ========================================
 // PWA Install Prompt
 // ========================================
-var _deferredInstallPrompt = null;
-
-// Capture Chrome/Android install prompt before it fires
+// Use the install prompt captured by inline script (avoids race condition)
+var _deferredInstallPrompt = window._deferredInstallPrompt || null;
+// Also listen for late arrivals
 window.addEventListener('beforeinstallprompt', function(e) {
     e.preventDefault();
     _deferredInstallPrompt = e;
@@ -639,6 +639,10 @@ function showPWAPrompt() {
     var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     var isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS/.test(ua);
 
+    function makeStep(icon, html) {
+        return '<div class="pwa-step"><span class="pwa-step-icon">' + icon + '</span><span>' + html + '</span></div>';
+    }
+
     if (_deferredInstallPrompt) {
         // Chrome/Android — show native install button
         installBtn.style.display = '';
@@ -647,29 +651,31 @@ function showPWAPrompt() {
         installBtn.addEventListener('click', function() {
             _deferredInstallPrompt.prompt();
             _deferredInstallPrompt.userChoice.then(function(result) {
-                if (result.outcome === 'accepted') {
-                    overlay.classList.add('hidden');
-                    app.style.display = '';
-                }
                 _deferredInstallPrompt = null;
+                if (result.outcome === 'accepted') {
+                    sessionStorage.setItem('pwa-skip', '1');
+                }
             });
         });
-    } else if (isIOSSafari) {
-        // iOS Safari — show manual instructions
+    } else if (isIOSSafari || isIOS) {
+        // iOS — show manual instructions
+        iosInstructions.innerHTML =
+            makeStep('&#x2B06;&#xFE0F;', t('pwa.iosStep1')) +
+            makeStep('&#x2795;', t('pwa.iosStep2')) +
+            makeStep('&#x2705;', t('pwa.iosStep3'));
         iosInstructions.style.display = '';
-        descEl.textContent = t('pwa.descIOS');
-    } else if (isIOS) {
-        // iOS but not Safari — can't install
-        iosInstructions.style.display = '';
-        descEl.textContent = t('pwa.descIOSNotSafari');
+        descEl.textContent = isIOSSafari ? t('pwa.descIOS') : t('pwa.descIOSNotSafari');
     } else {
         // Other browsers
+        genericInstructions.innerHTML =
+            makeStep('&#x22EF;', t('pwa.genericStep1')) +
+            makeStep('&#x2B07;&#xFE0F;', t('pwa.genericStep2'));
         genericInstructions.style.display = '';
         descEl.textContent = t('pwa.descGeneric');
     }
 
     skipBtn.textContent = t('pwa.skip');
-    overlay.style.display = '';
+    overlay.classList.add('visible');
 
     // Skip button — remember choice for this session
     skipBtn.addEventListener('click', function() {
@@ -700,9 +706,9 @@ function showPWAPrompt() {
             window.addEventListener('appinstalled', function() { resolve(); });
         });
     }
-    // Show app
+    // Show app (hide overlay if it was shown)
     var pwaOverlay = document.getElementById('pwa-install-overlay');
-    if (pwaOverlay) pwaOverlay.classList.add('hidden');
+    if (pwaOverlay) { pwaOverlay.classList.remove('visible'); pwaOverlay.classList.add('hidden'); }
     document.getElementById('app').style.display = '';
 
     // 2. iOS gestures (edge swipe blockers, popstate trap) + edge double-tap view switching

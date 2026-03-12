@@ -208,6 +208,11 @@
     "descIOSNotSafari": "Open in Safari to install as an app. Other browsers on iOS cannot install PWAs.",
     "descGeneric": "Install as an app from your browser menu for the best experience.",
     "installBtn": "Install App",
-    "skip": "Continue in browser"
+    "skip": "Continue in browser",
+    "iosStep1": "Tap the <strong>Share</strong> button in Safari",
+    "iosStep2": "Select <strong>\"Add to Home Screen\"</strong>",
+    "iosStep3": "Tap <strong>\"Add\"</strong> to install",
+    "genericStep1": "Open browser menu (<strong>⋮</strong> or <strong>⋯</strong>)",
+    "genericStep2": "Select <strong>\"Install App\"</strong> or <strong>\"Add to Home Screen\"</strong>"
   }
 }
