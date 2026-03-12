@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=26">
+    <link rel="stylesheet" href="/css/style.css?v=27">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -23,33 +23,11 @@
         <!-- Chrome/Android: native install button -->
         <button class="pwa-install-btn" id="pwa-install-btn" style="display:none">Install App</button>
 
-        <!-- iOS Safari instructions -->
-        <div class="pwa-instructions" id="pwa-ios-instructions" style="display:none">
-            <div class="pwa-step">
-                <span class="pwa-step-icon">&#x2B06;&#xFE0F;</span>
-                <span>Tap the <strong>Share</strong> button in Safari</span>
-            </div>
-            <div class="pwa-step">
-                <span class="pwa-step-icon">&#x2795;</span>
-                <span>Select <strong>"Add to Home Screen"</strong></span>
-            </div>
-            <div class="pwa-step">
-                <span class="pwa-step-icon">&#x2705;</span>
-                <span>Tap <strong>"Add"</strong> to install</span>
-            </div>
-        </div>
+        <!-- iOS Safari instructions (populated by JS with i18n) -->
+        <div class="pwa-instructions" id="pwa-ios-instructions" style="display:none"></div>
 
-        <!-- Generic browser instructions -->
-        <div class="pwa-instructions" id="pwa-generic-instructions" style="display:none">
-            <div class="pwa-step">
-                <span class="pwa-step-icon">&#x22EF;</span>
-                <span>Open browser menu (<strong>&#x22EE;</strong> or <strong>&#x22EF;</strong>)</span>
-            </div>
-            <div class="pwa-step">
-                <span class="pwa-step-icon">&#x2B07;&#xFE0F;</span>
-                <span>Select <strong>"Install App"</strong> or <strong>"Add to Home Screen"</strong></span>
-            </div>
-        </div>
+        <!-- Generic browser instructions (populated by JS with i18n) -->
+        <div class="pwa-instructions" id="pwa-generic-instructions" style="display:none"></div>
 
         <button class="pwa-skip" id="pwa-skip">Continue in browser</button>
     </div>
@@ -345,14 +323,27 @@ if ('serviceWorker' in navigator) {
         .then(function(reg) { reg.update(); })
         .catch(function() {});
 }
-</script>
-<script>
+// Capture beforeinstallprompt early (before module loads)
+window._deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    window._deferredInstallPrompt = e;
+});
+// If already in PWA/standalone mode or skipped, show app immediately (no flash)
+(function() {
+    var isPWA = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true
+        || sessionStorage.getItem('pwa-skip') === '1';
+    if (isPWA) {
+        document.getElementById('app').style.display = '';
+    }
+})();
 // Allow zoom on desktop (remove mobile viewport lock)
 if (!('ontouchstart' in window) || navigator.maxTouchPoints === 0) {
     var vp = document.querySelector('meta[name="viewport"]');
     if (vp) vp.content = 'width=device-width, initial-scale=1.0';
 }
 </script>
-<script type="module" src="/js/app.js?v=17"></script>
+<script type="module" src="/js/app.js?v=18"></script>
 </body>
 </html>
