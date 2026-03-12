@@ -1,5 +1,5 @@
 // terminal.js — ES module for terminal/xterm integration
-import { showToast, showConfirm } from './utils.js';
+import { showToast, showConfirm, isMobile } from './utils.js';
 import { t } from './i18n.js';
 
 let frame = null;
@@ -74,6 +74,15 @@ export function openSendHistory() {
         }
     }
     panel.classList.add('open');
+
+    // Escape key closes panel (desktop keyboard UX)
+    function escHandler(e) {
+        if (e.key === 'Escape') {
+            closeSendHistory();
+            document.removeEventListener('keydown', escHandler);
+        }
+    }
+    document.addEventListener('keydown', escHandler);
 }
 
 export function closeSendHistory() {
@@ -293,6 +302,11 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     clearInputBtn = document.getElementById('clear-input');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
 
+    // Desktop: update placeholder to show Enter instead of Shift+Enter
+    if (!isMobile) {
+        textInput.placeholder = t('terminal.inputPlaceholderDesktop') || textInput.placeholder;
+    }
+
     // Load history from localStorage
     try {
         inputHistory = JSON.parse(localStorage.getItem('terminal-history') || '[]');
@@ -390,9 +404,9 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
         }
     });
 
-    // --- Keydown: Shift+Enter to submit, ArrowUp/Down for history ---
+    // --- Keydown: Enter to submit (desktop) / Shift+Enter (mobile), ArrowUp/Down for history ---
     textInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && e.shiftKey && !e.isComposing) {
+        if (e.key === 'Enter' && !e.isComposing && (isMobile ? e.shiftKey : !e.shiftKey)) {
             e.preventDefault();
             submitInput();
         } else if (e.key === 'ArrowUp' && !e.isComposing && document.activeElement === textInput) {
@@ -415,16 +429,18 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
         }
     });
 
-    // --- Send button: touchend with sendPending guard ---
-    sendBtn.addEventListener('touchend', function (e) {
-        e.preventDefault();
-        if (sendPending) return;
-        sendPending = true;
-        submitInput();
-        setTimeout(function () { sendPending = false; }, 300);
-    });
-
-    // --- Send button: click (desktop only, touchend preventDefault blocks on mobile) ---
+    // --- Send button ---
+    if (isMobile) {
+        // Mobile: touchend with guard (prevents double-fire)
+        sendBtn.addEventListener('touchend', function (e) {
+            e.preventDefault();
+            if (sendPending) return;
+            sendPending = true;
+            submitInput();
+            setTimeout(function () { sendPending = false; }, 300);
+        });
+    }
+    // Desktop (and fallback): click
     sendBtn.addEventListener('click', function (e) {
         if (sendPending) return;
         sendPending = true;

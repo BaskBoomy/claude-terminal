@@ -56,6 +56,7 @@
     "pasteToInput": "입력창에 붙여넣기",
     "sendFailed": "전송 실패 — 텍스트 보존됨",
     "inputPlaceholder": "입력 후 Shift+Enter...",
+    "inputPlaceholderDesktop": "입력 후 Enter...",
     "sendHistory": "전송 이력",
     "copied": "복사됨",
     "clearConfirm": "입력 내용을 지우시겠습니까?"

@@ -1,3 +1,6 @@
+// Detect mobile/touch device (use for mobile-only features)
+export var isMobile = ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+
 export function showToast(msg, duration = 2500) {
     const toast = document.getElementById('toast');
     toast.textContent = msg;
@@ -22,6 +25,14 @@ export function showConfirm(msg, buttons) {
         actions.appendChild(btn);
     });
     backdrop.onclick = (e) => { if (e.target === backdrop) closeConfirm(); };
+    // Escape key closes confirm dialog (desktop keyboard UX)
+    var escHandler = function(e) {
+        if (e.key === 'Escape') {
+            closeConfirm();
+            document.removeEventListener('keydown', escHandler);
+        }
+    };
+    document.addEventListener('keydown', escHandler);
     backdrop.classList.add('open');
     dialog.classList.add('open');
 }
