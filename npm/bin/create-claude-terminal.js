@@ -1,26 +1,18 @@
 #!/usr/bin/env node
 
+const { c, color, S, banner, box, success, error } = require('../lib/ui');
 const { checkPrerequisites } = require('../lib/prerequisites');
 const { prompt } = require('../lib/prompt');
 const { installTtyd } = require('../lib/install-ttyd');
 const { installServer } = require('../lib/install-server');
 const { setupService } = require('../lib/service');
-
-const BANNER = `
-   _____ _                 _        _____                   _             _
-  / ____| |               | |      |_   _|                 (_)           | |
- | |    | | __ _ _   _  __| | ___    | |  ___ _ __ _ __ ___ _ _ __   __ _| |
- | |    | |/ _\` | | | |/ _\` |/ _ \\   | | / _ \\ '__| '_ \` _ \\ | '_ \\ / _\` | |
- | |____| | (_| | |_| | (_| |  __/   | ||  __/ |  | | | | | | | | | (_| | |
-  \\_____|_|\\__,_|\\__,_|\\__,_|\\___|   \\_/ \\___|_|  |_| |_| |_|_|_| |_|\\__,_|_|
-`;
+const pkg = require('../package.json');
 
 async function main() {
-  console.log(BANNER);
-  console.log('  Access Claude Code from anywhere via browser\n');
+  banner(pkg.version);
 
   // 1. Check prerequisites
-  const checks = checkPrerequisites();
+  const checks = await checkPrerequisites();
   if (!checks.ok) {
     process.exit(1);
   }
@@ -39,21 +31,36 @@ async function main() {
   // 5. Set up systemd/launchd service
   await setupService(config);
 
-  console.log('\n  ✅ Claude Terminal is running!\n');
-  if (config.domain) {
-    console.log(`  🌐 https://${config.domain}\n`);
-  } else {
-    console.log(`  🌐 http://localhost:${config.port}\n`);
-    console.log('  Tip: Access from other devices on your network:');
-    console.log(`       http://<your-ip>:${config.port}\n`);
+  // Final success
+  const url = config.domain
+    ? `https://${config.domain}`
+    : `http://localhost:${config.port}`;
+
+  const lines = [
+    `${color(c.green + c.bold, S.check)}  ${color(c.bold, 'Claude Web Terminal is running!')}`,
+    '',
+    `${color(c.cyan, S.pointer)} ${color(c.bold, url)}`,
+  ];
+
+  if (!config.domain) {
+    lines.push(`${color(c.gray, '  Also: http://<your-ip>:' + config.port)}`);
   }
-  console.log('  Commands:');
-  console.log('    sudo systemctl status claude-terminal');
-  console.log('    sudo systemctl restart claude-terminal');
-  console.log('    journalctl -u claude-terminal -f\n');
+
+  lines.push('');
+  lines.push(`${color(c.dim, 'Manage:')}`);
+
+  if (process.platform === 'linux') {
+    lines.push(`${color(c.gray, '  systemctl status claude-terminal')}`);
+    lines.push(`${color(c.gray, '  systemctl restart claude-terminal')}`);
+    lines.push(`${color(c.gray, '  journalctl -u claude-terminal -f')}`);
+  } else {
+    lines.push(`${color(c.gray, '  launchctl list | grep claude')}`);
+  }
+
+  console.log('\n' + box(lines, { color: c.green }) + '\n');
 }
 
 main().catch(err => {
-  console.error('\n  ❌ Error:', err.message);
+  error(err.message);
   process.exit(1);
 });

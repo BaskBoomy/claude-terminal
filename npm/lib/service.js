@@ -2,6 +2,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { c, color, S, createSpinner, exec, sectionStart, sectionItem, sectionEnd } = require('./ui');
 
 function getUser() {
   return os.userInfo().username;
@@ -24,7 +25,6 @@ async function setupSystemd(config, user) {
   const binPath = path.join(installDir, 'claude-terminal');
   const scriptPath = path.join(installDir, 'ttyd-start.sh');
 
-  // ttyd service
   const ttydService = `[Unit]
 Description=ttyd - Web Terminal for Claude Code
 After=network.target
@@ -41,9 +41,8 @@ Environment=CLAUDE_CMD=${config.claudeCmd || 'claude'}
 WantedBy=multi-user.target
 `;
 
-  // claude-terminal service
   const ctService = `[Unit]
-Description=Claude Terminal - Web UI for Claude Code
+Description=Claude Web Terminal - Access Claude Code via Browser
 After=network.target ttyd.service
 
 [Service]
@@ -59,27 +58,32 @@ Environment=PORT=${config.port}
 WantedBy=multi-user.target
 `;
 
-  console.log('\n  Setting up systemd services...');
+  sectionStart('Service Setup');
 
   const ttydServicePath = '/tmp/ttyd.service';
   const ctServicePath = '/tmp/claude-terminal.service';
   fs.writeFileSync(ttydServicePath, ttydService);
   fs.writeFileSync(ctServicePath, ctService);
 
+  const spinner = createSpinner('Configuring systemd services...').start();
+
   try {
-    execSync(`sudo cp ${ttydServicePath} /etc/systemd/system/ttyd.service`, { stdio: 'inherit' });
-    execSync(`sudo cp ${ctServicePath} /etc/systemd/system/claude-terminal.service`, { stdio: 'inherit' });
-    execSync('sudo systemctl daemon-reload', { stdio: 'inherit' });
-    execSync('sudo systemctl enable ttyd claude-terminal', { stdio: 'inherit' });
-    execSync('sudo systemctl start ttyd', { stdio: 'inherit' });
-    // Small delay for ttyd to start
-    execSync('sleep 1');
-    execSync('sudo systemctl start claude-terminal', { stdio: 'inherit' });
-    console.log('  ✅ systemd services enabled and started');
+    await exec(`sudo cp ${ttydServicePath} /etc/systemd/system/ttyd.service`);
+    await exec(`sudo cp ${ctServicePath} /etc/systemd/system/claude-terminal.service`);
+    spinner.update('Reloading daemon...');
+    await exec('sudo systemctl daemon-reload');
+    spinner.update('Enabling services...');
+    await exec('sudo systemctl enable ttyd claude-terminal');
+    spinner.update('Starting ttyd...');
+    await exec('sudo systemctl start ttyd');
+    spinner.update('Starting claude-terminal...');
+    await exec('sleep 1 && sudo systemctl start claude-terminal');
+    spinner.succeed('systemd services enabled & started');
   } catch (err) {
-    console.log('  ⚠️  Could not set up systemd. Start manually:');
-    console.log(`     ${ttydPath} -p ${ttydPort} -W -b /ttyd ${scriptPath} &`);
-    console.log(`     PORT=${config.port} ${binPath} &`);
+    spinner.warn('Could not auto-start services');
+    sectionItem(color(c.dim, S.info), color(c.dim, 'Start manually:'));
+    sectionItem(color(c.dim, ' '), color(c.gray, `${ttydPath} -p ${ttydPort} -W -b /ttyd ${scriptPath} &`));
+    sectionEnd(color(c.dim, ' '), color(c.gray, `PORT=${config.port} ${binPath} &`));
   }
 
   fs.unlinkSync(ttydServicePath);
@@ -95,7 +99,6 @@ async function setupLaunchd(config, user) {
   const launchAgentsDir = path.join(os.homedir(), 'Library', 'LaunchAgents');
   fs.mkdirSync(launchAgentsDir, { recursive: true });
 
-  // ttyd plist
   const ttydPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -114,7 +117,6 @@ async function setupLaunchd(config, user) {
 </dict>
 </plist>`;
 
-  // claude-terminal plist
   const ctPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -134,7 +136,7 @@ async function setupLaunchd(config, user) {
 </dict>
 </plist>`;
 
-  console.log('\n  Setting up launchd services...');
+  sectionStart('Service Setup');
 
   const ttydPlistPath = path.join(launchAgentsDir, 'com.claude-terminal.ttyd.plist');
   const ctPlistPath = path.join(launchAgentsDir, 'com.claude-terminal.plist');
@@ -142,14 +144,18 @@ async function setupLaunchd(config, user) {
   fs.writeFileSync(ttydPlistPath, ttydPlist);
   fs.writeFileSync(ctPlistPath, ctPlist);
 
+  const spinner = createSpinner('Configuring launchd services...').start();
+
   try {
-    execSync(`launchctl load ${ttydPlistPath}`, { stdio: 'inherit' });
-    execSync(`launchctl load ${ctPlistPath}`, { stdio: 'inherit' });
-    console.log('  ✅ launchd services loaded');
+    await exec(`launchctl load ${ttydPlistPath}`);
+    spinner.update('Loading claude-terminal...');
+    await exec(`launchctl load ${ctPlistPath}`);
+    spinner.succeed('launchd services loaded');
   } catch {
-    console.log('  ⚠️  Could not load launchd services. Load manually:');
-    console.log(`     launchctl load ${ttydPlistPath}`);
-    console.log(`     launchctl load ${ctPlistPath}`);
+    spinner.warn('Could not load services');
+    sectionItem(color(c.dim, S.info), color(c.dim, 'Load manually:'));
+    sectionItem(color(c.dim, ' '), color(c.gray, `launchctl load ${ttydPlistPath}`));
+    sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${ctPlistPath}`));
   }
 }
 

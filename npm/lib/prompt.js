@@ -1,44 +1,13 @@
 const readline = require('readline');
+const crypto = require('crypto');
+const { c, color, S, sectionStart, sectionItem, ask, askPassword, info } = require('./ui');
 
-function ask(rl, question, defaultVal) {
-  const display = defaultVal ? `${question} [${defaultVal}]: ` : `${question}: `;
-  return new Promise(resolve => {
-    rl.question('  ' + display, answer => {
-      resolve(answer.trim() || defaultVal || '');
-    });
-  });
-}
-
-function askPassword(rl, question) {
-  return new Promise(resolve => {
-    process.stdout.write('  ' + question + ': ');
-    const stdin = process.stdin;
-    const oldRawMode = stdin.isRaw;
-    if (stdin.setRawMode) stdin.setRawMode(true);
-
-    let password = '';
-    const onData = (ch) => {
-      const c = ch.toString();
-      if (c === '\n' || c === '\r') {
-        if (stdin.setRawMode) stdin.setRawMode(oldRawMode);
-        stdin.removeListener('data', onData);
-        process.stdout.write('\n');
-        resolve(password);
-      } else if (c === '\x7f' || c === '\b') {
-        if (password.length > 0) {
-          password = password.slice(0, -1);
-          process.stdout.write('\b \b');
-        }
-      } else if (c === '\x03') {
-        process.exit(0);
-      } else {
-        password += c;
-        process.stdout.write('*');
-      }
-    };
-    stdin.on('data', onData);
-    stdin.resume();
-  });
+function generatePassword(len) {
+  const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+  const bytes = crypto.randomBytes(len);
+  let pw = '';
+  for (let i = 0; i < len; i++) pw += chars[bytes[i] % chars.length];
+  return pw;
 }
 
 async function prompt(checks) {
@@ -47,24 +16,29 @@ async function prompt(checks) {
     output: process.stdout,
   });
 
-  console.log('  Configuration\n');
+  sectionStart('Configuration');
 
-  const password = await askPassword(rl, 'Password');
+  const password = await askPassword('Password (Enter = auto-generate)');
+  let finalPassword;
   if (!password) {
-    console.log('\n  ❌ Password is required');
-    process.exit(1);
+    finalPassword = generatePassword(16);
+    console.log(`  ${color(c.gray, S.bar)} ${color(c.green, S.check)} Generated: ${color(c.bold, finalPassword)}`);
+    console.log(`  ${color(c.gray, S.bar)} ${color(c.dim, 'Save this password — you\'ll need it to log in')}`);
+  } else {
+    finalPassword = password;
   }
 
   const port = await ask(rl, 'Port', '7680');
   const ttydPort = await ask(rl, 'ttyd port', '7681');
   const claudeCmd = await ask(rl, 'Claude command', 'claude');
-  const domain = await ask(rl, 'Domain (optional, for HTTPS)', '');
+  const domain = await ask(rl, 'Domain (optional)', '');
   const installDir = await ask(rl, 'Install directory', `${process.env.HOME}/.claude-terminal`);
 
   rl.close();
+  console.log('');
 
   return {
-    password,
+    password: finalPassword,
     port: parseInt(port, 10) || 7680,
     ttydPort: parseInt(ttydPort, 10) || 7681,
     claudeCmd,
