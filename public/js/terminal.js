@@ -1,5 +1,5 @@
 // terminal.js — ES module for terminal/xterm integration
-import { showToast } from './utils.js';
+import { showToast, showConfirm } from './utils.js';
 import { t } from './i18n.js';
 
 let frame = null;
@@ -348,8 +348,13 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             document.body.removeChild(ta);
         }
         function doClear() {
-            clearInput();
-            textInput.focus();
+            showConfirm(t('terminal.clearConfirm'), [
+                { label: t('common.delete'), className: 'primary', action: function() {
+                    clearInput();
+                    textInput.focus();
+                }},
+                { label: t('common.cancel'), className: 'cancel' }
+            ]);
         }
 
         clearInputBtn.addEventListener('click', function(e) {

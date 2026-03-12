@@ -57,7 +57,8 @@
     "sendFailed": "Send failed — text preserved",
     "inputPlaceholder": "Type then Shift+Enter...",
     "sendHistory": "Send History",
-    "copied": "Copied"
+    "copied": "Copied",
+    "clearConfirm": "Clear input content?"
   },
   "brain": {
     "refresh": "↻ Refresh",
@@ -187,6 +188,7 @@
     "attachFile": "📎 Attach File",
     "saveAsMemo": "📝 Save as Memo",
     "noMemos": "No saved memos",
+    "memoSaved": "Saved as memo",
     "memo": "Memo",
     "inputHasContent": "Input field has content.",
     "saveAndOverwrite": "Save & Overwrite",
