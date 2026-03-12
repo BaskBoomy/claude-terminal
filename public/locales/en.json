@@ -201,5 +201,13 @@
   },
   "polling": {
     "usageRefreshed": "Usage refreshed"
+  },
+  "pwa": {
+    "descInstall": "Install as an app for the best experience — full screen, push notifications, and offline access.",
+    "descIOS": "Add to your Home Screen for the best experience — full screen, push notifications, and faster access.",
+    "descIOSNotSafari": "Open in Safari to install as an app. Other browsers on iOS cannot install PWAs.",
+    "descGeneric": "Install as an app from your browser menu for the best experience.",
+    "installBtn": "Install App",
+    "skip": "Continue in browser"
   }
 }

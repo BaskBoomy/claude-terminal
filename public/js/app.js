@@ -602,6 +602,81 @@ function setupTouchScroll() {
 // ========================================
 // Main Initialization
 // ========================================
+// ========================================
+// PWA Install Prompt
+// ========================================
+var _deferredInstallPrompt = null;
+
+// Capture Chrome/Android install prompt before it fires
+window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    _deferredInstallPrompt = e;
+});
+
+function isPWA() {
+    // Standalone mode (installed PWA)
+    if (window.matchMedia('(display-mode: standalone)').matches) return true;
+    // iOS standalone
+    if (window.navigator.standalone === true) return true;
+    // TWA (Trusted Web Activity)
+    if (document.referrer.includes('android-app://')) return true;
+    return false;
+}
+
+function showPWAPrompt() {
+    var overlay = document.getElementById('pwa-install-overlay');
+    var app = document.getElementById('app');
+    var installBtn = document.getElementById('pwa-install-btn');
+    var iosInstructions = document.getElementById('pwa-ios-instructions');
+    var genericInstructions = document.getElementById('pwa-generic-instructions');
+    var skipBtn = document.getElementById('pwa-skip');
+    var descEl = document.getElementById('pwa-desc');
+
+    if (!overlay) { app.style.display = ''; return; }
+
+    // Detect platform for appropriate instructions
+    var ua = navigator.userAgent;
+    var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var isIOSSafari = isIOS && /Safari/.test(ua) && !/CriOS|FxiOS|OPiOS/.test(ua);
+
+    if (_deferredInstallPrompt) {
+        // Chrome/Android — show native install button
+        installBtn.style.display = '';
+        descEl.textContent = t('pwa.descInstall');
+        installBtn.textContent = t('pwa.installBtn');
+        installBtn.addEventListener('click', function() {
+            _deferredInstallPrompt.prompt();
+            _deferredInstallPrompt.userChoice.then(function(result) {
+                if (result.outcome === 'accepted') {
+                    overlay.classList.add('hidden');
+                    app.style.display = '';
+                }
+                _deferredInstallPrompt = null;
+            });
+        });
+    } else if (isIOSSafari) {
+        // iOS Safari — show manual instructions
+        iosInstructions.style.display = '';
+        descEl.textContent = t('pwa.descIOS');
+    } else if (isIOS) {
+        // iOS but not Safari — can't install
+        iosInstructions.style.display = '';
+        descEl.textContent = t('pwa.descIOSNotSafari');
+    } else {
+        // Other browsers
+        genericInstructions.style.display = '';
+        descEl.textContent = t('pwa.descGeneric');
+    }
+
+    skipBtn.textContent = t('pwa.skip');
+    overlay.style.display = '';
+
+    // Skip button — remember choice for this session
+    skipBtn.addEventListener('click', function() {
+        sessionStorage.setItem('pwa-skip', '1');
+    });
+}
+
 (async function main() {
     // 1. Auth check (redirects to /login.html if not authenticated)
     await initAuth();
@@ -614,6 +689,21 @@ function setupTouchScroll() {
     var lang = (_initSettings.general && _initSettings.general.language) || 'en';
     await initI18n(lang);
     translateDOM();
+
+    // 1c. PWA install check — show install prompt if not running as PWA
+    if (!isPWA() && !sessionStorage.getItem('pwa-skip')) {
+        showPWAPrompt();
+        // Wait for user to skip (install will reload the page as standalone)
+        await new Promise(function(resolve) {
+            document.getElementById('pwa-skip').addEventListener('click', resolve);
+            // Also resolve if install accepted (page may reload)
+            window.addEventListener('appinstalled', function() { resolve(); });
+        });
+    }
+    // Show app
+    var pwaOverlay = document.getElementById('pwa-install-overlay');
+    if (pwaOverlay) pwaOverlay.classList.add('hidden');
+    document.getElementById('app').style.display = '';
 
     // 2. iOS gestures (edge swipe blockers, popstate trap) + edge double-tap view switching
     initGestures({
