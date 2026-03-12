@@ -606,6 +606,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 .sn-card.dragging { opacity: 0.4; }
 .sn-card.drag-over { border-color: var(--accent); }
+.sn-card.hidden .sn-header { opacity: 0.45; }
+.sn-card.hidden .sn-color-dot { opacity: 0.4; }
+.sn-visibility {
+    background: none; border: none; cursor: pointer; padding: 0 4px;
+    font-size: 14px; line-height: 1; flex-shrink: 0; opacity: 0.7;
+}
+.sn-visibility:active { opacity: 1; }
 
 /* Collapsed header row */
 .sn-header {

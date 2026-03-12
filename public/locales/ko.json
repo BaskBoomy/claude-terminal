@@ -29,7 +29,8 @@
     "confirmLabel": "확인",
     "newWindowLabel": "새창",
     "language": "Language",
-    "languageDesc": "인터페이스 언어"
+    "languageDesc": "인터페이스 언어",
+    "hiddenLabel": "숨김"
   },
   "notes": {
     "empty": "메모가 없습니다",
