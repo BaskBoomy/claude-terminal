@@ -464,7 +464,8 @@ export function initTouchScroll(frame, callbacks) {
     scrollBottomBtn.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      if (callbacks.sendKey) callbacks.sendKey('Escape', 27);
+      // Use server API to safely exit copy-mode (does NOT send keys to running process)
+      fetch('/api/tmux-scroll-bottom', { method: 'POST' }).catch(function() {});
       try {
         var viewport = frame.contentDocument.querySelector('.xterm-viewport');
         if (viewport) viewport.scrollTop = viewport.scrollHeight;
