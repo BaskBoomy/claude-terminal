@@ -906,7 +906,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .note-item-title {
     display: flex; align-items: center; gap: 4px;
     font-size: 15px; font-weight: 500; color: var(--text);
-    min-width: 0;
+    min-width: 0; overflow: hidden;
 }
 .note-pin-icon { color: var(--accent); flex-shrink: 0; }
 .note-item-title-text {
