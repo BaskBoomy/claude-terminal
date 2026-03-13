@@ -53,7 +53,8 @@ function renderNotesList(notes) {
         el.dataset.id = n.id;
         el.dataset.pinned = n.pinned ? '1' : '0';
         el.innerHTML =
-            '<div class="note-item-title">' + (n.pinned ? PIN_SVG : '') + '<span class="note-item-title-text">' + escapeHtml(n.title || t('notes.untitled')) + '</span></div>' +
+            (n.pinned ? PIN_SVG : '') +
+            '<div class="note-item-title">' + escapeHtml(n.title || t('notes.untitled')) + '</div>' +
             '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
             '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>';
         el.addEventListener('click', () => openNote(n.id));
