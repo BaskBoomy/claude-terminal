@@ -48,13 +48,16 @@ func main() {
 	// Initialize brain scanner
 	brain := NewBrain(cfg)
 
+	// Initialize TOTP (2FA)
+	totp := NewTOTP(cfg.DataDir)
+
 	// Initialize push manager + file watcher
 	push := NewPushManager(cfg.DataDir)
 	push.WatchNotifyDir(cfg.NotifyDir)
 
 	// Build API router
 	mux := http.NewServeMux()
-	api := &API{cfg: cfg, auth: auth, brain: brain, push: push}
+	api := &API{cfg: cfg, auth: auth, brain: brain, push: push, totp: totp}
 	api.RegisterRoutes(mux)
 
 	// ttyd reverse proxy (WebSocket-aware)

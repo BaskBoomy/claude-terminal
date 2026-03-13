@@ -718,6 +718,89 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 .sn-add-btn:active { color: var(--accent); border-color: var(--accent); }
 
+/* TOTP settings */
+.settings-totp-btn {
+    padding: 6px 14px; background: var(--accent); color: var(--white);
+    border: none; border-radius: 6px; font-size: 11px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+    transition: background 0.15s;
+}
+.settings-totp-btn:active { background: var(--accent-hover); }
+.settings-totp-btn.danger { background: var(--danger); }
+.settings-totp-btn.danger:active { opacity: 0.8; }
+.settings-totp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.totp-setup-box {
+    margin: 8px 0; padding: 12px; background: var(--bg-raised);
+    border: 1px solid var(--border); border-radius: 8px;
+}
+.totp-setup-box .totp-label {
+    font-size: 11px; color: var(--text-subtle); margin-bottom: 8px;
+}
+.totp-setup-box .totp-field-label {
+    font-size: 10px; color: var(--text-subtle); margin-top: 10px; margin-bottom: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.totp-secret-row {
+    display: flex; align-items: center; gap: 6px;
+}
+.totp-secret-text {
+    flex: 1; padding: 8px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 13px; color: var(--text); word-break: break-all;
+    user-select: all;
+}
+.totp-copy-btn {
+    padding: 6px 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text-subtle); font-size: 11px;
+    cursor: pointer; white-space: nowrap;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.totp-copy-btn:active { background: var(--border); }
+.totp-recovery-list {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    margin: 6px 0;
+}
+.totp-recovery-code {
+    padding: 4px 6px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 4px; font-family: 'SF Mono', 'Cascadia Code', monospace;
+    font-size: 12px; color: var(--text); text-align: center;
+}
+.totp-recovery-warning {
+    font-size: 11px; color: var(--danger); margin: 6px 0 10px;
+}
+.totp-otp-boxes {
+    display: flex; gap: 6px; justify-content: center; margin-top: 10px;
+}
+.totp-otp-box {
+    width: 36px; height: 42px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 18px; font-weight: 700; text-align: center;
+    outline: none; caret-color: var(--accent);
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.totp-otp-box:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(201,100,66,0.25); }
+.totp-otp-box.filled { border-color: var(--accent); }
+@keyframes totp-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+.totp-disable-box {
+    margin: 8px 0; padding: 12px; background: var(--bg-raised);
+    border: 1px solid var(--border); border-radius: 8px;
+}
+.totp-disable-box .totp-label {
+    font-size: 11px; color: var(--text-subtle); margin-bottom: 8px;
+}
+.totp-disable-row {
+    display: flex; gap: 6px;
+}
+
 /* Logout link */
 .settings-logout {
     width: auto; padding: 8px 0; margin: 20px 0 8px;

@@ -10,6 +10,7 @@
     "forward": "Forward",
     "loading": "Loading...",
     "logout": "Log Out",
+    "copy": "Copy",
     "copied": "Copied",
     "saved": "Saved!",
     "saving": "Saving...",
@@ -208,6 +209,26 @@
   },
   "polling": {
     "usageRefreshed": "Usage refreshed"
+  },
+  "totp": {
+    "title": "Two-Factor Authentication (2FA)",
+    "enabled": "2FA is enabled",
+    "disabled": "2FA is disabled",
+    "enable": "Enable 2FA",
+    "disable": "Disable 2FA",
+    "setupTitle": "Set up 2FA",
+    "setupInstructions": "Add this key to your authenticator app (Google Authenticator, Authy, etc.)",
+    "secretKey": "Secret Key",
+    "copied": "Copied!",
+    "recoveryCodes": "Recovery Codes",
+    "recoveryWarning": "Save these codes in a safe place. Each code can only be used once.",
+    "verifyCode": "Enter the 6-digit code from your app to verify",
+    "verify": "Verify & Enable",
+    "codeInput": "Verification Code",
+    "codePlaceholder": "6-digit code or recovery code",
+    "disableConfirm": "Enter your password to disable 2FA",
+    "loginPrompt": "Enter the verification code from your authenticator app",
+    "invalidCode": "Invalid verification code"
   },
   "pwa": {
     "descInstall": "Install as an app for the best experience — full screen, push notifications, and offline access.",

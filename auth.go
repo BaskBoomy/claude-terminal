@@ -51,6 +51,14 @@ func (a *Auth) CreateSession(ip string) string {
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
+
+	// Evict existing sessions from same IP (prevent duplicate login)
+	for t, s := range a.sessions {
+		if s.IP == ip {
+			delete(a.sessions, t)
+		}
+	}
+
 	a.sessions[token] = &Session{
 		Created:    time.Now(),
 		LastActive: time.Now(),

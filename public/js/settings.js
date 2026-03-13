@@ -75,6 +75,7 @@ var SH_COLOR_NAMES = Object.keys(SH_COLORS);
 var shDragSrcIdx = null;
 var shTouchState = null;
 var _callbacks = { onSave: function() {}, onLogout: function() {} };
+var _refreshTotp = null;
 
 function escAttr(s) { return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -336,6 +337,7 @@ function openSettings() {
             applySettingsToSheet();
             renderSettingsSnippets();
         });
+    if (_refreshTotp) _refreshTotp();
     var shBackdrop = document.getElementById('settings-backdrop');
     var shSheet = document.getElementById('settings-sheet');
     shBackdrop.classList.add('open');
@@ -529,6 +531,225 @@ function initSettings(callbacks) {
             setTimeout(function() { btn.textContent = t('common.save'); }, 2000);
         });
     });
+
+    // --- TOTP 2FA ---
+    var totpToggleBtn = document.getElementById('totp-toggle-btn');
+    var totpStatusText = document.getElementById('totp-status-text');
+    var totpSetupArea = document.getElementById('totp-setup-area');
+    var totpEnabled = false;
+
+    function loadTotpStatus() {
+        fetch('/api/totp/status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                totpEnabled = data.enabled;
+                updateTotpUI();
+            })
+            .catch(function() {});
+    }
+
+    function updateTotpUI() {
+        if (totpEnabled) {
+            totpStatusText.textContent = t('totp.enabled');
+            totpStatusText.setAttribute('data-i18n', 'totp.enabled');
+            totpToggleBtn.textContent = t('totp.disable');
+            totpToggleBtn.setAttribute('data-i18n', 'totp.disable');
+            totpToggleBtn.classList.add('danger');
+        } else {
+            totpStatusText.textContent = t('totp.disabled');
+            totpStatusText.setAttribute('data-i18n', 'totp.disabled');
+            totpToggleBtn.textContent = t('totp.enable');
+            totpToggleBtn.setAttribute('data-i18n', 'totp.enable');
+            totpToggleBtn.classList.remove('danger');
+        }
+        totpSetupArea.style.display = 'none';
+        totpSetupArea.innerHTML = '';
+    }
+
+    totpToggleBtn.addEventListener('click', function() {
+        if (totpEnabled) {
+            // Show disable form
+            totpSetupArea.style.display = '';
+            totpSetupArea.innerHTML =
+                '<div class="totp-disable-box">' +
+                    '<div class="totp-label">' + t('totp.disableConfirm') + '</div>' +
+                    '<div class="totp-disable-row">' +
+                        '<input type="password" class="totp-verify-input" id="totp-disable-pw" placeholder="Password">' +
+                        '<button class="settings-totp-btn danger" id="totp-disable-submit">' + t('totp.disable') + '</button>' +
+                    '</div>' +
+                '</div>';
+
+            document.getElementById('totp-disable-submit').addEventListener('click', function() {
+                var pw = document.getElementById('totp-disable-pw').value.trim();
+                if (!pw) return;
+                var btn = this;
+                btn.disabled = true;
+                fetch('/api/totp/disable', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: pw })
+                })
+                .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+                .then(function(result) {
+                    if (result.data.ok) {
+                        totpEnabled = false;
+                        updateTotpUI();
+                        showToast(t('totp.disabled'));
+                    } else {
+                        showToast(result.data.error || t('common.error'));
+                        btn.disabled = false;
+                    }
+                })
+                .catch(function() { btn.disabled = false; showToast(t('common.error')); });
+            });
+        } else {
+            // Start setup
+            totpToggleBtn.disabled = true;
+            fetch('/api/totp/setup', { method: 'POST', credentials: 'same-origin' })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    totpToggleBtn.disabled = false;
+                    totpSetupArea.style.display = '';
+
+                    var recoveryHtml = (data.recovery_codes || []).map(function(code) {
+                        return '<div class="totp-recovery-code">' + code + '</div>';
+                    }).join('');
+
+                    totpSetupArea.innerHTML =
+                        '<div class="totp-setup-box">' +
+                            '<div class="totp-label">' + t('totp.setupInstructions') + '</div>' +
+                            '<div class="totp-field-label">' + t('totp.secretKey') + '</div>' +
+                            '<div class="totp-secret-row">' +
+                                '<div class="totp-secret-text" id="totp-secret-val">' + data.secret + '</div>' +
+                                '<button class="totp-copy-btn" id="totp-copy-secret">' + t('common.copy') + '</button>' +
+                            '</div>' +
+                            '<div class="totp-field-label">otpauth URI</div>' +
+                            '<div class="totp-secret-row">' +
+                                '<div class="totp-secret-text" style="font-size:10px;word-break:break-all">' + data.uri + '</div>' +
+                                '<button class="totp-copy-btn" id="totp-copy-uri">' + t('common.copy') + '</button>' +
+                            '</div>' +
+                            (recoveryHtml ? (
+                                '<div class="totp-field-label">' + t('totp.recoveryCodes') + '</div>' +
+                                '<div class="totp-recovery-list">' + recoveryHtml + '</div>' +
+                                '<div class="totp-recovery-warning">' + t('totp.recoveryWarning') + '</div>'
+                            ) : '') +
+                            '<div class="totp-field-label">' + t('totp.verifyCode') + '</div>' +
+                            '<div class="totp-otp-boxes" id="totp-otp-boxes">' +
+                                '<input type="text" class="totp-otp-box" inputmode="numeric" maxlength="1" autocomplete="off">' +
+                                '<input type="text" class="totp-otp-box" inputmode="numeric" maxlength="1" autocomplete="off">' +
+                                '<input type="text" class="totp-otp-box" inputmode="numeric" maxlength="1" autocomplete="off">' +
+                                '<input type="text" class="totp-otp-box" inputmode="numeric" maxlength="1" autocomplete="off">' +
+                                '<input type="text" class="totp-otp-box" inputmode="numeric" maxlength="1" autocomplete="off">' +
+                                '<input type="text" class="totp-otp-box" inputmode="numeric" maxlength="1" autocomplete="off">' +
+                            '</div>' +
+                        '</div>';
+
+                    // Copy handlers
+                    document.getElementById('totp-copy-secret').addEventListener('click', function() {
+                        var self = this;
+                        navigator.clipboard.writeText(data.secret).then(function() {
+                            self.textContent = t('totp.copied');
+                            setTimeout(function() { self.textContent = t('common.copy'); }, 1500);
+                        });
+                    });
+                    document.getElementById('totp-copy-uri').addEventListener('click', function() {
+                        var self = this;
+                        navigator.clipboard.writeText(data.uri).then(function() {
+                            self.textContent = t('totp.copied');
+                            setTimeout(function() { self.textContent = t('common.copy'); }, 1500);
+                        });
+                    });
+
+                    // 6-box OTP verify logic
+                    var verifyBoxes = totpSetupArea.querySelectorAll('.totp-otp-box');
+                    var verifySubmitting = false;
+
+                    function getVerifyCode() {
+                        var c = '';
+                        verifyBoxes.forEach(function(b) { c += b.value; });
+                        return c;
+                    }
+
+                    function clearVerifyBoxes() {
+                        verifyBoxes.forEach(function(b) { b.value = ''; b.classList.remove('filled'); });
+                        verifyBoxes[0].focus();
+                    }
+
+                    function doVerifySetup(code) {
+                        if (verifySubmitting) return;
+                        verifySubmitting = true;
+                        fetch('/api/totp/verify-setup', {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ code: code })
+                        })
+                        .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+                        .then(function(result) {
+                            if (result.data.ok) {
+                                totpEnabled = true;
+                                updateTotpUI();
+                                showToast(t('totp.enabled'));
+                            } else {
+                                showToast(result.data.error || t('totp.invalidCode'));
+                                var container = document.getElementById('totp-otp-boxes');
+                                if (container) {
+                                    container.style.animation = 'none';
+                                    container.offsetHeight;
+                                    container.style.animation = 'totp-shake 0.4s ease';
+                                }
+                                setTimeout(clearVerifyBoxes, 400);
+                            }
+                        })
+                        .catch(function() { showToast(t('common.error')); })
+                        .finally(function() { verifySubmitting = false; });
+                    }
+
+                    verifyBoxes.forEach(function(box, i) {
+                        box.addEventListener('input', function() {
+                            var val = this.value.replace(/[^0-9]/g, '');
+                            this.value = val ? val[val.length - 1] : '';
+                            this.classList.toggle('filled', !!this.value);
+                            if (this.value && i < 5) verifyBoxes[i + 1].focus();
+                            var code = getVerifyCode();
+                            if (code.length === 6) doVerifySetup(code);
+                        });
+                        box.addEventListener('keydown', function(e) {
+                            if (e.key === 'Backspace') {
+                                if (!this.value && i > 0) {
+                                    verifyBoxes[i - 1].value = '';
+                                    verifyBoxes[i - 1].classList.remove('filled');
+                                    verifyBoxes[i - 1].focus();
+                                } else { this.value = ''; this.classList.remove('filled'); }
+                                e.preventDefault();
+                            } else if (e.key === 'ArrowLeft' && i > 0) { verifyBoxes[i - 1].focus(); }
+                            else if (e.key === 'ArrowRight' && i < 5) { verifyBoxes[i + 1].focus(); }
+                        });
+                        box.addEventListener('paste', function(e) {
+                            e.preventDefault();
+                            var p = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+                            for (var j = 0; j < 6 && j < p.length; j++) {
+                                verifyBoxes[j].value = p[j];
+                                verifyBoxes[j].classList.add('filled');
+                            }
+                            verifyBoxes[Math.min(p.length, 5)].focus();
+                            if (p.length >= 6) doVerifySetup(p.substring(0, 6));
+                        });
+                        box.addEventListener('focus', function() { this.select(); });
+                    });
+                    verifyBoxes[0].focus();
+                })
+                .catch(function() {
+                    totpToggleBtn.disabled = false;
+                    showToast(t('common.error'));
+                });
+        }
+    });
+
+    _refreshTotp = loadTotpStatus;
+    loadTotpStatus();
 
     // --- Logout ---
     document.getElementById('sh-logout').addEventListener('click', function() {

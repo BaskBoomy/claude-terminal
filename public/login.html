@@ -70,6 +70,36 @@
             display: none;
         }
         .error-msg.show { display: block; }
+        .totp-label {
+            font-size: 13px; color: #9B9690; margin-bottom: 12px;
+            text-align: left;
+        }
+        .totp-back {
+            background: none; border: none; color: #6B665F;
+            font-size: 13px; cursor: pointer; margin-top: 12px;
+            padding: 8px; text-decoration: underline;
+        }
+        .totp-back:active { color: #EAE7DF; }
+        .otp-boxes {
+            display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;
+        }
+        .otp-box {
+            width: 44px; height: 52px; background: #2B2A27; color: #EAE7DF;
+            border: 1px solid #3D3A35; border-radius: 10px;
+            font-size: 22px; font-weight: 700; text-align: center;
+            outline: none; caret-color: #C96442;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .otp-box:focus { border-color: #C96442; box-shadow: 0 0 0 2px rgba(201,100,66,0.25); }
+        .otp-box.filled { border-color: #C96442; }
+        .totp-recovery-link {
+            background: none; border: none; color: #6B665F;
+            font-size: 12px; cursor: pointer; margin-top: 8px;
+            padding: 4px; text-decoration: underline;
+        }
+        .totp-recovery-link:active { color: #EAE7DF; }
+        .recovery-input { display: none; }
+        .recovery-input.show { display: block; }
     </style>
 </head>
 <body>
@@ -78,11 +108,31 @@
         <div class="title">Claude Terminal</div>
         <div class="subtitle">Access requires authentication</div>
         <form id="login-form">
-            <div class="input-group">
-                <input type="password" id="password" placeholder="Password" autocomplete="current-password" autofocus>
-                <button type="button" class="toggle-pw" id="toggle-pw">&#x1F441;</button>
+            <div id="password-step">
+                <div class="input-group">
+                    <input type="password" id="password" placeholder="Password" autocomplete="current-password" autofocus>
+                    <button type="button" class="toggle-pw" id="toggle-pw">&#x1F441;</button>
+                </div>
+            </div>
+            <div id="totp-step" style="display:none">
+                <div class="totp-label" id="totp-prompt">Enter the verification code from your authenticator app</div>
+                <div class="otp-boxes" id="otp-boxes">
+                    <input type="text" class="otp-box" inputmode="numeric" maxlength="1" autocomplete="off">
+                    <input type="text" class="otp-box" inputmode="numeric" maxlength="1" autocomplete="off">
+                    <input type="text" class="otp-box" inputmode="numeric" maxlength="1" autocomplete="off">
+                    <input type="text" class="otp-box" inputmode="numeric" maxlength="1" autocomplete="off">
+                    <input type="text" class="otp-box" inputmode="numeric" maxlength="1" autocomplete="off">
+                    <input type="text" class="otp-box" inputmode="numeric" maxlength="1" autocomplete="off">
+                </div>
+                <div class="recovery-input" id="recovery-input">
+                    <div class="input-group">
+                        <input type="text" id="recovery-code" placeholder="Recovery code" autocomplete="off" maxlength="8" style="text-transform:uppercase;letter-spacing:2px;text-align:center">
+                    </div>
+                </div>
+                <button type="button" class="totp-recovery-link" id="use-recovery">Use recovery code instead</button>
             </div>
             <button type="submit" class="login-btn" id="login-btn">Login</button>
+            <button type="button" class="totp-back" id="totp-back" style="display:none">&#x25C0; Back</button>
         </form>
         <div class="error-msg" id="error-msg"></div>
     </div>
@@ -93,13 +143,22 @@
         var togglePw = document.getElementById('toggle-pw');
         var loginBtn = document.getElementById('login-btn');
         var errorMsg = document.getElementById('error-msg');
+        var passwordStep = document.getElementById('password-step');
+        var totpStep = document.getElementById('totp-step');
+        var totpBack = document.getElementById('totp-back');
+        var otpBoxes = document.querySelectorAll('.otp-box');
+        var useRecoveryBtn = document.getElementById('use-recovery');
+        var recoveryInput = document.getElementById('recovery-input');
+        var recoveryCode = document.getElementById('recovery-code');
 
-        // Check if already authenticated
+        var savedPassword = '';
+        var isTotpStep = false;
+        var isRecoveryMode = false;
+        var submitting = false;
+
         fetch('/api/auth/check')
             .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.authenticated) window.location.href = '/';
-            })
+            .then(function(data) { if (data.authenticated) window.location.href = '/'; })
             .catch(function() {});
 
         togglePw.addEventListener('click', function() {
@@ -113,13 +172,133 @@
             errorMsg.classList.add('show');
         }
 
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var password = pwInput.value.trim();
-            if (!password) {
-                showError('Please enter a password');
-                return;
+        // --- OTP 6-box logic ---
+        function getOtpCode() {
+            var code = '';
+            otpBoxes.forEach(function(b) { code += b.value; });
+            return code;
+        }
+
+        function clearOtpBoxes() {
+            otpBoxes.forEach(function(b) { b.value = ''; b.classList.remove('filled'); });
+            otpBoxes[0].focus();
+        }
+
+        function shakeBoxes() {
+            var container = document.getElementById('otp-boxes');
+            container.style.animation = 'none';
+            container.offsetHeight; // reflow
+            container.style.animation = 'shake 0.4s ease';
+        }
+
+        otpBoxes.forEach(function(box, i) {
+            box.addEventListener('input', function(e) {
+                var val = this.value.replace(/[^0-9]/g, '');
+                this.value = val ? val[val.length - 1] : '';
+                this.classList.toggle('filled', !!this.value);
+                if (this.value && i < 5) {
+                    otpBoxes[i + 1].focus();
+                }
+                // Auto-submit when all 6 filled
+                var code = getOtpCode();
+                if (code.length === 6 && !submitting) {
+                    submitLogin(savedPassword, code);
+                }
+            });
+
+            box.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace') {
+                    if (!this.value && i > 0) {
+                        otpBoxes[i - 1].value = '';
+                        otpBoxes[i - 1].classList.remove('filled');
+                        otpBoxes[i - 1].focus();
+                    } else {
+                        this.value = '';
+                        this.classList.remove('filled');
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'ArrowLeft' && i > 0) {
+                    otpBoxes[i - 1].focus();
+                } else if (e.key === 'ArrowRight' && i < 5) {
+                    otpBoxes[i + 1].focus();
+                }
+            });
+
+            // Handle paste (e.g. from authenticator app)
+            box.addEventListener('paste', function(e) {
+                e.preventDefault();
+                var pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+                if (!pasted) return;
+                for (var j = 0; j < 6 && j < pasted.length; j++) {
+                    otpBoxes[j].value = pasted[j];
+                    otpBoxes[j].classList.add('filled');
+                }
+                var focusIdx = Math.min(pasted.length, 5);
+                otpBoxes[focusIdx].focus();
+                if (pasted.length >= 6 && !submitting) {
+                    submitLogin(savedPassword, pasted.substring(0, 6));
+                }
+            });
+
+            box.addEventListener('focus', function() { this.select(); });
+        });
+
+        // --- Recovery code toggle ---
+        useRecoveryBtn.addEventListener('click', function() {
+            isRecoveryMode = !isRecoveryMode;
+            if (isRecoveryMode) {
+                document.getElementById('otp-boxes').style.display = 'none';
+                recoveryInput.classList.add('show');
+                recoveryCode.value = '';
+                recoveryCode.focus();
+                useRecoveryBtn.textContent = 'Use authenticator code';
+                loginBtn.style.display = '';
+            } else {
+                document.getElementById('otp-boxes').style.display = 'flex';
+                recoveryInput.classList.remove('show');
+                useRecoveryBtn.textContent = 'Use recovery code instead';
+                loginBtn.style.display = 'none';
+                clearOtpBoxes();
             }
+        });
+
+        // --- Step switching ---
+        function showTotpStep() {
+            isTotpStep = true;
+            isRecoveryMode = false;
+            passwordStep.style.display = 'none';
+            totpStep.style.display = '';
+            totpBack.style.display = '';
+            loginBtn.style.display = 'none';
+            document.getElementById('otp-boxes').style.display = 'flex';
+            recoveryInput.classList.remove('show');
+            useRecoveryBtn.textContent = 'Use recovery code instead';
+            clearOtpBoxes();
+            errorMsg.classList.remove('show');
+        }
+
+        function showPasswordStep() {
+            isTotpStep = false;
+            isRecoveryMode = false;
+            savedPassword = '';
+            passwordStep.style.display = '';
+            totpStep.style.display = 'none';
+            totpBack.style.display = 'none';
+            loginBtn.style.display = '';
+            pwInput.value = '';
+            pwInput.focus();
+            errorMsg.classList.remove('show');
+        }
+
+        totpBack.addEventListener('click', showPasswordStep);
+
+        // --- Submit ---
+        function submitLogin(password, totpCode) {
+            if (submitting) return;
+            submitting = true;
+
+            var body = { password: password };
+            if (totpCode) body.totp_code = totpCode;
 
             loginBtn.disabled = true;
             loginBtn.textContent = 'Logging in...';
@@ -128,33 +307,71 @@
             fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: password })
+                body: JSON.stringify(body)
             })
             .then(function(r) {
-                return r.json().then(function(data) {
-                    return { status: r.status, data: data };
-                });
+                return r.json().then(function(data) { return { status: r.status, data: data }; });
             })
             .then(function(result) {
                 if (result.status === 200 && result.data.ok) {
+                    loginBtn.textContent = 'Success!';
                     window.location.href = '/';
+                    return;
+                } else if (result.data.totp_required) {
+                    savedPassword = password;
+                    showTotpStep();
                 } else if (result.status === 429) {
                     showError(result.data.error || 'Too many attempts');
                 } else {
                     showError(result.data.error || 'Login failed');
-                    pwInput.value = '';
-                    pwInput.focus();
+                    if (isTotpStep && !isRecoveryMode) {
+                        shakeBoxes();
+                        setTimeout(clearOtpBoxes, 400);
+                    } else if (isTotpStep && isRecoveryMode) {
+                        recoveryCode.value = '';
+                        recoveryCode.focus();
+                    } else {
+                        pwInput.value = '';
+                        pwInput.focus();
+                    }
                 }
             })
-            .catch(function() {
-                showError('Network error');
-            })
+            .catch(function() { showError('Network error'); })
             .finally(function() {
+                submitting = false;
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
             });
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (isTotpStep) {
+                if (isRecoveryMode) {
+                    var code = recoveryCode.value.trim();
+                    if (!code) { showError('Please enter a recovery code'); return; }
+                    submitLogin(savedPassword, code);
+                } else {
+                    var otp = getOtpCode();
+                    if (otp.length < 6) { showError('Enter all 6 digits'); return; }
+                    submitLogin(savedPassword, otp);
+                }
+            } else {
+                var password = pwInput.value.trim();
+                if (!password) { showError('Please enter a password'); return; }
+                submitLogin(password);
+            }
         });
     })();
     </script>
+    <style>
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        20% { transform: translateX(-8px); }
+        40% { transform: translateX(8px); }
+        60% { transform: translateX(-5px); }
+        80% { transform: translateX(5px); }
+    }
+    </style>
 </body>
 </html>
