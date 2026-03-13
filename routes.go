@@ -891,7 +891,7 @@ func (a *API) claudeUsage(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	var data any
-	json.NewDecoder(resp.Body).Decode(&data)
+	json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&data)
 	a.usageCache = data
 	a.usageCacheTs = time.Now()
 	a.usageOk = true

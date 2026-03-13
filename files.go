@@ -81,6 +81,22 @@ func (a *API) registerFileRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/files/upload", a.auth.RequireAuth(a.filesUpload))
 	mux.HandleFunc("POST /api/files/share", a.auth.RequireAuth(a.filesShareCreate))
 	mux.HandleFunc("GET /api/files/share/{token}", a.filesShareDownload) // no auth — token-based
+
+	// Periodic cleanup of expired download tokens
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			downloadTokensMu.Lock()
+			now := time.Now()
+			for k, v := range downloadTokens {
+				if now.After(v.ExpiresAt) {
+					delete(downloadTokens, k)
+				}
+			}
+			downloadTokensMu.Unlock()
+		}
+	}()
 }
 
 // --- List directory ---
@@ -403,6 +419,13 @@ func (a *API) filesZipDownload(w http.ResponseWriter, r *http.Request) {
 	pathsRaw, ok := body["paths"].([]interface{})
 	if !ok || len(pathsRaw) == 0 {
 		jsonResponse(w, 400, M{"error": "No files specified"})
+		return
+	}
+
+	// Limit file count to prevent abuse
+	const maxZipFiles = 500
+	if len(pathsRaw) > maxZipFiles {
+		jsonResponse(w, 400, M{"error": fmt.Sprintf("Too many files (max %d)", maxZipFiles)})
 		return
 	}
 

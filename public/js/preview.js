@@ -22,6 +22,16 @@ function ensureProtocol(url) {
   return /^https?:\/\//i.test(url) ? url : 'https://' + url;
 }
 
+function isSafeUrl(url) {
+  if (!url) return true;
+  try {
+    var parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch (e) {
+    return false;
+  }
+}
+
 function labelFromUrl(url) {
   try {
     var h = new URL(url).hostname;
@@ -72,7 +82,7 @@ function navigateWithoutHistory(tab, url) {
   tab.label = labelFromUrl(url);
   previewUrlInput.value = url;
   var iframe = document.getElementById(tab.id);
-  if (iframe) iframe.src = url;
+  if (iframe && isSafeUrl(url)) iframe.src = url;
   renderBrowserTabs();
   saveBrowserTabs();
   updateNavButtons();
@@ -177,7 +187,8 @@ export function createBrowserTab(url, skipSave) {
   var iframe = document.createElement('iframe');
   iframe.className = 'preview-iframe';
   iframe.id = id;
-  if (fullUrl) iframe.src = fullUrl;
+  if (fullUrl && isSafeUrl(fullUrl)) iframe.src = fullUrl;
+  else if (fullUrl) { fullUrl = ''; tab.url = ''; tab.label = 'New Tab'; tab.history = []; tab.historyIndex = -1; }
   iframe.addEventListener('load', function () {
     var tb = browserTabs.find(function (bt) { return bt.id === id; });
     if (!tb) return;
@@ -243,7 +254,7 @@ export function navigateActiveTab(url) {
   tab.label = labelFromUrl(url);
   previewUrlInput.value = url;
   var iframe = document.getElementById(activeTabId);
-  if (iframe) iframe.src = url;
+  if (iframe && isSafeUrl(url)) iframe.src = url;
   saveRecentUrl(url);
   renderBrowserTabs();
   saveBrowserTabs();

@@ -27,12 +27,16 @@ type Auth struct {
 	mu       sync.RWMutex
 }
 
+const maxSessions = 100
+
 func NewAuth(cfg *Config) *Auth {
-	return &Auth{
+	a := &Auth{
 		cfg:      cfg,
 		sessions: make(map[string]*Session),
 		attempts: make(map[string]*RateInfo),
 	}
+	go a.backgroundCleanup()
+	return a
 }
 
 func (a *Auth) VerifyPassword(password string) bool {
@@ -52,6 +56,21 @@ func (a *Auth) CreateSession(ip string) string {
 		LastActive: time.Now(),
 		IP:         ip,
 	}
+
+	if len(a.sessions) > maxSessions {
+		oldestToken := ""
+		oldestTime := time.Now()
+		for t, s := range a.sessions {
+			if s.LastActive.Before(oldestTime) {
+				oldestToken = t
+				oldestTime = s.LastActive
+			}
+		}
+		if oldestToken != "" {
+			delete(a.sessions, oldestToken)
+		}
+	}
+
 	return token
 }
 
@@ -92,6 +111,25 @@ func (a *Auth) CleanupSessions() {
 	for token, session := range a.sessions {
 		if time.Since(session.Created) > maxAge {
 			delete(a.sessions, token)
+		}
+	}
+}
+
+func (a *Auth) backgroundCleanup() {
+	ticker := time.NewTicker(5 * time.Minute)
+	for range ticker.C {
+		a.CleanupSessions()
+		a.cleanupAttempts()
+	}
+}
+
+func (a *Auth) cleanupAttempts() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	window := time.Duration(a.cfg.RateLimitWindow) * time.Second
+	for ip, info := range a.attempts {
+		if time.Since(info.FirstAttempt) > window {
+			delete(a.attempts, ip)
 		}
 	}
 }
