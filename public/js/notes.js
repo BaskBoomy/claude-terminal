@@ -12,12 +12,14 @@ let notesTitleInput;
 let notesEditorTextarea;
 let notesEditorStatus;
 let notesDeleteBtn;
+let notesPinBtn;
 let notesSendClaudeBtn;
 
 // --- State ---
 let notesSaveTimer = null;
 let notesListLoaded = false;
 let currentNoteId = null;
+let currentNotePinned = false;
 let _switchView = null;
 
 /**
@@ -37,6 +39,8 @@ function formatNoteDate(ts) {
     return `${mm}/${dd} ${hh}:${mi}`;
 }
 
+var PIN_SVG = '<svg class="note-pin-icon" width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none"><path d="M5.5 2.5l5 1.5L9 7.5l2 5-7-4.5L7 5z"/></svg>';
+
 function renderNotesList(notes) {
     if (!notes.length) {
         notesItems.innerHTML = '<div class="note-item-empty">' + t('notes.empty') + '</div>';
@@ -46,29 +50,31 @@ function renderNotesList(notes) {
     notes.forEach(n => {
         const el = document.createElement('div');
         el.className = 'note-item' + (n.pinned ? ' pinned' : '');
+        el.dataset.id = n.id;
+        el.dataset.pinned = n.pinned ? '1' : '0';
         el.innerHTML =
-            '<button class="note-pin-btn" data-id="' + escapeHtml(n.id) + '" data-pinned="' + (n.pinned ? '1' : '0') + '" title="' + escapeHtml(n.pinned ? t('notes.unpin') : t('notes.pin')) + '">' +
-                (n.pinned ? '\u{1F4CC}' : '\u{1F4CC}') + '</button>' +
-            '<div class="note-item-body">' +
-                '<div class="note-item-title">' + escapeHtml(n.title || t('notes.untitled')) + '</div>' +
-                '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
-                '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>' +
-            '</div>';
-        el.querySelector('.note-item-body').addEventListener('click', () => openNote(n.id));
-        el.querySelector('.note-pin-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            togglePin(n.id, !n.pinned);
-        });
+            '<div class="note-item-title">' + (n.pinned ? PIN_SVG + ' ' : '') + escapeHtml(n.title || t('notes.untitled')) + '</div>' +
+            '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
+            '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>';
+        el.addEventListener('click', () => openNote(n.id));
         notesItems.appendChild(el);
     });
 }
 
-function togglePin(id, pinned) {
-    fetch('/api/notes/' + id, {
+function togglePin(pinned) {
+    if (!currentNoteId) return;
+    currentNotePinned = pinned;
+    updatePinUI();
+    fetch('/api/notes/' + currentNoteId, {
         method: 'PUT', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pinned: pinned })
-    }).then(r => { if (r.ok) loadNotesList(); });
+    });
+}
+
+function updatePinUI() {
+    notesPinBtn.classList.toggle('active', currentNotePinned);
+    notesPinBtn.title = currentNotePinned ? t('notes.unpin') : t('notes.pin');
 }
 
 function scheduleNoteSave() {
@@ -91,7 +97,11 @@ export function initNotes() {
     notesEditorTextarea = document.getElementById('notes-editor-textarea');
     notesEditorStatus = document.getElementById('notes-editor-status');
     notesDeleteBtn = document.getElementById('notes-delete-btn');
+    notesPinBtn = document.getElementById('notes-pin-btn');
     notesSendClaudeBtn = document.getElementById('notes-send-claude-btn');
+
+    // Pin toggle
+    notesPinBtn.addEventListener('click', () => togglePin(!currentNotePinned));
 
     // Auto-save on input
     notesEditorTextarea.addEventListener('input', scheduleNoteSave);
@@ -163,10 +173,12 @@ export function openNote(id) {
         .then(r => r.json())
         .then(data => {
             currentNoteId = id;
+            currentNotePinned = !!data.pinned;
             notesTitleInput.value = data.title || '';
             notesEditorTextarea.value = data.content || '';
             notesEditorStatus.textContent = t('notes.saved');
             notesEditorStatus.classList.add('saved');
+            updatePinUI();
             notesListView.style.display = 'none';
             notesEditorView.style.display = 'flex';
         });

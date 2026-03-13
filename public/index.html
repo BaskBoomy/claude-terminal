@@ -75,19 +75,20 @@
             <div id="notes-list-view">
                 <div id="notes-list-header">
                     <h3>Notes</h3>
-                    <button class="notes-header-btn" id="notes-new-btn" data-i18n="notes.newNote">+ New Note</button>
+                    <button class="notes-header-btn" id="notes-new-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 2v10"/><path d="M2 7h10"/></svg> <span data-i18n="notes.newNote">New Note</span></button>
                 </div>
                 <div id="notes-items"></div>
             </div>
             <div id="notes-editor-view">
                 <div id="notes-editor-header">
-                    <button id="notes-back-btn" data-i18n="notes.backToList">&#x25C0; List</button>
+                    <button id="notes-back-btn" data-i18n-title="notes.backToList" title="List"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg></button>
                     <input id="notes-title-input" type="text" data-i18n-placeholder="notes.titlePlaceholder" placeholder="Untitled" />
-                    <button id="notes-delete-btn" data-i18n-title="common.delete" title="Delete">&#x1F5D1;</button>
+                    <button id="notes-pin-btn" data-i18n-title="notes.pin" title="Pin to top"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2.5l5 1.5L9 7.5l2 5-7-4.5L7 5z"/><path d="M4 11.5L2 14"/></svg></button>
+                    <button id="notes-delete-btn" data-i18n-title="common.delete" title="Delete"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10"/><path d="M6 4.5V3a1 1 0 011-1h2a1 1 0 011 1v1.5"/><path d="M4.5 4.5L5 13a1 1 0 001 1h4a1 1 0 001-1l.5-8.5"/></svg></button>
                 </div>
                 <textarea id="notes-editor-textarea" data-i18n-placeholder="notes.contentPlaceholder" placeholder="Start writing..."></textarea>
                 <div id="notes-editor-footer">
-                    <button id="notes-send-claude-btn" data-i18n="notes.sendToClaude">Send to Claude</button>
+                    <button id="notes-send-claude-btn"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L6 8"/><path d="M12 2l-4 11-2-5-5-2z"/></svg> <span data-i18n="notes.sendToClaude">Send to Claude</span></button>
                     <div id="notes-editor-status" data-i18n="notes.saved">Saved</div>
                 </div>
             </div>

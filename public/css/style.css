@@ -889,26 +889,21 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     color: var(--text-muted); cursor: pointer; padding: 5px 10px; font-size: 13px;
     font-family: -apple-system, system-ui, sans-serif;
     transition: background 0.15s, color 0.15s;
+    display: inline-flex; align-items: center; gap: 4px;
+    touch-action: manipulation;
 }
 .notes-header-btn:active { background: var(--bg-raised); color: var(--text); }
 #notes-items {
     flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
 }
 .note-item {
-    display: flex; align-items: flex-start; padding: 12px 16px;
+    display: flex; flex-direction: column; padding: 12px 16px;
     border-bottom: 1px solid var(--bg-raised); cursor: pointer;
-    transition: background 0.1s; gap: 10px;
+    transition: background 0.1s;
 }
 .note-item:active { background: var(--bg-raised); }
 .note-item.pinned { background: var(--bg-raised); }
-.note-item-body { flex: 1; min-width: 0; }
-.note-pin-btn {
-    background: none; border: none; cursor: pointer; padding: 2px;
-    font-size: 14px; opacity: 0.25; flex-shrink: 0; margin-top: 2px;
-    touch-action: manipulation; line-height: 1;
-}
-.note-item.pinned .note-pin-btn { opacity: 1; }
-.note-pin-btn:active { transform: scale(1.2); }
+.note-pin-icon { color: var(--accent); vertical-align: -1px; margin-right: 2px; }
 .note-item-title {
     font-size: 15px; font-weight: 500; color: var(--text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -935,9 +930,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 #notes-back-btn {
     background: none; border: none; color: var(--accent); cursor: pointer;
-    font-size: 14px; padding: 4px 8px; flex-shrink: 0;
-    font-family: -apple-system, system-ui, sans-serif;
+    padding: 4px 8px; flex-shrink: 0; display: inline-flex; align-items: center;
+    touch-action: manipulation; border-radius: 6px;
 }
+#notes-back-btn:active { background: var(--bg-raised); }
 #notes-title-input {
     flex: 1; min-width: 0; background: none; border: none; outline: none;
     color: var(--text); font-size: 15px; font-weight: 600;
@@ -945,10 +941,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     padding: 4px 0;
 }
 #notes-title-input::placeholder { color: var(--border-light); }
-#notes-delete-btn {
+#notes-pin-btn, #notes-delete-btn {
     background: none; border: none; color: var(--text-subtle); cursor: pointer;
-    font-size: 16px; padding: 4px 8px; flex-shrink: 0;
+    padding: 4px 8px; flex-shrink: 0; display: inline-flex; align-items: center;
+    touch-action: manipulation; border-radius: 6px;
 }
+#notes-pin-btn:active, #notes-delete-btn:active { background: var(--bg-raised); }
+#notes-pin-btn.active { color: var(--accent); }
 #notes-delete-btn:active { color: #e85535; }
 #notes-editor-textarea {
     flex: 1; width: 100%; border: none; outline: none; resize: none;
@@ -969,6 +968,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     font-family: -apple-system, system-ui, sans-serif; font-weight: 600;
     white-space: nowrap; touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    display: inline-flex; align-items: center; gap: 5px;
 }
 #notes-send-claude-btn:active { background: var(--accent-hover); }
 #notes-editor-status {
