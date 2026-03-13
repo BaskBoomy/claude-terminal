@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
-  <img src="public/icon-192.png" width="80" alt="Claude Terminal">
+  <img src="public/icon-192.png" width="80" alt="Claude Web Terminal">
 </p>
 
-<h1 align="center">Claude Terminal</h1>
+<h1 align="center">Claude Web Terminal</h1>
 
 <p align="center">
   Access <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> from anywhere — a mobile-first web terminal you can self-host.
@@ -26,8 +26,9 @@
 
 <br>
 
-<!-- screenshot placeholder -->
-<!-- <p align="center"><img src="docs/screenshot.png" width="800" alt="Claude Terminal Screenshot"></p> -->
+<p align="center"><img src="docs/screenshot.png" width="800" alt="Claude Web Terminal Screenshot"></p>
+
+> **📱 PWA Recommended** — For the best mobile experience, tap **"Add to Home Screen"** in your browser menu to install as a PWA. It runs full-screen like a native app, with wake lock and background notifications.
 
 ## Why
 
@@ -38,7 +39,7 @@ Claude Code is powerful, but it only runs in a local terminal. If you want to:
 - **Manage Claude's memory and skills** with a visual editor
 - **Check git status and server health** at a glance
 
-...you need a way to access your terminal remotely. Claude Terminal gives you that in a single ~8MB binary with zero external dependencies.
+...you need a way to access your terminal remotely. Claude Web Terminal gives you that in a single ~8MB binary with zero external dependencies.
 
 ## Features
 
@@ -48,6 +49,8 @@ Claude Code is powerful, but it only runs in a local terminal. If you want to:
 | **Preview** | Multi-tab browser for previewing web apps your code is building |
 | **Notes** | Markdown notes with auto-save — send any note directly to Claude as a prompt |
 | **Brain** | Browse and edit Claude Code's memory, skills, agents, rules, and hooks |
+| **Files** | Browse your server's file system — view directories, read and edit files |
+| **Launch** | Bookmark frequently used URLs and services — one tap to open |
 | **Dash** | Git status, Claude API usage metrics, CPU/memory/disk/temperature at a glance |
 
 **Plus:** custom command snippets, configurable fonts, drag-to-reorder tabs, pull-to-refresh, copy mode (screen + scrollback), wake lock, background notifications, and installable as a home screen app on iOS/Android.
