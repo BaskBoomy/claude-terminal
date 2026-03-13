@@ -205,6 +205,14 @@ func (b *Brain) ResolvePath(dirpath, filename string) (string, bool) {
 	if !b.ValidDir(dirpath) {
 		return "", false
 	}
+	// Block absolute paths
+	if strings.HasPrefix(filename, "/") {
+		return "", false
+	}
+	// Block null bytes
+	if strings.ContainsRune(filename, 0) {
+		return "", false
+	}
 	if strings.Contains(filename, "..") || strings.Contains(filename, "\\") {
 		return "", false
 	}

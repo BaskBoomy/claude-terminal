@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log"
 	"net"
+	"time"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -227,6 +228,11 @@ func tunnelWebSocket(w http.ResponseWriter, r *http.Request, targetHost string) 
 		return
 	}
 	defer clientConn.Close()
+
+	// Set idle timeout to prevent goroutine exhaustion
+	idleTimeout := 30 * time.Minute
+	clientConn.SetDeadline(time.Now().Add(idleTimeout))
+	backConn.SetDeadline(time.Now().Add(idleTimeout))
 
 	// Forward the original HTTP request to backend
 	if err := r.Write(backConn); err != nil {
