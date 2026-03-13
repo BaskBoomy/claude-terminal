@@ -49,6 +49,8 @@ type Config struct {
 	RateLimitMax  int
 	RateLimitWindow int
 
+	TrustProxy bool
+
 	RootDir string
 	HomeDir string
 }
@@ -77,6 +79,7 @@ func LoadConfig(flagPort int, flagPassword string) *Config {
 		SessionMaxAge:   envInt("SESSION_MAX_AGE", 86400),
 		RateLimitMax:    envInt("RATE_LIMIT_MAX", 5),
 		RateLimitWindow: envInt("RATE_LIMIT_WINDOW", 900),
+		TrustProxy:      envStr("TRUST_PROXY", "") == "true",
 		RootDir:         rootDir,
 		HomeDir:         homeDir,
 	}
@@ -130,6 +133,7 @@ func (c *Config) ensurePasswordHash() {
 	// Save to file
 	content := fmt.Sprintf("%s:%s", c.PasswordSalt, c.PasswordHash)
 	os.WriteFile(hashFile, []byte(content), 0600)
+	c.Password = ""
 }
 
 func hashPassword(password, saltHex string) string {

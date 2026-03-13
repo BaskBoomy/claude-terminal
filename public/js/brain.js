@@ -37,7 +37,7 @@ function renderTree() {
             catEl.className = 'brain-cat';
             catEl.innerHTML =
                 '<span class="brain-cat-icon">' + (CAT_ICONS[cat.name] || '\u{1F4C4}') + '</span>' +
-                '<span class="brain-cat-name">' + cat.name + '</span>' +
+                '<span class="brain-cat-name">' + escapeHtml(cat.name) + '</span>' +
                 '<span class="brain-cat-count">' + cat.files.length + '</span>' +
                 '<span class="brain-cat-arrow">\u25B6</span>';
             treeItems.appendChild(catEl);
