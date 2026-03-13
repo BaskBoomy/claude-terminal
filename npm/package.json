@@ -1,6 +1,6 @@
 {
   "name": "create-claude-terminal",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "description": "Set up Claude Web Terminal — access Claude Code from anywhere via browser",
   "bin": {
     "create-claude-terminal": "bin/create-claude-terminal.js"

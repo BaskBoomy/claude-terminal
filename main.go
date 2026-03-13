@@ -66,6 +66,9 @@ func main() {
 	// Static files from embedded FS
 	publicSub, _ := fs.Sub(publicFS, "public")
 
+	// Asset server: minifies + gzip-compresses at startup, serves from memory
+	assets := NewAssetServer(publicSub, cfg.PublicDir)
+
 	// Custom file explorer with beautiful UI
 	filesServer := NewFileExplorer(cfg.FilesDir)
 
@@ -117,7 +120,6 @@ func main() {
 		}
 
 		// Static files
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		servePath := strings.TrimPrefix(path, "/")
 		if servePath == "" {
 			servePath = "index.html"
@@ -132,28 +134,22 @@ func main() {
 			}
 		}
 
-		// Try disk first (allows overriding embedded files)
-		diskPath := filepath.Join(cfg.PublicDir, servePath)
-		if info, err := os.Stat(diskPath); err == nil && !info.IsDir() {
-			http.ServeFile(w, r, diskPath)
+		// Cache policy: HTML = revalidate (ETag), assets = long cache
+		cachePolicy := "no-cache" // HTML: always revalidate via ETag
+		if strings.HasPrefix(servePath, "js/") || strings.HasPrefix(servePath, "css/") {
+			cachePolicy = "public, max-age=604800, immutable" // 7 days (busted by ?v=N)
+		} else if strings.HasSuffix(servePath, ".png") || strings.HasSuffix(servePath, ".json") {
+			cachePolicy = "public, max-age=86400" // 1 day
+		}
+
+		// Serve from asset cache (minified + gzipped)
+		if assets.Serve(w, r, servePath, cachePolicy) {
 			return
 		}
 
-		// Try embedded FS
-		if f, err := publicSub.Open(servePath); err == nil {
-			f.Close()
-			http.FileServer(http.FS(publicSub)).ServeHTTP(w, r)
-			return
-		}
-
-		// SPA fallback
+		// SPA fallback for extensionless paths
 		if !strings.Contains(servePath, ".") {
-			diskIndex := filepath.Join(cfg.PublicDir, "index.html")
-			if _, err := os.Stat(diskIndex); err == nil {
-				http.ServeFile(w, r, diskIndex)
-				return
-			}
-			http.ServeFileFS(w, r, publicSub, "index.html")
+			assets.Serve(w, r, "index.html", "no-cache")
 			return
 		}
 
