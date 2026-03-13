@@ -903,9 +903,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 .note-item:active { background: var(--bg-raised); }
 .note-item.pinned { background: var(--bg-raised); }
-.note-pin-icon { color: var(--accent); vertical-align: -1px; margin-right: 2px; }
 .note-item-title {
+    display: flex; align-items: center; gap: 4px;
     font-size: 15px; font-weight: 500; color: var(--text);
+    min-width: 0;
+}
+.note-pin-icon { color: var(--accent); flex-shrink: 0; }
+.note-item-title-text {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .note-item-preview {
