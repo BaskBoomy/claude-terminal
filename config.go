@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -35,6 +36,7 @@ type Config struct {
 	SettingsFile string
 
 	TtydPort    int
+	TmuxBin     string
 	TmuxSocket  string
 	TmuxSession string
 	ClaudeCmd   string
@@ -88,7 +90,8 @@ func LoadConfig(flagPort int, flagPassword string) *Config {
 		cfg.Password = flagPassword
 	}
 
-	// Find tmux socket
+	// Find tmux binary and socket
+	cfg.TmuxBin = findTmuxBin()
 	cfg.TmuxSocket = findTmuxSocket()
 
 	// Ensure password hash
@@ -131,6 +134,24 @@ func hashPassword(password, saltHex string) string {
 	salt, _ := hex.DecodeString(saltHex)
 	dk := pbkdf2.Key([]byte(password), salt, PBKDF2Iterations, 32, sha256.New)
 	return hex.EncodeToString(dk)
+}
+
+func findTmuxBin() string {
+	// Check PATH first
+	if p, err := exec.LookPath("tmux"); err == nil {
+		return p
+	}
+	// Common locations on macOS/Linux
+	for _, p := range []string{
+		"/opt/homebrew/bin/tmux",
+		"/usr/local/bin/tmux",
+		"/usr/bin/tmux",
+	} {
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
+	}
+	return "tmux" // fallback
 }
 
 func findTmuxSocket() string {
