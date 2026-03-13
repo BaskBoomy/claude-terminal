@@ -76,6 +76,7 @@ var shDragSrcIdx = null;
 var shTouchState = null;
 var _callbacks = { onSave: function() {}, onLogout: function() {} };
 var _refreshTotp = null;
+var _refreshServerAccess = null;
 
 function escAttr(s) { return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -338,6 +339,7 @@ function openSettings() {
             renderSettingsSnippets();
         });
     if (_refreshTotp) _refreshTotp();
+    if (_refreshServerAccess) _refreshServerAccess();
     var shBackdrop = document.getElementById('settings-backdrop');
     var shSheet = document.getElementById('settings-sheet');
     shBackdrop.classList.add('open');
@@ -750,6 +752,72 @@ function initSettings(callbacks) {
 
     _refreshTotp = loadTotpStatus;
     loadTotpStatus();
+
+    // --- Server Access ---
+    function loadServerAccess() {
+        fetch('/api/tunnel-url', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var row = document.getElementById('tunnel-status-row');
+                if (data.active && data.url) {
+                    row.style.display = '';
+                    document.getElementById('tunnel-url-text').textContent = data.url;
+                } else {
+                    row.style.display = 'none';
+                }
+            })
+            .catch(function() {});
+
+        fetch('/api/domain', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                document.getElementById('domain-input').value = data.domain || '';
+            })
+            .catch(function() {});
+    }
+
+    document.getElementById('tunnel-copy-btn').addEventListener('click', function() {
+        var urlText = document.getElementById('tunnel-url-text').textContent;
+        var btn = this;
+        navigator.clipboard.writeText(urlText).then(function() {
+            btn.textContent = t('common.copied');
+            setTimeout(function() { btn.textContent = t('common.copy'); }, 1500);
+        });
+    });
+
+    document.getElementById('domain-save-btn').addEventListener('click', function() {
+        var domain = document.getElementById('domain-input').value.trim();
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = t('common.saving');
+
+        fetch('/api/domain', {
+            method: 'PUT', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain: domain })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.textContent = t('common.saved');
+            if (data.restartRequired) {
+                document.getElementById('domain-restart-msg').style.display = '';
+            }
+            setTimeout(function() {
+                btn.textContent = t('common.save');
+                btn.disabled = false;
+            }, 2000);
+        })
+        .catch(function() {
+            btn.textContent = t('common.error');
+            setTimeout(function() {
+                btn.textContent = t('common.save');
+                btn.disabled = false;
+            }, 2000);
+        });
+    });
+
+    _refreshServerAccess = loadServerAccess;
+    loadServerAccess();
 
     // --- Logout ---
     document.getElementById('sh-logout').addEventListener('click', function() {

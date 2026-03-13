@@ -311,6 +311,33 @@
                 </div>
             </div>
 
+            <div class="settings-section-title" data-i18n="settings.serverAccess">Server Access</div>
+            <div class="settings-group" id="server-access-section">
+                <div class="settings-item" id="tunnel-status-row" style="display:none">
+                    <div>
+                        <div class="settings-item-label" data-i18n="settings.tunnelUrl">Tunnel URL</div>
+                        <div class="settings-item-desc" id="tunnel-url-text" style="word-break:break-all"></div>
+                        <div class="settings-item-desc" style="color:var(--warning)">
+                            <span data-i18n="settings.tunnelWarning">URL changes on restart — for testing only</span>
+                        </div>
+                    </div>
+                    <button class="settings-totp-btn" id="tunnel-copy-btn" data-i18n="common.copy">Copy</button>
+                </div>
+                <div class="settings-item" id="domain-row">
+                    <div style="flex:1">
+                        <div class="settings-item-label" data-i18n="settings.domainLabel">Domain</div>
+                        <div class="settings-item-desc" data-i18n="settings.domainDesc">Set a domain for permanent HTTPS access</div>
+                        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+                            <input type="text" id="domain-input" class="settings-domain-input" placeholder="your.domain.com" style="flex:1;font-size:14px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text)">
+                            <button class="settings-totp-btn" id="domain-save-btn" data-i18n="common.save">Save</button>
+                        </div>
+                        <div class="settings-item-desc" id="domain-restart-msg" style="display:none;color:var(--success);margin-top:4px">
+                            <span data-i18n="settings.domainRestart">Restart server to apply. HTTPS via Let's Encrypt activates automatically.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="settings-section-title">Snippets</div>
             <div id="sh-snippet-list"></div>
             <button class="sn-add-btn" id="sh-add-snippet">+ Add Snippet</button>

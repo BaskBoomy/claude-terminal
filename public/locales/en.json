@@ -31,7 +31,13 @@
     "newWindowLabel": "New Win",
     "language": "Language",
     "languageDesc": "Interface language",
-    "hiddenLabel": "Hidden"
+    "hiddenLabel": "Hidden",
+    "serverAccess": "Server Access",
+    "tunnelUrl": "Tunnel URL",
+    "tunnelWarning": "URL changes on restart — for testing only",
+    "domainLabel": "Domain",
+    "domainDesc": "Set a domain for permanent HTTPS access",
+    "domainRestart": "Restart server to apply. HTTPS via Let's Encrypt activates automatically."
   },
   "notes": {
     "empty": "No notes",

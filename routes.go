@@ -97,6 +97,11 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/launch/history", a.auth.RequireAuth(a.launchGetHistory))
 	mux.HandleFunc("POST /api/launch/seed", a.auth.RequireAuth(a.launchSeed))
 
+	// Domain / Tunnel
+	mux.HandleFunc("GET /api/tunnel-url", a.auth.RequireAuth(a.tunnelURL))
+	mux.HandleFunc("GET /api/domain", a.auth.RequireAuth(a.getDomain))
+	mux.HandleFunc("PUT /api/domain", a.auth.RequireAuth(a.setDomain))
+
 	// Files explorer
 	a.registerFileRoutes(mux)
 	a.registerFileEditRoute(mux)
@@ -1067,6 +1072,81 @@ func (a *API) uploadFile(w http.ResponseWriter, r *http.Request) {
 	os.WriteFile(filePath, body, 0644)
 
 	jsonResponse(w, 200, M{"path": filePath})
+}
+
+// ═══════════════════════════════════════════════════════════
+// Domain / Tunnel
+// ═══════════════════════════════════════════════════════════
+
+func (a *API) tunnelURL(w http.ResponseWriter, r *http.Request) {
+	// Try reading from data/tunnel-url.txt first (set by external watcher)
+	urlFile := filepath.Join(a.cfg.DataDir, "tunnel-url.txt")
+	if data, err := os.ReadFile(urlFile); err == nil {
+		url := strings.TrimSpace(string(data))
+		if url != "" {
+			jsonResponse(w, 200, M{"url": url, "active": true})
+			return
+		}
+	}
+
+	// Try journalctl
+	if out, err := runCmd([]string{"journalctl", "-u", "cloudflared-tunnel", "--no-pager", "-n", "20", "--output=cat"}, "", 5*time.Second); err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			if idx := strings.Index(line, "https://"); idx >= 0 {
+				url := line[idx:]
+				if strings.Contains(url, "trycloudflare.com") {
+					if sp := strings.IndexAny(url, " \t\n"); sp >= 0 {
+						url = url[:sp]
+					}
+					jsonResponse(w, 200, M{"url": url, "active": true})
+					return
+				}
+			}
+		}
+	}
+
+	jsonResponse(w, 200, M{"url": "", "active": false})
+}
+
+func (a *API) getDomain(w http.ResponseWriter, r *http.Request) {
+	jsonResponse(w, 200, M{
+		"domain": a.cfg.Domain,
+		"tunnel": envStr("TUNNEL", "") == "true",
+	})
+}
+
+func (a *API) setDomain(w http.ResponseWriter, r *http.Request) {
+	body, err := readJSON(r)
+	if err != nil {
+		jsonResponse(w, 400, M{"error": "Invalid JSON"})
+		return
+	}
+	domain, _ := body["domain"].(string)
+
+	// Update .env file
+	envPath := filepath.Join(a.cfg.RootDir, ".env")
+	envData, _ := os.ReadFile(envPath)
+	lines := strings.Split(string(envData), "\n")
+
+	found := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "DOMAIN=") || trimmed == "# DOMAIN=your.domain.com" {
+			if domain != "" {
+				lines[i] = "DOMAIN=" + domain
+			} else {
+				lines[i] = "# DOMAIN=your.domain.com"
+			}
+			found = true
+			break
+		}
+	}
+	if !found && domain != "" {
+		lines = append(lines, "DOMAIN="+domain)
+	}
+
+	os.WriteFile(envPath, []byte(strings.Join(lines, "\n")), 0600)
+	jsonResponse(w, 200, M{"ok": true, "restartRequired": true})
 }
 
 // --- Helpers ---

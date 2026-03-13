@@ -88,6 +88,42 @@ WantedBy=multi-user.target
 
   fs.unlinkSync(ttydServicePath);
   fs.unlinkSync(ctServicePath);
+
+  // Cloudflare Tunnel service
+  if (config.tunnel) {
+    const cloudflaredPath = findBinary('cloudflared');
+    const cfService = `[Unit]
+Description=Cloudflare Tunnel for Claude Terminal
+After=claude-terminal.service
+
+[Service]
+Type=simple
+User=${user}
+ExecStart=${cloudflaredPath} tunnel --url http://localhost:${config.port} --no-autoupdate
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+`;
+    const cfServicePath = '/tmp/cloudflared-tunnel.service';
+    fs.writeFileSync(cfServicePath, cfService);
+
+    const cfSpinner = createSpinner('Configuring cloudflared tunnel...').start();
+    try {
+      await exec(`sudo cp ${cfServicePath} /etc/systemd/system/cloudflared-tunnel.service`);
+      await exec('sudo systemctl daemon-reload');
+      await exec('sudo systemctl enable cloudflared-tunnel');
+      await exec('sudo systemctl start cloudflared-tunnel');
+      cfSpinner.succeed('cloudflared tunnel enabled & started');
+    } catch {
+      cfSpinner.warn('Could not auto-start cloudflared tunnel');
+      sectionItem(color(c.dim, S.info), color(c.dim, 'Start manually:'));
+      sectionEnd(color(c.dim, ' '), color(c.gray, `${cloudflaredPath} tunnel --url http://localhost:${config.port}`));
+    }
+    fs.unlinkSync(cfServicePath);
+  }
 }
 
 async function setupLaunchd(config, user) {
@@ -156,6 +192,39 @@ async function setupLaunchd(config, user) {
     sectionItem(color(c.dim, S.info), color(c.dim, 'Load manually:'));
     sectionItem(color(c.dim, ' '), color(c.gray, `launchctl load ${ttydPlistPath}`));
     sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${ctPlistPath}`));
+  }
+
+  // Cloudflare Tunnel launchd service
+  if (config.tunnel) {
+    const cloudflaredPath = findBinary('cloudflared');
+    const cfPlist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.claude-terminal.cloudflared</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${cloudflaredPath}</string>
+        <string>tunnel</string>
+        <string>--url</string><string>http://localhost:${config.port}</string>
+        <string>--no-autoupdate</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+</dict>
+</plist>`;
+
+    const cfPlistPath = path.join(launchAgentsDir, 'com.claude-terminal.cloudflared.plist');
+    fs.writeFileSync(cfPlistPath, cfPlist);
+
+    const cfSpinner = createSpinner('Configuring cloudflared tunnel...').start();
+    try {
+      await exec(`launchctl load ${cfPlistPath}`);
+      cfSpinner.succeed('cloudflared tunnel loaded');
+    } catch {
+      cfSpinner.warn('Could not load cloudflared tunnel');
+      sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${cfPlistPath}`));
+    }
   }
 }
 
