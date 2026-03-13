@@ -311,7 +311,6 @@ function showQRModal(url, name) {
     overlay.className = 'files-qr-overlay';
     overlay.innerHTML = '<div class="files-qr-modal">' +
         '<div class="files-qr-title">' + escHtml(name) + '</div>' +
-        '<img class="files-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url) + '" alt="QR">' +
         '<div class="files-qr-url">' + escHtml(url) + '</div>' +
         '<div class="files-qr-note">' + escHtml(t('files.qrOneTime')) + '</div>' +
         '<div class="files-qr-actions">' +
@@ -343,7 +342,7 @@ function openPreview(item) {
     // HTML — iframe with sandbox
     if (HTML_EXTS.indexOf(ext) !== -1) {
         previewBody.innerHTML = '<iframe class="files-preview-iframe" src="' + rawUrl(item.path) +
-            '" sandbox="allow-scripts allow-same-origin"></iframe>';
+            '" sandbox="allow-scripts"></iframe>';
         setupPreviewActions(item, 'html'); return;
     }
 

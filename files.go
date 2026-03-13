@@ -27,7 +27,22 @@ var sensitivePatterns = []string{
 	".credentials.json",
 	"id_rsa",
 	"id_ed25519",
+	"id_ecdsa",
+	"id_dsa",
 	".ssh/authorized_keys",
+	".pem",
+	".key",
+	".pfx",
+	".p12",
+	".npmrc",
+	".pypirc",
+	".docker/config.json",
+	".kube/config",
+	".aws/credentials",
+	".aws/config",
+	".netrc",
+	".pgpass",
+	".my.cnf",
 }
 
 // One-time download tokens (QR sharing)
@@ -47,6 +62,11 @@ func isSensitiveFile(path string) bool {
 		if base == p || strings.HasSuffix(path, "/"+p) {
 			return true
 		}
+	}
+	// Block sensitive extensions
+	ext := strings.ToLower(filepath.Ext(base))
+	if ext == ".pem" || ext == ".key" || ext == ".pfx" || ext == ".p12" {
+		return true
 	}
 	return false
 }

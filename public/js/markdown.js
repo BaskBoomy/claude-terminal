@@ -19,7 +19,7 @@ export function renderMarkdown(md) {
         .replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>')
         .replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, text, url) {
             if (/^https?:\/\//.test(url) || url.startsWith('./') || url.startsWith('/') || url.startsWith('#')) {
-                return '<a href="' + url + '">' + text + '</a>';
+                return '<a href="' + url.replace(/"/g, '&quot;') + '">' + text + '</a>';
             }
             return text + ' (' + url + ')';
         });
