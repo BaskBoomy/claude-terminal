@@ -1,90 +1,117 @@
 // files.js — File Explorer module
-// Browse, download, upload, preview, share, favorites
-
 import { t } from './i18n.js';
 
-var currentPath = '';
-var selectedFiles = new Set();
-var selectMode = false;
-var favorites = [];
-var viewSwitcherFn = null;
+var currentPath = '', selectedFiles = new Set(), selectMode = false;
+var favorites = [], sharedFilesDir = '', sortBy = 'name', sortDir = 'asc';
+var isSpecialView = false, allItems = [], itemMap = {};
 
-// --- Icon map by extension ---
-var EXT_ICONS = {
-    dir: '\u{1F4C1}',
-    png: '\u{1F5BC}', jpg: '\u{1F5BC}', jpeg: '\u{1F5BC}', gif: '\u{1F5BC}',
-    webp: '\u{1F5BC}', svg: '\u{1F5BC}', ico: '\u{1F5BC}', bmp: '\u{1F5BC}',
-    js: '\u{1F4DC}', ts: '\u{1F4DC}', jsx: '\u{1F4DC}', tsx: '\u{1F4DC}',
-    go: '\u{1F4DC}', py: '\u{1F4DC}', rs: '\u{1F4DC}', rb: '\u{1F4DC}',
-    java: '\u{1F4DC}', kt: '\u{1F4DC}', swift: '\u{1F4DC}', c: '\u{1F4DC}',
-    cpp: '\u{1F4DC}', h: '\u{1F4DC}', php: '\u{1F4DC}', lua: '\u{1F4DC}',
-    html: '\u{1F310}', css: '\u{1F3A8}',
-    json: '\u{1F4CB}', yaml: '\u{1F4CB}', yml: '\u{1F4CB}', toml: '\u{1F4CB}',
-    xml: '\u{1F4CB}', csv: '\u{1F4CB}', sql: '\u{1F4CB}', prisma: '\u{1F4CB}',
-    md: '\u{1F4DD}', txt: '\u{1F4DD}', log: '\u{1F4DD}',
-    pdf: '\u{1F4D5}', doc: '\u{1F4D5}', docx: '\u{1F4D5}',
-    zip: '\u{1F4E6}', tar: '\u{1F4E6}', gz: '\u{1F4E6}', rar: '\u{1F4E6}', '7z': '\u{1F4E6}',
-    sh: '\u{2699}', bash: '\u{2699}', zsh: '\u{2699}',
-    env: '\u{1F512}', conf: '\u{2699}', cfg: '\u{2699}', ini: '\u{2699}',
-    mp4: '\u{1F3AC}', mov: '\u{1F3AC}', avi: '\u{1F3AC}', mkv: '\u{1F3AC}',
-    mp3: '\u{1F3B5}', wav: '\u{1F3B5}', flac: '\u{1F3B5}', ogg: '\u{1F3B5}',
+var SVG_S = '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">';
+var FILE_ICONS = {
+    dir:    SVG_S + '<path d="M3 5v10a1 1 0 001 1h12a1 1 0 001-1V8a1 1 0 00-1-1H9.5L8 5H4a1 1 0 00-1 1z"/></svg>',
+    image:  SVG_S + '<rect x="3" y="3" width="14" height="14" rx="1.5"/><circle cx="7.5" cy="7.5" r="1.5"/><path d="M3 13l4-4 3 3 2-2 5 5"/></svg>',
+    code:   SVG_S + '<path d="M7 7L4 10l3 3"/><path d="M13 7l3 3-3 3"/><path d="M11 5l-2 10"/></svg>',
+    web:    SVG_S + '<circle cx="10" cy="10" r="7"/><path d="M3 10h14"/><ellipse cx="10" cy="10" rx="3" ry="7"/></svg>',
+    style:  SVG_S + '<path d="M12 3a4 4 0 00-8 3c0 3 4 4 4 7h4c0-3 4-4 4-7a4 4 0 00-4-3z"/><path d="M8 16h4"/><path d="M9 19h2"/></svg>',
+    data:   SVG_S + '<path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M12 3v4h4"/><path d="M7 10h6"/><path d="M7 13h4"/></svg>',
+    text:   SVG_S + '<path d="M5 3h10a1 1 0 011 1v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M7 7h6"/><path d="M7 10h6"/><path d="M7 13h3"/></svg>',
+    pdf:    SVG_S + '<path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M12 3v4h4"/><path d="M7 11h1.5a1.5 1.5 0 000-3H7v6"/></svg>',
+    archive:SVG_S + '<path d="M5 3h10a1 1 0 011 1v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M10 3v14"/><rect x="9" y="6" width="2" height="2"/><rect x="9" y="10" width="2" height="2"/></svg>',
+    shell:  SVG_S + '<rect x="2" y="3" width="16" height="14" rx="2"/><path d="M6 8l3 2.5L6 13"/><path d="M11 13h4"/></svg>',
+    lock:   SVG_S + '<rect x="5" y="9" width="10" height="8" rx="1"/><path d="M7 9V6a3 3 0 016 0v3"/><circle cx="10" cy="13" r="1"/></svg>',
+    video:  SVG_S + '<rect x="3" y="5" width="14" height="10" rx="1.5"/><path d="M8 8v4l4-2z" fill="currentColor"/></svg>',
+    audio:  SVG_S + '<path d="M8 5v10"/><path d="M5 8v4"/><path d="M11 7v6"/><path d="M14 6v8"/><path d="M17 8v4"/><path d="M2 9v2"/></svg>',
+    file:   SVG_S + '<path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M12 3v4h4"/></svg>'
 };
+var EXT_MAP = {};
+['png','jpg','jpeg','gif','webp','svg','ico','bmp'].forEach(function(e) { EXT_MAP[e] = 'image'; });
+['js','ts','jsx','tsx','go','py','rs','rb','java','kt','swift','c','cpp','h','php','lua'].forEach(function(e) { EXT_MAP[e] = 'code'; });
+['json','yaml','yml','toml','xml','csv','sql','prisma'].forEach(function(e) { EXT_MAP[e] = 'data'; });
+['md','txt','log'].forEach(function(e) { EXT_MAP[e] = 'text'; });
+['pdf','doc','docx'].forEach(function(e) { EXT_MAP[e] = 'pdf'; });
+['zip','tar','gz','rar','7z'].forEach(function(e) { EXT_MAP[e] = 'archive'; });
+['sh','bash','zsh'].forEach(function(e) { EXT_MAP[e] = 'shell'; });
+['conf','cfg','ini'].forEach(function(e) { EXT_MAP[e] = 'data'; });
+['mp4','mov','avi','mkv'].forEach(function(e) { EXT_MAP[e] = 'video'; });
+['mp3','wav','flac','ogg'].forEach(function(e) { EXT_MAP[e] = 'audio'; });
+EXT_MAP['env'] = 'lock'; EXT_MAP['html'] = 'web'; EXT_MAP['css'] = 'style';
+var IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp'];
 
-function getIcon(item) {
-    if (item.isDir) return EXT_ICONS.dir;
-    return EXT_ICONS[item.ext] || '\u{1F4C4}';
-}
+function getIcon(item) { return item.isDir ? FILE_ICONS.dir : (FILE_ICONS[EXT_MAP[item.ext]] || FILE_ICONS.file); }
 
 function formatSize(bytes) {
     if (bytes === 0) return '0 B';
-    var units = ['B', 'KB', 'MB', 'GB'];
-    var i = 0;
-    var size = bytes;
+    var units = ['B', 'KB', 'MB', 'GB'], i = 0, size = bytes;
     while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
     return (i === 0 ? size : size.toFixed(1)) + ' ' + units[i];
 }
 
 function formatDate(ms) {
-    var d = new Date(ms);
-    var now = new Date();
-    var diff = now - d;
+    var d = new Date(ms), diff = new Date() - d;
     if (diff < 60000) return t('files.justNow');
     if (diff < 3600000) return t('files.minutesAgo', { n: Math.floor(diff / 60000) });
     if (diff < 86400000) return t('files.hoursAgo', { n: Math.floor(diff / 3600000) });
     if (diff < 604800000) return t('files.daysAgo', { n: Math.floor(diff / 86400000) });
-    var mm = String(d.getMonth() + 1).padStart(2, '0');
-    var dd = String(d.getDate()).padStart(2, '0');
-    return d.getFullYear() + '-' + mm + '-' + dd;
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+
+function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function triggerDownload(url, filename) {
+    var a = document.createElement('a');
+    a.href = url; a.download = filename || '';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function copyText(text, toastKey) {
+    navigator.clipboard.writeText(text).then(function() { window.showToast && window.showToast(t(toastKey)); });
+}
+
+function getDisplayItems(items) { return isSpecialView ? items : sortItems(items); }
 
 // --- DOM refs ---
-var filesContainer, filesListView, filesPreviewView;
-var pathBar, pathBreadcrumb, fileItems, filterInput;
-var previewHeader, previewBody, previewTitle, previewBackBtn;
+var $ = function(id) { return document.getElementById(id); };
+var filesListView, filesPreviewView, pathBreadcrumb, fileItems, filterInput;
+var previewBody, previewTitle, previewBackBtn;
 
 function resolveDOM() {
-    filesContainer = document.getElementById('files-container');
-    filesListView = document.getElementById('files-list-view');
-    filesPreviewView = document.getElementById('files-preview-view');
-    pathBar = document.getElementById('files-path-bar');
-    pathBreadcrumb = document.getElementById('files-breadcrumb');
-    fileItems = document.getElementById('files-items');
-    filterInput = document.getElementById('files-filter');
-    previewHeader = document.getElementById('files-preview-header');
-    previewBody = document.getElementById('files-preview-body');
-    previewTitle = document.getElementById('files-preview-title');
-    previewBackBtn = document.getElementById('files-preview-back');
+    filesListView = $('files-list-view'); filesPreviewView = $('files-preview-view');
+    pathBreadcrumb = $('files-breadcrumb'); fileItems = $('files-items');
+    filterInput = $('files-filter'); previewBody = $('files-preview-body');
+    previewTitle = $('files-preview-title'); previewBackBtn = $('files-preview-back');
 }
 
-// ========================================
-// Load favorites from settings
-// ========================================
+// --- Sort ---
+var SORT_CMP = {
+    name: function(a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); },
+    size: function(a, b) { return (a.size || 0) - (b.size || 0); },
+    date: function(a, b) { return (a.modTime || 0) - (b.modTime || 0); }
+};
+
+function sortItems(items) {
+    var cmpFn = SORT_CMP[sortBy] || SORT_CMP.name;
+    return items.slice().sort(function(a, b) {
+        if (a.isDir && !b.isDir) return -1;
+        if (!a.isDir && b.isDir) return 1;
+        return (sortDir === 'asc' ? 1 : -1) * cmpFn(a, b);
+    });
+}
+
+function updateSortUI() {
+    var header = $('files-col-header');
+    if (!header) return;
+    header.style.display = isSpecialView ? 'none' : 'flex';
+    header.querySelectorAll('.files-col-btn').forEach(function(btn) {
+        var key = btn.dataset.sort;
+        btn.classList.toggle('active', key === sortBy);
+        btn.querySelector('.files-sort-icon').textContent = key === sortBy ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : '';
+    });
+}
+
+// --- Favorites ---
 function loadFavorites() {
     fetch('/api/settings', { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
-        .then(function(s) {
-            favorites = (s.general && s.general.fileFavorites) || [];
-        })
+        .then(function(s) { favorites = (s.general && s.general.fileFavorites) || []; })
         .catch(function() {});
 }
 
@@ -94,399 +121,214 @@ function saveFavorites() {
         .then(function(s) {
             s.general = s.general || {};
             s.general.fileFavorites = favorites;
-            return fetch('/api/settings', {
-                method: 'PUT', credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(s)
-            });
+            return fetch('/api/settings', { method: 'PUT', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) });
         });
 }
 
-function isFavorite(path) {
-    return favorites.indexOf(path) !== -1;
-}
+function isFavorite(path) { return favorites.indexOf(path) !== -1; }
 
 function toggleFavorite(path) {
     var idx = favorites.indexOf(path);
-    if (idx === -1) {
-        favorites.push(path);
-    } else {
-        favorites.splice(idx, 1);
-    }
+    if (idx === -1) favorites.push(path); else favorites.splice(idx, 1);
     saveFavorites();
 }
 
-// ========================================
-// Render breadcrumb
-// ========================================
+// --- Common reset for loadDirectory/loadRecent ---
+function resetView() {
+    selectedFiles.clear(); selectMode = false;
+    updateSelectUI(); updateSortUI(); filterInput.value = '';
+}
+
+// --- Breadcrumb (innerHTML + delegation) ---
 function renderBreadcrumb(path) {
-    pathBreadcrumb.innerHTML = '';
     var parts = path.split('/').filter(Boolean);
     var accumulated = '';
-
-    var homeBtn = document.createElement('button');
-    homeBtn.className = 'files-crumb';
-    homeBtn.textContent = '~';
-    homeBtn.addEventListener('click', function() { loadDirectory(''); });
-    pathBreadcrumb.appendChild(homeBtn);
-
+    var html = '<button class="files-crumb" data-crumb="">~</button>';
     parts.forEach(function(part, i) {
         accumulated += '/' + part;
-        var sep = document.createElement('span');
-        sep.className = 'files-crumb-sep';
-        sep.textContent = '/';
-        pathBreadcrumb.appendChild(sep);
-
-        var btn = document.createElement('button');
-        btn.className = 'files-crumb';
-        if (i === parts.length - 1) btn.classList.add('active');
-        btn.textContent = part;
-        var target = accumulated;
-        btn.addEventListener('click', function() { loadDirectory(target); });
-        pathBreadcrumb.appendChild(btn);
+        html += '<span class="files-crumb-sep">/</span>' +
+            '<button class="files-crumb' + (i === parts.length - 1 ? ' active' : '') +
+            '" data-crumb="' + escHtml(accumulated) + '">' + escHtml(part) + '</button>';
     });
-
+    pathBreadcrumb.innerHTML = html;
     pathBreadcrumb.scrollLeft = pathBreadcrumb.scrollWidth;
 }
 
-// ========================================
-// Load directory listing
-// ========================================
-var allItems = [];
-
+// --- Load directory ---
 function loadDirectory(path, done) {
-    var url = '/api/files' + (path ? '?path=' + encodeURIComponent(path) : '');
-    fetch(url, { credentials: 'same-origin' })
+    fetch('/api/files' + (path ? '?path=' + encodeURIComponent(path) : ''), { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            currentPath = data.path;
-            allItems = data.items;
-            selectedFiles.clear();
-            selectMode = false;
-            updateSelectUI();
+            currentPath = data.path; allItems = data.items;
+            if (data.filesDir) sharedFilesDir = data.filesDir;
+            isSpecialView = false; resetView();
             renderBreadcrumb(data.path);
-            renderItems(data.items);
-            filterInput.value = '';
+            renderItems(sortItems(data.items));
             if (done) done();
         })
-        .catch(function() {
-            if (done) done();
-            window.showToast && window.showToast(t('files.loadFailed'));
-        });
+        .catch(function() { if (done) done(); window.showToast && window.showToast(t('files.loadFailed')); });
 }
 
-// ========================================
-// Load recent files
-// ========================================
+// --- Load recent ---
 function loadRecent(done) {
     fetch('/api/files/recent', { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            allItems = data.files;
-            currentPath = '';
-            selectedFiles.clear();
-            selectMode = false;
-            updateSelectUI();
+            allItems = data.files; currentPath = '';
+            isSpecialView = true; resetView();
             pathBreadcrumb.innerHTML = '<span class="files-section-label">' + escHtml(t('files.recentFiles')) + '</span>';
             renderItems(data.files, true);
-            filterInput.value = '';
             if (done) done();
         })
         .catch(function() { if (done) done(); });
 }
 
-// ========================================
-// Render file items
-// ========================================
+// --- Render items ---
 function renderItems(items, showDir) {
-    fileItems.innerHTML = '';
+    var html = '';
+    itemMap = {};
 
-    // Favorites section
     if (!currentPath && favorites.length > 0) {
-        var favLabel = document.createElement('div');
-        favLabel.className = 'files-section-label';
-        favLabel.textContent = t('files.favorites');
-        fileItems.appendChild(favLabel);
+        html += '<div class="files-section-label">' + escHtml(t('files.favorites')) + '</div>';
         favorites.forEach(function(fav) {
-            var row = document.createElement('div');
-            row.className = 'files-item';
-            row.innerHTML = '<span class="files-item-icon">\u{1F4C1}</span>' +
+            html += '<div class="files-item" data-fav="' + escHtml(fav) + '">' +
+                '<span class="files-item-icon">' + FILE_ICONS.dir + '</span>' +
                 '<div class="files-item-info"><div class="files-item-name">' + escHtml(fav.split('/').pop() || fav) + '</div>' +
                 '<div class="files-item-meta">' + escHtml(fav) + '</div></div>' +
-                '<span class="files-item-arrow">\u25B6</span>';
-            row.addEventListener('click', function() { loadDirectory(fav); });
-            fileItems.appendChild(row);
+                '<span class="files-item-arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M3 1l5 4-5 4z"/></svg></span></div>';
         });
-        var divider = document.createElement('div');
-        divider.className = 'files-divider';
-        fileItems.appendChild(divider);
+        html += '<div class="files-divider"></div>';
     }
 
     if (items.length === 0) {
-        var empty = document.createElement('div');
-        empty.className = 'files-empty';
-        empty.textContent = t('files.empty');
-        fileItems.appendChild(empty);
+        fileItems.innerHTML = html + '<div class="files-empty">' + escHtml(t('files.empty')) + '</div>';
         return;
     }
 
     items.forEach(function(item) {
-        var row = document.createElement('div');
-        row.className = 'files-item';
-        row.dataset.path = item.path;
-        if (selectedFiles.has(item.path)) row.classList.add('selected');
-
-        var icon = document.createElement('span');
-        icon.className = 'files-item-icon';
-        icon.textContent = getIcon(item);
-
-        var info = document.createElement('div');
-        info.className = 'files-item-info';
-
-        var name = document.createElement('div');
-        name.className = 'files-item-name';
-        name.textContent = item.name;
-
-        var meta = document.createElement('div');
-        meta.className = 'files-item-meta';
-        var metaParts = [];
-        if (!item.isDir) metaParts.push(formatSize(item.size));
-        metaParts.push(formatDate(item.modTime));
+        itemMap[item.path] = item;
+        var metaText = '';
         if (showDir && item.dir) {
-            var shortDir = item.dir.replace(/^\/home\/[^/]+/, '~');
-            metaParts.push(shortDir);
-        }
-        meta.textContent = metaParts.join(' \u00B7 ');
-
-        info.appendChild(name);
-        info.appendChild(meta);
-        row.appendChild(icon);
-        row.appendChild(info);
-
-        if (item.isDir) {
-            var arrow = document.createElement('span');
-            arrow.className = 'files-item-arrow';
-            arrow.textContent = '\u25B6';
-            row.appendChild(arrow);
-        } else if (!selectMode) {
-            var dlBtn = document.createElement('button');
-            dlBtn.className = 'files-dl-btn';
-            dlBtn.innerHTML = '\u2B07';
-            dlBtn.title = t('files.download');
-            dlBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                downloadFile(item.path);
-            });
-            row.appendChild(dlBtn);
+            var parts = [];
+            if (!item.isDir) parts.push(formatSize(item.size));
+            parts.push(formatDate(item.modTime), item.dir.replace(/^\/home\/[^/]+/, '~'));
+            metaText = parts.join(' \u00B7 ');
+        } else {
+            metaText = item.isDir ? '' : formatSize(item.size);
         }
 
-        row.addEventListener('click', function() {
-            if (selectMode && !item.isDir) {
-                toggleSelect(item.path, row);
-                return;
-            }
-            if (item.isDir) {
-                loadDirectory(item.path);
-            } else {
-                openPreview(item);
-            }
-        });
+        html += '<div class="files-item' + (selectedFiles.has(item.path) ? ' selected' : '') +
+            '" data-path="' + escHtml(item.path) + '">' +
+            '<span class="files-item-icon">' + getIcon(item) + '</span>' +
+            '<div class="files-item-info"><div class="files-item-name">' + escHtml(item.name) + '</div>' +
+            '<div class="files-item-meta">' + escHtml(metaText) + '</div></div>';
 
-        // Long press for context menu
-        var longTimer = null;
-        row.addEventListener('touchstart', function(e) {
-            longTimer = setTimeout(function() {
-                longTimer = null;
-                showContextMenu(item, e);
-            }, 500);
-        }, { passive: true });
-        row.addEventListener('touchend', function() { if (longTimer) clearTimeout(longTimer); });
-        row.addEventListener('touchmove', function() { if (longTimer) clearTimeout(longTimer); });
+        if (!showDir) {
+            html += '<span class="files-item-size">' + (item.isDir ? '' : formatSize(item.size)) + '</span>' +
+                '<span class="files-item-date">' + formatDate(item.modTime) + '</span>';
+        }
 
-        fileItems.appendChild(row);
+        if (item.isDir) html += '<span class="files-item-arrow"><svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M3 1l5 4-5 4z"/></svg></span>';
+        else if (!selectMode) html += '<button class="files-dl-btn" title="' + escHtml(t('files.download')) + '"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v8"/><path d="M4.5 8.5L8 12l3.5-3.5"/><path d="M3 14h10"/></svg></button>';
+        html += '</div>';
     });
+    fileItems.innerHTML = html;
 }
 
-function escHtml(s) {
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-}
-
-// ========================================
-// Select mode (multi-select for zip)
-// ========================================
+// --- Select mode ---
 function toggleSelect(path, row) {
-    if (selectedFiles.has(path)) {
-        selectedFiles.delete(path);
-        row.classList.remove('selected');
-    } else {
-        selectedFiles.add(path);
-        row.classList.add('selected');
-    }
+    if (selectedFiles.has(path)) { selectedFiles.delete(path); row.classList.remove('selected'); }
+    else { selectedFiles.add(path); row.classList.add('selected'); }
     updateSelectUI();
 }
 
 function updateSelectUI() {
-    var bar = document.getElementById('files-select-bar');
+    var bar = $('files-select-bar');
     if (!bar) return;
-    if (selectMode && selectedFiles.size > 0) {
-        bar.style.display = 'flex';
-        document.getElementById('files-select-count').textContent = t('files.selected', { n: selectedFiles.size });
-    } else if (selectMode) {
-        bar.style.display = 'flex';
-        document.getElementById('files-select-count').textContent = t('files.selectFiles');
-    } else {
-        bar.style.display = 'none';
-    }
+    bar.style.display = selectMode ? 'flex' : 'none';
+    if (selectMode) $('files-select-count').textContent = selectedFiles.size > 0
+        ? t('files.selected', { n: selectedFiles.size }) : t('files.selectFiles');
 }
 
-function enterSelectMode() {
-    selectMode = true;
-    selectedFiles.clear();
-    updateSelectUI();
-    renderItems(allItems);
-}
+function enterSelectMode() { selectMode = true; selectedFiles.clear(); updateSelectUI(); renderItems(getDisplayItems(allItems)); }
+function exitSelectMode() { selectMode = false; selectedFiles.clear(); updateSelectUI(); renderItems(getDisplayItems(allItems)); }
 
-function exitSelectMode() {
-    selectMode = false;
-    selectedFiles.clear();
-    updateSelectUI();
-    renderItems(allItems);
-}
-
-// ========================================
-// Context menu (long press)
-// ========================================
+// --- Context menu ---
 function showContextMenu(item, e) {
     if (navigator.vibrate) navigator.vibrate(30);
-
     var actions = [];
     if (!item.isDir) {
         actions.push({ label: t('files.download'), action: function() { downloadFile(item.path); } });
         actions.push({ label: t('files.qrShare'), action: function() { shareFile(item.path); } });
     }
-    actions.push({ label: t('files.copyPath'), action: function() {
-        navigator.clipboard.writeText(item.path).then(function() {
-            window.showToast && window.showToast(t('files.pathCopied'));
-        });
-    }});
+    actions.push({ label: t('files.copyPath'), action: function() { copyText(item.path, 'files.pathCopied'); } });
     if (item.isDir) {
-        var favLabel = isFavorite(item.path) ? t('files.removeFavorite') : t('files.addFavorite');
-        actions.push({ label: favLabel, action: function() {
+        actions.push({ label: isFavorite(item.path) ? t('files.removeFavorite') : t('files.addFavorite'), action: function() {
             toggleFavorite(item.path);
             window.showToast && window.showToast(isFavorite(item.path) ? t('files.favoriteAdded') : t('files.favoriteRemoved'));
         }});
     }
-    if (!item.isDir) {
-        actions.push({ label: t('files.selectMode'), action: function() { enterSelectMode(); } });
-    }
-
+    if (!item.isDir) actions.push({ label: t('files.selectMode'), action: function() { enterSelectMode(); } });
     actions.push({ label: t('common.cancel'), style: 'cancel' });
     window.showConfirm && window.showConfirm(item.name, actions.map(function(a) {
         return { label: a.label, style: a.style || 'secondary', action: a.action };
     }));
 }
 
-// ========================================
-// Download
-// ========================================
-function downloadFile(path) {
-    var a = document.createElement('a');
-    a.href = '/api/files/download?path=' + encodeURIComponent(path);
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-}
+// --- Download ---
+function downloadFile(path) { triggerDownload('/api/files/download?path=' + encodeURIComponent(path), ''); }
 
 function downloadZip() {
     if (selectedFiles.size === 0) return;
-    var paths = Array.from(selectedFiles);
-    fetch('/api/files/zip', {
-        method: 'POST', credentials: 'same-origin',
+    fetch('/api/files/zip', { method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths: paths })
-    }).then(function(r) {
-        if (!r.ok) throw new Error('zip failed');
-        return r.blob();
-    }).then(function(blob) {
+        body: JSON.stringify({ paths: Array.from(selectedFiles) })
+    }).then(function(r) { if (!r.ok) throw new Error(); return r.blob(); })
+    .then(function(blob) {
         var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'files.zip';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        exitSelectMode();
-    }).catch(function() {
-        window.showToast && window.showToast(t('files.zipFailed'));
-    });
+        triggerDownload(url, 'files.zip');
+        URL.revokeObjectURL(url); exitSelectMode();
+    }).catch(function() { window.showToast && window.showToast(t('files.zipFailed')); });
 }
 
-// ========================================
-// Share (QR code)
-// ========================================
+// --- Share ---
 function shareFile(path) {
-    fetch('/api/files/share', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: path })
+    fetch('/api/files/share', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: path })
     }).then(function(r) { return r.json(); })
-    .then(function(data) {
-        showQRModal(data.url, data.name);
-    }).catch(function() {
-        window.showToast && window.showToast(t('files.shareFailed'));
-    });
+    .then(function(data) { showQRModal(data.url, data.name); })
+    .catch(function() { window.showToast && window.showToast(t('files.shareFailed')); });
 }
 
 function showQRModal(url, name) {
-    var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url);
-
     var overlay = document.createElement('div');
     overlay.className = 'files-qr-overlay';
-    overlay.innerHTML =
-        '<div class="files-qr-modal">' +
+    overlay.innerHTML = '<div class="files-qr-modal">' +
         '<div class="files-qr-title">' + escHtml(name) + '</div>' +
-        '<img class="files-qr-img" src="' + qrUrl + '" alt="QR">' +
+        '<img class="files-qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(url) + '" alt="QR">' +
         '<div class="files-qr-url">' + escHtml(url) + '</div>' +
         '<div class="files-qr-note">' + escHtml(t('files.qrOneTime')) + '</div>' +
         '<div class="files-qr-actions">' +
         '<button class="files-qr-btn" id="qr-copy-btn">' + escHtml(t('files.copy')) + '</button>' +
         '<button class="files-qr-btn cancel" id="qr-close-btn">' + escHtml(t('common.close')) + '</button>' +
         '</div></div>';
-
     document.body.appendChild(overlay);
-
-    overlay.querySelector('#qr-copy-btn').addEventListener('click', function() {
-        navigator.clipboard.writeText(url).then(function() {
-            window.showToast && window.showToast(t('files.urlCopied'));
-        });
-    });
-    overlay.querySelector('#qr-close-btn').addEventListener('click', function() {
-        overlay.remove();
-    });
-    overlay.addEventListener('click', function(e) {
-        if (e.target === overlay) overlay.remove();
-    });
+    overlay.querySelector('#qr-copy-btn').addEventListener('click', function() { copyText(url, 'files.urlCopied'); });
+    overlay.querySelector('#qr-close-btn').addEventListener('click', function() { overlay.remove(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
-// ========================================
-// Preview (text / image)
-// ========================================
+// --- Preview ---
 function openPreview(item) {
-    filesListView.style.display = 'none';
-    filesPreviewView.style.display = 'flex';
+    filesListView.style.display = 'none'; filesPreviewView.style.display = 'flex';
     previewTitle.textContent = item.name;
     previewBody.innerHTML = '<div class="files-loading">' + escHtml(t('common.loading')) + '</div>';
 
-    var imageExts = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp'];
-    if (imageExts.indexOf(item.ext) !== -1) {
+    if (IMAGE_EXTS.indexOf(item.ext) !== -1) {
         previewBody.innerHTML = '<div class="files-img-wrap"><img class="files-preview-img" src="/api/files/preview?path=' +
             encodeURIComponent(item.path) + '" alt="' + escHtml(item.name) + '"></div>';
-        setupPreviewActions(item, 'image');
-        return;
+        setupPreviewActions(item, 'image'); return;
     }
 
     fetch('/api/files/preview?path=' + encodeURIComponent(item.path), { credentials: 'same-origin' })
@@ -494,202 +336,153 @@ function openPreview(item) {
         .then(function(data) {
             if (data.type === 'text') {
                 var pre = document.createElement('pre');
-                pre.className = 'files-preview-text';
-                pre.textContent = data.content;
-                previewBody.innerHTML = '';
-                previewBody.appendChild(pre);
+                pre.className = 'files-preview-text'; pre.textContent = data.content;
+                previewBody.innerHTML = ''; previewBody.appendChild(pre);
                 setupPreviewActions(item, 'text', data.content);
             } else {
-                previewBody.innerHTML = '<div class="files-binary-info">' +
-                    '<span class="files-binary-icon">' + getIcon(item) + '</span>' +
-                    '<div>' + escHtml(item.name) + '</div>' +
-                    '<div class="files-binary-size">' + formatSize(item.size) + '</div>' +
-                    '</div>';
+                previewBody.innerHTML = '<div class="files-binary-info"><span class="files-binary-icon">' + getIcon(item) + '</span>' +
+                    '<div>' + escHtml(item.name) + '</div><div class="files-binary-size">' + formatSize(item.size) + '</div></div>';
                 setupPreviewActions(item, 'binary');
             }
         })
         .catch(function() {
-            previewBody.innerHTML = '<div class="files-binary-info">' +
-                '<div>' + escHtml(t('files.previewUnavailable')) + '</div>' +
-                '</div>';
+            previewBody.innerHTML = '<div class="files-binary-info"><div>' + escHtml(t('files.previewUnavailable')) + '</div></div>';
             setupPreviewActions(item, 'binary');
         });
 }
 
 function setupPreviewActions(item, type, content) {
-    var footer = document.getElementById('files-preview-footer');
-    footer.innerHTML = '';
-
-    var dlBtn = document.createElement('button');
-    dlBtn.className = 'files-action-btn';
-    dlBtn.textContent = t('files.download');
-    dlBtn.addEventListener('click', function() { downloadFile(item.path); });
-    footer.appendChild(dlBtn);
-
-    var shareBtn = document.createElement('button');
-    shareBtn.className = 'files-action-btn secondary';
-    shareBtn.textContent = t('files.qrShare');
-    shareBtn.addEventListener('click', function() { shareFile(item.path); });
-    footer.appendChild(shareBtn);
-
-    if (type === 'text') {
-        var editBtn = document.createElement('button');
-        editBtn.className = 'files-action-btn secondary';
-        editBtn.textContent = t('files.edit');
-        editBtn.addEventListener('click', function() {
-            openEditor(item, content);
-        });
-        footer.appendChild(editBtn);
-    }
+    var footer = $('files-preview-footer');
+    footer.innerHTML = '<button class="files-action-btn" id="pa-dl">' + escHtml(t('files.download')) + '</button>' +
+        '<button class="files-action-btn secondary" id="pa-share">' + escHtml(t('files.qrShare')) + '</button>' +
+        (type === 'text' ? '<button class="files-action-btn secondary" id="pa-edit">' + escHtml(t('files.edit')) + '</button>' : '');
+    footer.querySelector('#pa-dl').addEventListener('click', function() { downloadFile(item.path); });
+    footer.querySelector('#pa-share').addEventListener('click', function() { shareFile(item.path); });
+    if (type === 'text') footer.querySelector('#pa-edit').addEventListener('click', function() { openEditor(item, content); });
 }
 
-// ========================================
-// Text editor
-// ========================================
+// --- Editor ---
 function openEditor(item, content) {
     previewBody.innerHTML = '';
     var textarea = document.createElement('textarea');
-    textarea.className = 'files-edit-textarea';
-    textarea.value = content;
+    textarea.className = 'files-edit-textarea'; textarea.value = content;
     previewBody.appendChild(textarea);
 
-    var footer = document.getElementById('files-preview-footer');
-    footer.innerHTML = '';
-
-    var saveBtn = document.createElement('button');
-    saveBtn.className = 'files-action-btn';
-    saveBtn.textContent = t('files.saveFile');
-    saveBtn.addEventListener('click', function() {
-        fetch('/api/files/edit', {
-            method: 'PUT', credentials: 'same-origin',
+    var footer = $('files-preview-footer');
+    footer.innerHTML = '<button class="files-action-btn" id="ed-save">' + escHtml(t('files.saveFile')) + '</button>' +
+        '<button class="files-action-btn secondary" id="ed-cancel">' + escHtml(t('common.cancel')) + '</button>';
+    footer.querySelector('#ed-save').addEventListener('click', function() {
+        fetch('/api/files/edit', { method: 'PUT', credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: item.path, content: textarea.value })
-        }).then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.ok) {
-                window.showToast && window.showToast(t('files.fileSaved'));
-                content = textarea.value;
-            } else {
-                window.showToast && window.showToast(t('files.saveFailed') + ': ' + (data.error || ''));
-            }
+        }).then(function(r) { return r.json(); }).then(function(data) {
+            if (data.ok) { window.showToast && window.showToast(t('files.fileSaved')); content = textarea.value; }
+            else window.showToast && window.showToast(t('files.saveFailed') + ': ' + (data.error || ''));
         });
     });
-    footer.appendChild(saveBtn);
-
-    var cancelBtn = document.createElement('button');
-    cancelBtn.className = 'files-action-btn secondary';
-    cancelBtn.textContent = t('common.cancel');
-    cancelBtn.addEventListener('click', function() {
-        openPreview(item);
-    });
-    footer.appendChild(cancelBtn);
+    footer.querySelector('#ed-cancel').addEventListener('click', function() { openPreview(item); });
 }
 
-// ========================================
-// Upload
-// ========================================
+// --- Upload ---
 function triggerUpload() {
     var input = document.createElement('input');
-    input.type = 'file';
-    input.multiple = true;
+    input.type = 'file'; input.multiple = true;
     input.addEventListener('change', function() {
         if (!input.files || input.files.length === 0) return;
         var targetDir = currentPath || '';
-        var pending = input.files.length;
-        var uploaded = 0;
-
-        Array.from(input.files).forEach(function(file) {
-            var formData = new FormData();
-            formData.append('file', file);
-            formData.append('dir', targetDir);
-
-            fetch('/api/files/upload', {
-                method: 'POST', credentials: 'same-origin',
-                body: formData
-            }).then(function(r) { return r.json(); })
-            .then(function(data) {
-                uploaded++;
-                pending--;
-                if (pending === 0) {
-                    window.showToast && window.showToast(t('files.uploadComplete', { n: uploaded }));
-                    loadDirectory(currentPath);
-                }
-            }).catch(function() {
-                pending--;
-                if (pending === 0) loadDirectory(currentPath);
-            });
+        var promises = Array.from(input.files).map(function(file) {
+            var fd = new FormData(); fd.append('file', file); fd.append('dir', targetDir);
+            return fetch('/api/files/upload', { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(function(r) { return r.json(); });
+        });
+        Promise.allSettled(promises).then(function(results) {
+            var n = results.filter(function(r) { return r.status === 'fulfilled'; }).length;
+            if (n > 0) window.showToast && window.showToast(t('files.uploadComplete', { n: n }));
+            loadDirectory(currentPath);
         });
     });
     input.click();
 }
 
-// ========================================
-// Filter
-// ========================================
+// --- Filter ---
 function applyFilter(query) {
-    if (!query) {
-        renderItems(allItems);
-        return;
-    }
+    if (!query) { renderItems(getDisplayItems(allItems)); return; }
     var q = query.toLowerCase();
-    var filtered = allItems.filter(function(item) {
-        return item.name.toLowerCase().indexOf(q) !== -1;
+    renderItems(getDisplayItems(allItems.filter(function(item) { return item.name.toLowerCase().indexOf(q) !== -1; })));
+}
+
+// --- Event delegation ---
+function setupDelegation() {
+    var longTimer = null, longPath = null;
+
+    // Breadcrumb delegation
+    pathBreadcrumb.addEventListener('click', function(e) {
+        var btn = e.target.closest('.files-crumb');
+        if (btn && btn.dataset.crumb !== undefined) loadDirectory(btn.dataset.crumb);
     });
-    renderItems(filtered);
+
+    // File items delegation
+    fileItems.addEventListener('click', function(e) {
+        var dlBtn = e.target.closest('.files-dl-btn');
+        if (dlBtn) { e.stopPropagation(); var r = dlBtn.closest('.files-item'); if (r && r.dataset.path) downloadFile(r.dataset.path); return; }
+        var row = e.target.closest('.files-item');
+        if (!row) return;
+        if (row.dataset.fav) { loadDirectory(row.dataset.fav); return; }
+        var path = row.dataset.path, item = itemMap[path];
+        if (!item) return;
+        if (selectMode && !item.isDir) { toggleSelect(path, row); return; }
+        if (item.isDir) loadDirectory(path); else openPreview(item);
+    });
+
+    fileItems.addEventListener('touchstart', function(e) {
+        var row = e.target.closest('.files-item');
+        if (!row || !row.dataset.path) return;
+        longPath = row.dataset.path;
+        longTimer = setTimeout(function() { longTimer = null; var item = itemMap[longPath]; if (item) showContextMenu(item, e); }, 500);
+    }, { passive: true });
+
+    var clearLong = function() { if (longTimer) { clearTimeout(longTimer); longTimer = null; } };
+    fileItems.addEventListener('touchend', clearLong);
+    fileItems.addEventListener('touchmove', clearLong);
 }
 
-// ========================================
-// Back to list from preview
-// ========================================
-function backToList() {
-    filesPreviewView.style.display = 'none';
-    filesListView.style.display = 'flex';
-}
-
-// ========================================
-// Init
-// ========================================
+// --- Init ---
 export function initFiles() {
-    resolveDOM();
-    loadFavorites();
-
+    resolveDOM(); loadFavorites();
     window._filesDownload = downloadFile;
-
-    previewBackBtn.addEventListener('click', backToList);
+    previewBackBtn.addEventListener('click', function() { filesPreviewView.style.display = 'none'; filesListView.style.display = 'flex'; });
 
     var filterTimer = null;
     filterInput.addEventListener('input', function() {
         clearTimeout(filterTimer);
-        filterTimer = setTimeout(function() {
-            applyFilter(filterInput.value.trim());
-        }, 200);
+        filterTimer = setTimeout(function() { applyFilter(filterInput.value.trim()); }, 200);
     });
 
-    document.getElementById('files-home-btn').addEventListener('click', function() { loadDirectory(''); });
-    document.getElementById('files-recent-btn').addEventListener('click', function() { loadRecent(); });
-    document.getElementById('files-up-btn').addEventListener('click', function() {
-        if (currentPath) {
-            var parent = currentPath.split('/').slice(0, -1).join('/') || '/';
-            loadDirectory(parent);
-        }
+    $('files-home-btn').addEventListener('click', function() { loadDirectory(''); });
+    $('files-recent-btn').addEventListener('click', function() { loadRecent(); });
+    $('files-shared-btn').addEventListener('click', function() {
+        if (sharedFilesDir) { loadDirectory(sharedFilesDir); return; }
+        fetch('/api/files', { credentials: 'same-origin' }).then(function(r) { return r.json(); })
+            .then(function(data) { if (data.filesDir) { sharedFilesDir = data.filesDir; loadDirectory(sharedFilesDir); } });
     });
-    document.getElementById('files-upload-btn').addEventListener('click', triggerUpload);
-    document.getElementById('files-refresh-btn').addEventListener('click', function() {
-        if (currentPath) {
-            loadDirectory(currentPath);
-        } else {
-            loadRecent();
-        }
+    $('files-up-btn').addEventListener('click', function() {
+        if (currentPath) loadDirectory(currentPath.split('/').slice(0, -1).join('/') || '/');
+    });
+    $('files-upload-btn').addEventListener('click', triggerUpload);
+    $('files-refresh-btn').addEventListener('click', function() { if (currentPath) loadDirectory(currentPath); else loadRecent(); });
+
+    $('files-col-header').querySelectorAll('.files-col-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var key = btn.dataset.sort;
+            if (sortBy === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            else { sortBy = key; sortDir = 'asc'; }
+            updateSortUI(); renderItems(sortItems(allItems));
+        });
     });
 
-    document.getElementById('files-select-cancel').addEventListener('click', exitSelectMode);
-    document.getElementById('files-select-zip').addEventListener('click', downloadZip);
+    $('files-select-cancel').addEventListener('click', exitSelectMode);
+    $('files-select-zip').addEventListener('click', downloadZip);
+    setupDelegation();
 }
 
-export function loadFiles(done) {
-    loadRecent(done);
-}
-
-export function setViewSwitcher(fn) {
-    viewSwitcherFn = fn;
-}
+export function loadFiles(done) { loadRecent(done); }
