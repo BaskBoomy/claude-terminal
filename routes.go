@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -433,15 +434,27 @@ func (a *API) listNotes(w http.ResponseWriter, r *http.Request) {
 		if len(preview) > 80 {
 			preview = preview[:80]
 		}
+		pinned, _ := note["pinned"].(bool)
 		notes = append(notes, M{
 			"id":        noteID,
 			"title":     note["title"],
 			"preview":   preview,
 			"updatedAt": note["updatedAt"],
 			"createdAt": note["createdAt"],
+			"pinned":    pinned,
 		})
 	}
-	// Sort by updatedAt desc
+	// Sort: pinned first, then by updatedAt desc
+	sort.Slice(notes, func(i, j int) bool {
+		ip, _ := notes[i]["pinned"].(bool)
+		jp, _ := notes[j]["pinned"].(bool)
+		if ip != jp {
+			return ip
+		}
+		it, _ := notes[i]["updatedAt"].(float64)
+		jt, _ := notes[j]["updatedAt"].(float64)
+		return it > jt
+	})
 	if notes == nil {
 		notes = []M{}
 	}
@@ -506,6 +519,9 @@ func (a *API) updateNote(w http.ResponseWriter, r *http.Request) {
 	}
 	if c, ok := body["content"]; ok {
 		note["content"] = c
+	}
+	if p, ok := body["pinned"]; ok {
+		note["pinned"] = p
 	}
 	note["updatedAt"] = time.Now().UnixMilli()
 

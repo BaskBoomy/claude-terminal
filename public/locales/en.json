@@ -49,7 +49,9 @@
     "sendToClaudeTitle": "Send to Claude Code",
     "runNewSession": "Run in new session",
     "titlePlaceholder": "Untitled",
-    "contentPlaceholder": "Start writing..."
+    "contentPlaceholder": "Start writing...",
+    "pin": "Pin to top",
+    "unpin": "Unpin"
   },
   "terminal": {
     "noHistory": "No history",

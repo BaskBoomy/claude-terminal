@@ -45,14 +45,30 @@ function renderNotesList(notes) {
     notesItems.innerHTML = '';
     notes.forEach(n => {
         const el = document.createElement('div');
-        el.className = 'note-item';
+        el.className = 'note-item' + (n.pinned ? ' pinned' : '');
         el.innerHTML =
-            '<div class="note-item-title">' + escapeHtml(n.title || t('notes.untitled')) + '</div>' +
-            '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
-            '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>';
-        el.addEventListener('click', () => openNote(n.id));
+            '<button class="note-pin-btn" data-id="' + escapeHtml(n.id) + '" data-pinned="' + (n.pinned ? '1' : '0') + '" title="' + escapeHtml(n.pinned ? t('notes.unpin') : t('notes.pin')) + '">' +
+                (n.pinned ? '\u{1F4CC}' : '\u{1F4CC}') + '</button>' +
+            '<div class="note-item-body">' +
+                '<div class="note-item-title">' + escapeHtml(n.title || t('notes.untitled')) + '</div>' +
+                '<div class="note-item-preview">' + escapeHtml(n.preview || '') + '</div>' +
+                '<div class="note-item-date">' + formatNoteDate(n.updatedAt) + '</div>' +
+            '</div>';
+        el.querySelector('.note-item-body').addEventListener('click', () => openNote(n.id));
+        el.querySelector('.note-pin-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            togglePin(n.id, !n.pinned);
+        });
         notesItems.appendChild(el);
     });
+}
+
+function togglePin(id, pinned) {
+    fetch('/api/notes/' + id, {
+        method: 'PUT', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinned: pinned })
+    }).then(r => { if (r.ok) loadNotesList(); });
 }
 
 function scheduleNoteSave() {
