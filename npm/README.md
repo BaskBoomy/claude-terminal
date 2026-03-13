@@ -22,7 +22,9 @@ Just press Enter through all prompts for sensible defaults.
 
 A self-hosted PWA that wraps Claude Code in a mobile-friendly web UI. Install it on a Raspberry Pi, VPS, or any always-on machine — then open it from your phone, tablet, or any browser.
 
-**Features:** Terminal, Preview, Notes, Brain (memory/skills editor), Files (file browser/editor), Launch (URL bookmarks), Dashboard (git + server status), Snippets, and more.
+**Features:** Terminal, Preview, Notes, Brain (memory/skills editor), Files (file browser/editor), Launch (URL bookmarks), Dashboard (git + server status), Snippets, TOTP 2FA, and more.
+
+**Performance:** All assets are automatically minified and gzip-compressed at startup — 83% smaller transfers with zero build tools required.
 
 > **📱 PWA Recommended** — For the best mobile experience, tap "Add to Home Screen" in your browser to install as a PWA. Full-screen, wake lock, background notifications — like a native app.
 

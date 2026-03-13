@@ -17,7 +17,7 @@
   <a href="https://github.com/BaskBoomy/claude-terminal/releases"><img src="https://img.shields.io/github/v/release/BaskBoomy/claude-terminal?style=flat-square" alt="Release"></a>
   <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go&logoColor=white" alt="Go 1.22+">
   <img src="https://img.shields.io/badge/platform-linux%20%7C%20macOS-lightgrey?style=flat-square" alt="Platform">
-  <img src="https://img.shields.io/badge/binary-~8MB-green?style=flat-square" alt="Binary Size">
+  <img src="https://img.shields.io/badge/binary-~11MB-green?style=flat-square" alt="Binary Size">
 </p>
 
 <br>
@@ -39,7 +39,7 @@ Claude Code is powerful, but it only runs in a local terminal. If you want to:
 - **Manage Claude's memory and skills** with a visual editor
 - **Check git status and server health** at a glance
 
-...you need a way to access your terminal remotely. Claude Web Terminal gives you that in a single ~8MB binary with zero external dependencies.
+...you need a way to access your terminal remotely. Claude Web Terminal gives you that in a single ~11MB binary with zero external dependencies.
 
 ## Features
 
@@ -102,7 +102,7 @@ Open `http://<your-ip>:7680` and log in.
           │  HTTPS (auto Let's Encrypt) or HTTP
           ▼
  ┌──────────────────────┐
- │   claude-terminal    │  single Go binary (~8MB)
+ │   claude-terminal    │  single Go binary (~11MB)
  │                      │
  │  ┌────────────────┐  │
  │  │  Static files  │  │  PWA frontend (HTML/CSS/JS)
@@ -175,6 +175,8 @@ your.domain.com {
 ## Security
 
 - **Password hashing** — PBKDF2-SHA256 with 600,000 iterations
+- **TOTP 2FA** — Google Authenticator and other TOTP apps supported, with 5 recovery codes
+- **Duplicate login prevention** — new session from same IP automatically evicts the old one
 - **Session cookies** — `HttpOnly`, `Secure` (when HTTPS), `SameSite=Strict`
 - **Rate limiting** — 5 failed attempts per 15 minutes per IP
 - **Path traversal protection** — Brain file access restricted to known project directories
@@ -187,6 +189,8 @@ claude-terminal/
 ├── main.go              # HTTP server, ttyd reverse proxy, auto HTTPS
 ├── config.go            # .env loading, password hashing
 ├── auth.go              # sessions, rate limiting, middleware
+├── totp.go              # TOTP 2FA (pure Go, no external deps)
+├── asset_server.go      # Runtime asset optimization (minify + gzip + ETag)
 ├── routes.go            # API handlers (tmux, notes, brain, git, usage)
 ├── brain.go             # Claude Code memory/skills file scanner
 ├── public/              # PWA frontend
@@ -202,6 +206,16 @@ claude-terminal/
 ├── .env.example         # configuration template
 └── data/                # runtime data — notes, settings, password hash (gitignored)
 ```
+
+## Performance
+
+No build tools required — `go build` produces a fully optimized binary.
+
+- **Runtime asset optimization** — all static files are automatically minified (tdewolff/minify) and gzip-compressed at startup, then served from memory
+- **83% smaller JS/CSS transfers** — 330KB raw → ~55KB gzipped
+- **ETag-based 304 responses** — zero bytes transferred on repeat visits when unchanged
+- **Smart caching** — JS/CSS cached for 7 days (busted by `?v=N`), HTML revalidates via ETag
+- **Zero external build tools** — no webpack, vite, or esbuild; pure Go runtime processing
 
 ## Requirements
 
