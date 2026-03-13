@@ -899,7 +899,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .note-item {
     display: flex; flex-direction: column; padding: 12px 16px;
     border-bottom: 1px solid var(--bg-raised); cursor: pointer;
-    transition: background 0.1s;
+    transition: background 0.1s; overflow: hidden;
 }
 .note-item:active { background: var(--bg-raised); }
 .note-item.pinned { background: var(--bg-raised); }
@@ -947,8 +947,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 #notes-title-input::placeholder { color: var(--border-light); }
 #notes-pin-btn, #notes-delete-btn {
     background: none; border: none; color: var(--text-subtle); cursor: pointer;
-    padding: 4px 8px; flex-shrink: 0; display: inline-flex; align-items: center;
+    padding: 4px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
     touch-action: manipulation; border-radius: 6px;
+    min-width: 32px; min-height: 32px;
 }
 #notes-pin-btn:active, #notes-delete-btn:active { background: var(--bg-raised); }
 #notes-pin-btn.active { color: var(--accent); }
