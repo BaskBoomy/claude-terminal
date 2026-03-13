@@ -49,7 +49,9 @@
     "sendToClaudeTitle": "Claude Code에 전송",
     "runNewSession": "새 세션으로 실행",
     "titlePlaceholder": "제목 없음",
-    "contentPlaceholder": "내용을 입력하세요..."
+    "contentPlaceholder": "내용을 입력하세요...",
+    "pin": "상단 고정",
+    "unpin": "고정 해제"
   },
   "terminal": {
     "noHistory": "이력 없음",
