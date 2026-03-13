@@ -139,7 +139,8 @@
     "shared": "Shared Files",
     "colName": "Name",
     "colSize": "Size",
-    "colDate": "Date"
+    "colDate": "Date",
+    "openInPreview": "Open in Preview"
   },
   "gestures": {
     "pullToRefresh": "Pull to refresh",

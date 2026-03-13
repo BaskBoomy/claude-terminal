@@ -139,7 +139,8 @@
     "shared": "공유 파일",
     "colName": "이름",
     "colSize": "크기",
-    "colDate": "날짜"
+    "colDate": "날짜",
+    "openInPreview": "미리보기에서 열기"
   },
   "gestures": {
     "pullToRefresh": "당겨서 새로고침",

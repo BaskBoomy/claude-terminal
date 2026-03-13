@@ -56,6 +56,7 @@ func (a *API) registerFileRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/files/recent", a.auth.RequireAuth(a.filesRecent))
 	mux.HandleFunc("GET /api/files/download", a.auth.RequireAuth(a.filesDownload))
 	mux.HandleFunc("GET /api/files/preview", a.auth.RequireAuth(a.filesPreview))
+	mux.HandleFunc("GET /api/files/raw", a.auth.RequireAuth(a.filesRaw))
 	mux.HandleFunc("POST /api/files/zip", a.auth.RequireAuth(a.filesZipDownload))
 	mux.HandleFunc("POST /api/files/upload", a.auth.RequireAuth(a.filesUpload))
 	mux.HandleFunc("POST /api/files/share", a.auth.RequireAuth(a.filesShareCreate))
@@ -332,6 +333,43 @@ func (a *API) filesPreview(w http.ResponseWriter, r *http.Request) {
 		"size": info.Size(),
 		"ext":  strings.TrimPrefix(ext, "."),
 	})
+}
+
+// --- Raw file (serve with native Content-Type for iframe/media) ---
+func (a *API) filesRaw(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Query().Get("path")
+	if filePath == "" {
+		jsonResponse(w, 400, M{"error": "Missing path"})
+		return
+	}
+
+	resolved, err := filepath.Abs(filePath)
+	if err != nil || isSensitiveFile(resolved) {
+		jsonResponse(w, 403, M{"error": "Access denied"})
+		return
+	}
+
+	resolved, err = filepath.EvalSymlinks(resolved)
+	if err != nil {
+		jsonResponse(w, 404, M{"error": "File not found"})
+		return
+	}
+
+	info, err := os.Stat(resolved)
+	if err != nil || info.IsDir() {
+		jsonResponse(w, 404, M{"error": "File not found"})
+		return
+	}
+
+	// Sandbox HTML files for security
+	ext := strings.ToLower(filepath.Ext(resolved))
+	if ext == ".html" || ext == ".htm" {
+		w.Header().Set("Content-Security-Policy", "sandbox allow-scripts allow-forms")
+	}
+
+	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Set("Cache-Control", "private, max-age=60")
+	http.ServeFile(w, r, resolved)
 }
 
 // --- ZIP download (multiple files) ---
