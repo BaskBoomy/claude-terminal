@@ -32,6 +32,17 @@ async function prompt(checks) {
   const ttydPort = await ask(rl, 'ttyd port', '7681');
   const claudeCmd = await ask(rl, 'Claude command', 'claude');
   const domain = await ask(rl, 'Domain (optional)', '');
+
+  let tunnel = false;
+  if (!domain) {
+    console.log(`  ${color(c.gray, S.bar)}`);
+    console.log(`  ${color(c.gray, S.barT)} ${color(c.cyan, S.info)} ${color(c.dim, 'No domain? Enable Cloudflare Tunnel for instant')}`);
+    console.log(`  ${color(c.gray, S.bar)}   ${color(c.dim, 'HTTPS access from anywhere (test/demo only).')}`);
+    console.log(`  ${color(c.gray, S.bar)}   ${color(c.yellow, S.warn)} ${color(c.dim, 'URL changes on service restart.')}`);
+    const tunnelAnswer = await ask(rl, 'Enable tunnel?', 'Y');
+    tunnel = tunnelAnswer.toLowerCase() !== 'n';
+  }
+
   const installDir = await ask(rl, 'Install directory', `${process.env.HOME}/.claude-terminal`);
 
   rl.close();
@@ -43,6 +54,7 @@ async function prompt(checks) {
     ttydPort: parseInt(ttydPort, 10) || 7681,
     claudeCmd,
     domain,
+    tunnel,
     installDir,
   };
 }

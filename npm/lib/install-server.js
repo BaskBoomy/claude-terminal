@@ -175,6 +175,7 @@ async function installServer(config) {
     `TTYD_PORT=${config.ttydPort || 7681}`,
     `CLAUDE_CMD=${config.claudeCmd || 'claude'}`,
     domain ? `DOMAIN=${domain}` : '# DOMAIN=your.domain.com',
+    config.tunnel ? 'TUNNEL=true' : '# TUNNEL=false',
   ].join('\n') + '\n';
   fs.writeFileSync(path.join(installDir, '.env'), envContent, { mode: 0o600 });
 

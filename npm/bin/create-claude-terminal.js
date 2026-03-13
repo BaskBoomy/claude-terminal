@@ -25,6 +25,12 @@ async function main() {
     await installTtyd();
   }
 
+  // 3.5 Install cloudflared if tunnel enabled
+  if (config.tunnel) {
+    const { installCloudflared } = require('../lib/install-cloudflared');
+    await installCloudflared();
+  }
+
   // 4. Download and install Go server binary
   await installServer(config);
 
@@ -55,6 +61,19 @@ async function main() {
     lines.push(`${color(c.gray, '  journalctl -u claude-terminal -f')}`);
   } else {
     lines.push(`${color(c.gray, '  launchctl list | grep claude')}`);
+  }
+
+  if (config.tunnel) {
+    lines.push('');
+    lines.push(`${color(c.cyan, S.info)} ${color(c.bold, 'Tunnel active')} ${color(c.dim, '— check URL:')}`);
+    if (process.platform === 'linux') {
+      lines.push(`${color(c.gray, '  sudo journalctl -u cloudflared-tunnel --no-pager -n 5')}`);
+    } else {
+      lines.push(`${color(c.gray, '  launchctl list | grep cloudflared')}`);
+    }
+    lines.push('');
+    lines.push(`${color(c.yellow, S.warn)} ${color(c.dim, 'Tunnel URL changes on restart — for testing only.')}`);
+    lines.push(`${color(c.dim, '  For a permanent domain, set DOMAIN in .env')}`);
   }
 
   console.log('\n' + box(lines, { color: c.green }) + '\n');

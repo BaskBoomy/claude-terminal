@@ -31,7 +31,13 @@
     "newWindowLabel": "새창",
     "language": "Language",
     "languageDesc": "인터페이스 언어",
-    "hiddenLabel": "숨김"
+    "hiddenLabel": "숨김",
+    "serverAccess": "서버 접속",
+    "tunnelUrl": "터널 URL",
+    "tunnelWarning": "재시작 시 URL이 변경됩니다 — 테스트용",
+    "domainLabel": "도메인",
+    "domainDesc": "영구 HTTPS 접속을 위한 도메인 설정",
+    "domainRestart": "서버 재시작 후 적용됩니다. Let's Encrypt HTTPS가 자동 활성화됩니다."
   },
   "notes": {
     "empty": "메모가 없습니다",
