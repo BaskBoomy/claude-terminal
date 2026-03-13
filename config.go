@@ -30,6 +30,7 @@ type Config struct {
 
 	DataDir    string
 	PublicDir  string
+	FilesDir   string
 	NotesDir   string
 	UploadDir  string
 	NotifyDir  string
@@ -66,6 +67,7 @@ func LoadConfig(flagPort int, flagPassword string) *Config {
 		Password:        envStr("PASSWORD", ""),
 		DataDir:         filepath.Join(rootDir, "data"),
 		PublicDir:       filepath.Join(rootDir, "public"),
+		FilesDir:        filepath.Join(rootDir, "files"),
 		UploadDir:       envStr("UPLOAD_DIR", "/tmp/claude-uploads"),
 		NotifyDir:       envStr("NOTIFY_DIR", "/tmp/claude-notify"),
 		TtydPort:        envInt("TTYD_PORT", 7681),

@@ -139,9 +139,10 @@ func (a *API) filesList(w http.ResponseWriter, r *http.Request) {
 	})
 
 	jsonResponse(w, 200, M{
-		"path":   resolved,
-		"parent": filepath.Dir(resolved),
-		"items":  items,
+		"path":     resolved,
+		"parent":   filepath.Dir(resolved),
+		"items":    items,
+		"filesDir": a.cfg.FilesDir,
 	})
 }
 

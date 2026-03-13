@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=27">
+    <link rel="stylesheet" href="/css/style.css?v=28">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -29,6 +29,7 @@
         <!-- Generic browser instructions (populated by JS with i18n) -->
         <div class="pwa-instructions" id="pwa-generic-instructions" style="display:none"></div>
 
+        <a href="/files/" class="pwa-files-btn" id="pwa-files-btn" data-i18n="pwa.filesBtn">Open Files</a>
         <button class="pwa-skip" id="pwa-skip">Continue in browser</button>
     </div>
 </div>
@@ -121,16 +122,22 @@
             <div id="files-list-view">
                 <div id="files-header">
                     <div id="files-toolbar">
-                        <button class="files-toolbar-btn" id="files-home-btn" data-i18n-title="files.home" title="Home">&#x1F3E0;</button>
-                        <button class="files-toolbar-btn" id="files-up-btn" data-i18n-title="files.upDir" title="Up">&#x2B06;</button>
-                        <button class="files-toolbar-btn" id="files-recent-btn" data-i18n-title="files.recent" title="Recent">&#x1F552;</button>
+                        <button class="files-toolbar-btn" id="files-home-btn" data-i18n-title="files.home" title="Home"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6.5L8 2l5 4.5V13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6.5z"/><path d="M6 14V9h4v5"/></svg></button>
+                        <button class="files-toolbar-btn" id="files-up-btn" data-i18n-title="files.upDir" title="Up"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3"/><path d="M3.5 7.5L8 3l4.5 4.5"/></svg></button>
+                        <button class="files-toolbar-btn" id="files-recent-btn" data-i18n-title="files.recent" title="Recent"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg></button>
+                        <button class="files-toolbar-btn" id="files-shared-btn" data-i18n-title="files.shared" title="Shared Files"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5L2 12.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1H7.5L6 4H3a1 1 0 0 0-1 1.5z"/><path d="M10 9.5l-2-2-2 2"/></svg></button>
                         <input id="files-filter" type="text" data-i18n-placeholder="files.search" placeholder="Search files..." />
-                        <button class="files-toolbar-btn" id="files-upload-btn" data-i18n-title="files.upload" title="Upload">&#x2B06;&#xFE0F;</button>
-                        <button class="files-toolbar-btn" id="files-refresh-btn" data-i18n-title="files.refresh" title="Refresh">&#x21BB;</button>
+                        <button class="files-toolbar-btn" id="files-upload-btn" data-i18n-title="files.upload" title="Upload"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3"/><path d="M8 11V3"/><path d="M4.5 6.5L8 3l3.5 3.5"/></svg></button>
+                        <button class="files-toolbar-btn" id="files-refresh-btn" data-i18n-title="files.refresh" title="Refresh"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8A5 5 0 1 1 8 3h3"/><path d="M11 1l2 2-2 2"/></svg></button>
                     </div>
                     <div id="files-path-bar">
                         <div id="files-breadcrumb"></div>
                     </div>
+                </div>
+                <div id="files-col-header">
+                    <button class="files-col-btn" data-sort="name"><span data-i18n="files.colName">Name</span><span class="files-sort-icon"></span></button>
+                    <button class="files-col-btn" data-sort="size"><span data-i18n="files.colSize">Size</span><span class="files-sort-icon"></span></button>
+                    <button class="files-col-btn files-col-date" data-sort="date"><span data-i18n="files.colDate">Date</span><span class="files-sort-icon"></span></button>
                 </div>
                 <div id="files-items"></div>
                 <div id="files-select-bar" style="display:none">

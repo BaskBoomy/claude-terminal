@@ -135,7 +135,11 @@
     "fileSaved": "저장됨",
     "saveFailed": "저장 실패",
     "tooLarge": "파일이 너무 큽니다 — 500KB 초과",
-    "previewUnavailable": "미리보기를 사용할 수 없습니다"
+    "previewUnavailable": "미리보기를 사용할 수 없습니다",
+    "shared": "공유 파일",
+    "colName": "이름",
+    "colSize": "크기",
+    "colDate": "날짜"
   },
   "gestures": {
     "pullToRefresh": "당겨서 새로고침",
@@ -213,6 +217,7 @@
     "iosStep2": "<strong>\"홈 화면에 추가\"</strong>를 선택하세요",
     "iosStep3": "<strong>\"추가\"</strong>를 탭하면 설치 완료",
     "genericStep1": "브라우저 메뉴(<strong>⋮</strong> 또는 <strong>⋯</strong>)를 여세요",
-    "genericStep2": "<strong>\"앱 설치\"</strong> 또는 <strong>\"홈 화면에 추가\"</strong>를 선택하세요"
+    "genericStep2": "<strong>\"앱 설치\"</strong> 또는 <strong>\"홈 화면에 추가\"</strong>를 선택하세요",
+    "filesBtn": "파일 탐색기"
   }
 }

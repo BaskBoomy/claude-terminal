@@ -135,7 +135,11 @@
     "fileSaved": "Saved",
     "saveFailed": "Save failed",
     "tooLarge": "File too large — over 500KB",
-    "previewUnavailable": "Preview not available"
+    "previewUnavailable": "Preview not available",
+    "shared": "Shared Files",
+    "colName": "Name",
+    "colSize": "Size",
+    "colDate": "Date"
   },
   "gestures": {
     "pullToRefresh": "Pull to refresh",
@@ -213,6 +217,7 @@
     "iosStep2": "Select <strong>\"Add to Home Screen\"</strong>",
     "iosStep3": "Tap <strong>\"Add\"</strong> to install",
     "genericStep1": "Open browser menu (<strong>⋮</strong> or <strong>⋯</strong>)",
-    "genericStep2": "Select <strong>\"Install App\"</strong> or <strong>\"Add to Home Screen\"</strong>"
+    "genericStep2": "Select <strong>\"Install App\"</strong> or <strong>\"Add to Home Screen\"</strong>",
+    "filesBtn": "File Explorer"
   }
 }
