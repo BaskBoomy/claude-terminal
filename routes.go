@@ -66,6 +66,7 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/brain/read", a.auth.RequireAuth(a.brainRead))
 	mux.HandleFunc("PUT /api/brain/write", a.auth.RequireAuth(a.brainWrite))
 	mux.HandleFunc("GET /api/server-status", a.auth.RequireAuth(a.serverStatus))
+	mux.HandleFunc("GET /api/server-status-debug", a.auth.RequireAuth(a.serverStatusDebug))
 	mux.HandleFunc("GET /api/git-status", a.auth.RequireAuth(a.gitStatus))
 	mux.HandleFunc("GET /api/claude-usage", a.auth.RequireAuth(a.claudeUsage))
 	mux.HandleFunc("GET /api/notifications", a.auth.RequireAuth(a.notifications))
@@ -141,7 +142,7 @@ func clearSessionCookie(w http.ResponseWriter, cfg *Config) {
 // --- tmux helpers ---
 
 func (a *API) tmux(args ...string) (string, error) {
-	cmd := exec.Command("tmux", append([]string{"-S", a.cfg.TmuxSocket}, args...)...)
+	cmd := exec.Command(a.cfg.TmuxBin, append([]string{"-S", a.cfg.TmuxSocket}, args...)...)
 	out, err := cmd.Output()
 	return string(out), err
 }
@@ -588,6 +589,52 @@ func (a *API) brainWrite(w http.ResponseWriter, r *http.Request) {
 // ═══════════════════════════════════════════════════════════
 // System
 // ═══════════════════════════════════════════════════════════
+
+func (a *API) serverStatusDebug(w http.ResponseWriter, r *http.Request) {
+	debug := M{"os": runtime.GOOS, "arch": runtime.GOARCH}
+	result := M{}
+	if runtime.GOOS == "darwin" {
+		a.serverStatusDarwin(result)
+		// raw command outputs for debugging
+		if out, err := runCmd([]string{"sysctl", "-n", "vm.loadavg"}, "", 3*time.Second); err != nil {
+			debug["loadavg_err"] = err.Error()
+		} else {
+			debug["loadavg_raw"] = strings.TrimSpace(out)
+		}
+		if out, err := runCmd([]string{"sysctl", "-n", "hw.ncpu"}, "", 3*time.Second); err != nil {
+			debug["ncpu_err"] = err.Error()
+		} else {
+			debug["ncpu_raw"] = strings.TrimSpace(out)
+		}
+		if out, err := runCmd([]string{"vm_stat"}, "", 3*time.Second); err != nil {
+			debug["vmstat_err"] = err.Error()
+		} else {
+			debug["vmstat_raw"] = strings.TrimSpace(out)
+		}
+		if out, err := runCmd([]string{"sysctl", "-n", "hw.memsize"}, "", 3*time.Second); err != nil {
+			debug["memsize_err"] = err.Error()
+		} else {
+			debug["memsize_raw"] = strings.TrimSpace(out)
+		}
+	} else {
+		a.serverStatusLinux(result)
+		if data, err := os.ReadFile("/proc/loadavg"); err != nil {
+			debug["loadavg_err"] = err.Error()
+		} else {
+			debug["loadavg_raw"] = strings.TrimSpace(string(data))
+		}
+	}
+	debug["result"] = result
+	// tmux check
+	if out, err := a.tmux("display-message", "-p", "#S:#I.#W"); err != nil {
+		debug["tmux_err"] = err.Error()
+		debug["tmux_socket"] = a.cfg.TmuxSocket
+	} else {
+		debug["tmux_session"] = strings.TrimSpace(out)
+		debug["tmux_socket"] = a.cfg.TmuxSocket
+	}
+	jsonResponse(w, 200, debug)
+}
 
 func (a *API) serverStatus(w http.ResponseWriter, r *http.Request) {
 	result := M{}
