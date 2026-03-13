@@ -17,6 +17,11 @@ async function setupService(config) {
   } else if (process.platform === 'darwin') {
     await setupLaunchd(config, user);
   }
+
+  // Wait for tunnel URL if tunnel enabled
+  if (config.tunnel) {
+    config.tunnelUrl = await waitForTunnelUrl(config);
+  }
 }
 
 async function setupSystemd(config, user) {
@@ -131,6 +136,8 @@ async function setupLaunchd(config, user) {
   const binPath = path.join(installDir, 'claude-terminal');
   const ttydPath = findBinary('ttyd');
   const scriptPath = path.join(installDir, 'ttyd-start.sh');
+  const logDir = path.join(installDir, 'logs');
+  fs.mkdirSync(logDir, { recursive: true });
 
   const launchAgentsDir = path.join(os.homedir(), 'Library', 'LaunchAgents');
   fs.mkdirSync(launchAgentsDir, { recursive: true });
@@ -194,9 +201,12 @@ async function setupLaunchd(config, user) {
     sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${ctPlistPath}`));
   }
 
-  // Cloudflare Tunnel launchd service
+  // Cloudflare Tunnel launchd service (with log file for URL detection)
   if (config.tunnel) {
     const cloudflaredPath = findBinary('cloudflared');
+    const cfLogPath = path.join(logDir, 'cloudflared.log');
+    config._cfLogPath = cfLogPath;
+
     const cfPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -211,6 +221,8 @@ async function setupLaunchd(config, user) {
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
+    <key>StandardOutPath</key><string>${cfLogPath}</string>
+    <key>StandardErrorPath</key><string>${cfLogPath}</string>
 </dict>
 </plist>`;
 
@@ -226,6 +238,61 @@ async function setupLaunchd(config, user) {
       sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${cfPlistPath}`));
     }
   }
+}
+
+/**
+ * Wait for cloudflared to establish tunnel and return the URL.
+ * Polls logs for up to 15 seconds.
+ */
+async function waitForTunnelUrl(config) {
+  const spinner = createSpinner('Waiting for tunnel URL...').start();
+
+  for (let i = 0; i < 15; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    spinner.update(`Waiting for tunnel URL... (${i + 1}s)`);
+
+    const url = parseTunnelUrl(config);
+    if (url) {
+      spinner.succeed(`Tunnel URL ready`);
+      return url;
+    }
+  }
+
+  spinner.warn('Tunnel URL not detected yet — it may take a moment');
+  return null;
+}
+
+/**
+ * Parse tunnel URL from logs (systemd journal or launchd log file).
+ */
+function parseTunnelUrl(config) {
+  let logText = '';
+
+  if (process.platform === 'linux') {
+    try {
+      logText = execSync(
+        'sudo journalctl -u cloudflared-tunnel --no-pager -n 30 --output=cat 2>/dev/null',
+        { encoding: 'utf8', timeout: 5000 }
+      );
+    } catch {}
+  } else if (config._cfLogPath) {
+    try {
+      logText = fs.readFileSync(config._cfLogPath, 'utf8');
+    } catch {}
+  }
+
+  for (const line of logText.split('\n')) {
+    const idx = line.indexOf('https://');
+    if (idx >= 0) {
+      let url = line.substring(idx);
+      if (url.includes('trycloudflare.com')) {
+        const sp = url.search(/[\s"']/);
+        if (sp >= 0) url = url.substring(0, sp);
+        return url;
+      }
+    }
+  }
+  return null;
 }
 
 function findBinary(name) {

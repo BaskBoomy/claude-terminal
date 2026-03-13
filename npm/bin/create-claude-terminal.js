@@ -34,21 +34,32 @@ async function main() {
   // 4. Download and install Go server binary
   await installServer(config);
 
-  // 5. Set up systemd/launchd service
+  // 5. Set up systemd/launchd service (+ waits for tunnel URL)
   await setupService(config);
 
   // Final success
-  const url = config.domain
+  const localUrl = `http://localhost:${config.port}`;
+  const primaryUrl = config.domain
     ? `https://${config.domain}`
-    : `http://localhost:${config.port}`;
+    : config.tunnelUrl || localUrl;
 
   const lines = [
     `${color(c.green + c.bold, S.check)}  ${color(c.bold, 'Claude Web Terminal is running!')}`,
     '',
-    `${color(c.cyan, S.pointer)} ${color(c.bold, url)}`,
   ];
 
-  if (!config.domain) {
+  if (config.tunnelUrl) {
+    // Tunnel URL is the star — show it prominently
+    lines.push(`${color(c.cyan, S.pointer)} ${color(c.bold, config.tunnelUrl)}`);
+    lines.push(`${color(c.gray, '  Local: ' + localUrl)}`);
+    lines.push('');
+    lines.push(`${color(c.yellow, S.warn)} ${color(c.dim, 'Tunnel URL changes on restart — for testing only.')}`);
+    lines.push(`${color(c.dim, '  Set DOMAIN in .env for a permanent address,')}`);
+    lines.push(`${color(c.dim, '  or configure it in Settings > Server Access.')}`);
+  } else if (config.domain) {
+    lines.push(`${color(c.cyan, S.pointer)} ${color(c.bold, 'https://' + config.domain)}`);
+  } else {
+    lines.push(`${color(c.cyan, S.pointer)} ${color(c.bold, localUrl)}`);
     lines.push(`${color(c.gray, '  Also: http://<your-ip>:' + config.port)}`);
   }
 
@@ -61,19 +72,6 @@ async function main() {
     lines.push(`${color(c.gray, '  journalctl -u claude-terminal -f')}`);
   } else {
     lines.push(`${color(c.gray, '  launchctl list | grep claude')}`);
-  }
-
-  if (config.tunnel) {
-    lines.push('');
-    lines.push(`${color(c.cyan, S.info)} ${color(c.bold, 'Tunnel active')} ${color(c.dim, '— check URL:')}`);
-    if (process.platform === 'linux') {
-      lines.push(`${color(c.gray, '  sudo journalctl -u cloudflared-tunnel --no-pager -n 5')}`);
-    } else {
-      lines.push(`${color(c.gray, '  launchctl list | grep cloudflared')}`);
-    }
-    lines.push('');
-    lines.push(`${color(c.yellow, S.warn)} ${color(c.dim, 'Tunnel URL changes on restart — for testing only.')}`);
-    lines.push(`${color(c.dim, '  For a permanent domain, set DOMAIN in .env')}`);
   }
 
   console.log('\n' + box(lines, { color: c.green }) + '\n');
