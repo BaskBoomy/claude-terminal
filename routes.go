@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,6 +87,10 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/launch/config", a.auth.RequireAuth(a.launchUpdateConfig))
 	mux.HandleFunc("GET /api/launch/history", a.auth.RequireAuth(a.launchGetHistory))
 	mux.HandleFunc("POST /api/launch/seed", a.auth.RequireAuth(a.launchSeed))
+
+	// Files explorer
+	a.registerFileRoutes(mux)
+	a.registerFileEditRoute(mux)
 }
 
 // --- JSON helpers ---
@@ -587,15 +592,50 @@ func (a *API) brainWrite(w http.ResponseWriter, r *http.Request) {
 func (a *API) serverStatus(w http.ResponseWriter, r *http.Request) {
 	result := M{}
 
-	// CPU load
+	if runtime.GOOS == "darwin" {
+		a.serverStatusDarwin(result)
+	} else {
+		a.serverStatusLinux(result)
+	}
+
+	// Disk (cross-platform via df)
+	dfArgs := []string{"df", "/"}
+	if runtime.GOOS == "linux" {
+		dfArgs = []string{"df", "-B1", "/"}
+	}
+	if out, err := runCmd(dfArgs, "", 3*time.Second); err == nil {
+		lines := strings.Split(out, "\n")
+		if len(lines) >= 2 {
+			fields := strings.Fields(lines[1])
+			if runtime.GOOS == "darwin" && len(fields) >= 5 {
+				// macOS df: 512-byte blocks
+				total, _ := strconv.ParseInt(fields[1], 10, 64)
+				used, _ := strconv.ParseInt(fields[2], 10, 64)
+				if total > 0 {
+					result["disk"] = round1(float64(used) / float64(total) * 100)
+				}
+			} else if len(fields) >= 5 {
+				total, _ := strconv.ParseInt(fields[1], 10, 64)
+				used, _ := strconv.ParseInt(fields[2], 10, 64)
+				if total > 0 {
+					result["disk"] = round1(float64(used) / float64(total) * 100)
+				}
+			}
+		}
+	}
+
+	jsonResponse(w, 200, result)
+}
+
+func (a *API) serverStatusLinux(result M) {
 	if data, err := os.ReadFile("/proc/loadavg"); err == nil {
 		fields := strings.Fields(string(data))
 		if len(fields) > 0 {
 			loadAvg := 0.0
 			fmt.Sscanf(fields[0], "%f", &loadAvg)
-			cpuCount := 4 // default
-			if data, err := os.ReadFile("/proc/cpuinfo"); err == nil {
-				cpuCount = strings.Count(string(data), "processor\t:")
+			cpuCount := 4
+			if cpuData, err := os.ReadFile("/proc/cpuinfo"); err == nil {
+				cpuCount = strings.Count(string(cpuData), "processor\t:")
 				if cpuCount == 0 {
 					cpuCount = 4
 				}
@@ -604,8 +644,6 @@ func (a *API) serverStatus(w http.ResponseWriter, r *http.Request) {
 			result["loadAvg"] = loadAvg
 		}
 	}
-
-	// Memory
 	if data, err := os.ReadFile("/proc/meminfo"); err == nil {
 		memInfo := make(map[string]int64)
 		for _, line := range strings.Split(string(data), "\n") {
@@ -625,32 +663,64 @@ func (a *API) serverStatus(w http.ResponseWriter, r *http.Request) {
 			result["memTotalGB"] = round1(float64(total) / 1048576)
 		}
 	}
-
-	// Disk
-	// Use syscall-free approach via df command
-	if out, err := runCmd([]string{"df", "-B1", "/"}, "", 3*time.Second); err == nil {
-		lines := strings.Split(out, "\n")
-		if len(lines) >= 2 {
-			fields := strings.Fields(lines[1])
-			if len(fields) >= 5 {
-				total, _ := strconv.ParseInt(fields[1], 10, 64)
-				used, _ := strconv.ParseInt(fields[2], 10, 64)
-				if total > 0 {
-					result["disk"] = round1(float64(used) / float64(total) * 100)
-				}
-			}
-		}
-	}
-
-	// Temperature
 	if data, err := os.ReadFile("/sys/class/thermal/thermal_zone0/temp"); err == nil {
 		tempStr := strings.TrimSpace(string(data))
 		if temp, err := strconv.ParseFloat(tempStr, 64); err == nil {
 			result["temp"] = round1(temp / 1000)
 		}
 	}
+}
 
-	jsonResponse(w, 200, result)
+func (a *API) serverStatusDarwin(result M) {
+	// CPU load
+	if out, err := runCmd([]string{"sysctl", "-n", "vm.loadavg"}, "", 3*time.Second); err == nil {
+		trimmed := strings.Trim(strings.TrimSpace(out), "{ }")
+		fields := strings.Fields(trimmed)
+		if len(fields) > 0 {
+			loadAvg := 0.0
+			fmt.Sscanf(fields[0], "%f", &loadAvg)
+			cpuCount := 4
+			if cpuOut, err := runCmd([]string{"sysctl", "-n", "hw.ncpu"}, "", 3*time.Second); err == nil {
+				if n, err := strconv.Atoi(strings.TrimSpace(cpuOut)); err == nil && n > 0 {
+					cpuCount = n
+				}
+			}
+			result["cpu"] = round1(loadAvg / float64(cpuCount) * 100)
+			result["loadAvg"] = loadAvg
+		}
+	}
+	// Memory
+	if out, err := runCmd([]string{"vm_stat"}, "", 3*time.Second); err == nil {
+		pageSize := int64(16384)
+		if psOut, err := runCmd([]string{"sysctl", "-n", "hw.pagesize"}, "", 3*time.Second); err == nil {
+			if ps, err := strconv.ParseInt(strings.TrimSpace(psOut), 10, 64); err == nil {
+				pageSize = ps
+			}
+		}
+		stats := make(map[string]int64)
+		for _, line := range strings.Split(out, "\n") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				valStr := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(parts[1]), "."))
+				if val, err := strconv.ParseInt(valStr, 10, 64); err == nil {
+					stats[key] = val
+				}
+			}
+		}
+		if memOut, err := runCmd([]string{"sysctl", "-n", "hw.memsize"}, "", 3*time.Second); err == nil {
+			totalBytes, _ := strconv.ParseInt(strings.TrimSpace(memOut), 10, 64)
+			if totalBytes > 0 {
+				free := (stats["Pages free"] + stats["Pages speculative"]) * pageSize
+				inactive := stats["Pages inactive"] * pageSize
+				available := free + inactive
+				used := totalBytes - available
+				result["mem"] = round1(float64(used) / float64(totalBytes) * 100)
+				result["memUsedGB"] = round1(float64(used) / (1024 * 1024 * 1024))
+				result["memTotalGB"] = round1(float64(totalBytes) / (1024 * 1024 * 1024))
+			}
+		}
+	}
 }
 
 func (a *API) gitStatus(w http.ResponseWriter, r *http.Request) {
