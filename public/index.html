@@ -315,6 +315,17 @@
             <div id="sh-snippet-list"></div>
             <button class="sn-add-btn" id="sh-add-snippet">+ Add Snippet</button>
 
+            <div class="settings-section-title" data-i18n="totp.title">Two-Factor Authentication (2FA)</div>
+            <div class="settings-group" id="totp-section">
+                <div class="settings-item" id="totp-status-row">
+                    <div>
+                        <div class="settings-item-label" id="totp-status-text" data-i18n="totp.disabled">2FA is disabled</div>
+                    </div>
+                    <button class="settings-totp-btn" id="totp-toggle-btn" data-i18n="totp.enable">Enable 2FA</button>
+                </div>
+            </div>
+            <div id="totp-setup-area" style="display:none"></div>
+
             <button class="settings-logout" id="sh-logout">&#x23FB; Log Out</button>
         </div>
         <div class="settings-save-bar">

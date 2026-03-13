@@ -28,6 +28,7 @@ type API struct {
 	auth  *Auth
 	brain *Brain
 	push  *PushManager
+	totp  *TOTP
 
 	// Usage cache
 	usageCache   any
@@ -48,6 +49,12 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/auth/check", a.authCheck)
 	mux.HandleFunc("POST /api/auth/login", a.authLogin)
 	mux.HandleFunc("POST /api/auth/logout", a.authLogout)
+
+	// TOTP (2FA)
+	mux.HandleFunc("GET /api/totp/status", a.totpStatus)
+	mux.HandleFunc("POST /api/totp/setup", a.auth.RequireAuth(a.totpSetup))
+	mux.HandleFunc("POST /api/totp/verify-setup", a.auth.RequireAuth(a.totpVerifySetup))
+	mux.HandleFunc("POST /api/totp/disable", a.auth.RequireAuth(a.totpDisable))
 
 	// Protected routes
 	mux.HandleFunc("GET /api/settings", a.auth.RequireAuth(a.getSettings))
@@ -200,6 +207,22 @@ func (a *API) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check TOTP
+	if a.totp.IsEnabled() {
+		totpCode, _ := body["totp_code"].(string)
+		if totpCode == "" {
+			// Password OK, but need TOTP
+			jsonResponse(w, 200, M{"totp_required": true})
+			return
+		}
+		// Try TOTP code first, then recovery code
+		if !a.totp.ValidateCurrentCode(totpCode) && !a.totp.UseRecoveryCode(totpCode) {
+			a.auth.RecordFailedAttempt(ip)
+			jsonResponse(w, 401, M{"error": "Invalid verification code"})
+			return
+		}
+	}
+
 	a.auth.ResetAttempts(ip)
 	token := a.auth.CreateSession(ip)
 	setSessionCookie(w, a.cfg, token)
@@ -212,6 +235,86 @@ func (a *API) authLogout(w http.ResponseWriter, r *http.Request) {
 		a.auth.DestroySession(token)
 	}
 	clearSessionCookie(w, a.cfg)
+	jsonResponse(w, 200, M{"ok": true})
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOTP (2FA)
+// ═══════════════════════════════════════════════════════════
+
+// pending TOTP setup (in-memory, not persisted until verified)
+var pendingTOTPSecret string
+var pendingTOTPRecovery []string
+var pendingTOTPMu sync.Mutex
+
+func (a *API) totpStatus(w http.ResponseWriter, r *http.Request) {
+	jsonResponse(w, 200, M{"enabled": a.totp.IsEnabled()})
+}
+
+func (a *API) totpSetup(w http.ResponseWriter, r *http.Request) {
+	if a.totp.IsEnabled() {
+		jsonResponse(w, 400, M{"error": "TOTP already enabled"})
+		return
+	}
+	pendingTOTPMu.Lock()
+	pendingTOTPSecret = a.totp.GenerateSecret()
+	pendingTOTPRecovery = a.totp.GenerateRecoveryCodes()
+	pendingTOTPMu.Unlock()
+
+	uri := a.totp.OTPAuthURI(pendingTOTPSecret, "ClaudeTerminal")
+	jsonResponse(w, 200, M{
+		"secret":         pendingTOTPSecret,
+		"uri":            uri,
+		"recovery_codes": pendingTOTPRecovery,
+	})
+}
+
+func (a *API) totpVerifySetup(w http.ResponseWriter, r *http.Request) {
+	body, err := readJSON(r)
+	if err != nil {
+		jsonResponse(w, 400, M{"error": "Invalid JSON"})
+		return
+	}
+	code, _ := body["code"].(string)
+
+	pendingTOTPMu.Lock()
+	secret := pendingTOTPSecret
+	recovery := pendingTOTPRecovery
+	pendingTOTPMu.Unlock()
+
+	if secret == "" {
+		jsonResponse(w, 400, M{"error": "No pending TOTP setup"})
+		return
+	}
+	if !a.totp.ValidateCode(secret, code) {
+		jsonResponse(w, 401, M{"error": "Invalid code"})
+		return
+	}
+	if err := a.totp.Enable(secret, recovery); err != nil {
+		jsonResponse(w, 500, M{"error": "Failed to save TOTP"})
+		return
+	}
+
+	pendingTOTPMu.Lock()
+	pendingTOTPSecret = ""
+	pendingTOTPRecovery = nil
+	pendingTOTPMu.Unlock()
+
+	jsonResponse(w, 200, M{"ok": true})
+}
+
+func (a *API) totpDisable(w http.ResponseWriter, r *http.Request) {
+	body, err := readJSON(r)
+	if err != nil {
+		jsonResponse(w, 400, M{"error": "Invalid JSON"})
+		return
+	}
+	password, _ := body["password"].(string)
+	if !a.auth.VerifyPassword(password) {
+		jsonResponse(w, 401, M{"error": "Wrong password"})
+		return
+	}
+	a.totp.Disable()
 	jsonResponse(w, 200, M{"ok": true})
 }
 
