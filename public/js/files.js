@@ -1,5 +1,6 @@
 // files.js — File Explorer module
 import { t } from './i18n.js';
+import { renderMarkdown } from './markdown.js';
 
 var currentPath = '', selectedFiles = new Set(), selectMode = false;
 var favorites = [], sharedFilesDir = '', sortBy = 'name', sortDir = 'asc';
@@ -35,6 +36,10 @@ var EXT_MAP = {};
 ['mp3','wav','flac','ogg'].forEach(function(e) { EXT_MAP[e] = 'audio'; });
 EXT_MAP['env'] = 'lock'; EXT_MAP['html'] = 'web'; EXT_MAP['css'] = 'style';
 var IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp'];
+var HTML_EXTS = ['html', 'htm'];
+var VIDEO_EXTS = ['mp4', 'webm', 'mov'];
+var AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a'];
+var MD_EXTS = ['md'];
 
 function getIcon(item) { return item.isDir ? FILE_ICONS.dir : (FILE_ICONS[EXT_MAP[item.ext]] || FILE_ICONS.file); }
 
@@ -320,21 +325,58 @@ function showQRModal(url, name) {
 }
 
 // --- Preview ---
+function rawUrl(path) { return '/api/files/raw?path=' + encodeURIComponent(path); }
+
 function openPreview(item) {
     filesListView.style.display = 'none'; filesPreviewView.style.display = 'flex';
     previewTitle.textContent = item.name;
     previewBody.innerHTML = '<div class="files-loading">' + escHtml(t('common.loading')) + '</div>';
+    var ext = (item.ext || '').toLowerCase();
 
-    if (IMAGE_EXTS.indexOf(item.ext) !== -1) {
+    // Image
+    if (IMAGE_EXTS.indexOf(ext) !== -1) {
         previewBody.innerHTML = '<div class="files-img-wrap"><img class="files-preview-img" src="/api/files/preview?path=' +
             encodeURIComponent(item.path) + '" alt="' + escHtml(item.name) + '"></div>';
         setupPreviewActions(item, 'image'); return;
     }
 
+    // HTML — iframe with sandbox
+    if (HTML_EXTS.indexOf(ext) !== -1) {
+        previewBody.innerHTML = '<iframe class="files-preview-iframe" src="' + rawUrl(item.path) +
+            '" sandbox="allow-scripts allow-same-origin"></iframe>';
+        setupPreviewActions(item, 'html'); return;
+    }
+
+    // PDF — browser native viewer
+    if (ext === 'pdf') {
+        previewBody.innerHTML = '<iframe class="files-preview-iframe" src="' + rawUrl(item.path) + '"></iframe>';
+        setupPreviewActions(item, 'pdf'); return;
+    }
+
+    // Video
+    if (VIDEO_EXTS.indexOf(ext) !== -1) {
+        previewBody.innerHTML = '<div class="files-media-wrap"><video class="files-preview-video" controls autoplay>' +
+            '<source src="' + rawUrl(item.path) + '"></video></div>';
+        setupPreviewActions(item, 'video'); return;
+    }
+
+    // Audio
+    if (AUDIO_EXTS.indexOf(ext) !== -1) {
+        previewBody.innerHTML = '<div class="files-media-wrap"><audio class="files-preview-audio" controls autoplay>' +
+            '<source src="' + rawUrl(item.path) + '"></audio></div>';
+        setupPreviewActions(item, 'audio'); return;
+    }
+
+    // Text/Code/Markdown — fetch via preview API
     fetch('/api/files/preview?path=' + encodeURIComponent(item.path), { credentials: 'same-origin' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.type === 'text') {
+                // Markdown — render as HTML
+                if (MD_EXTS.indexOf(ext) !== -1) {
+                    previewBody.innerHTML = '<div class="files-preview-md">' + renderMarkdown(data.content) + '</div>';
+                    setupPreviewActions(item, 'text', data.content); return;
+                }
                 var pre = document.createElement('pre');
                 pre.className = 'files-preview-text'; pre.textContent = data.content;
                 previewBody.innerHTML = ''; previewBody.appendChild(pre);
@@ -353,12 +395,17 @@ function openPreview(item) {
 
 function setupPreviewActions(item, type, content) {
     var footer = $('files-preview-footer');
-    footer.innerHTML = '<button class="files-action-btn" id="pa-dl">' + escHtml(t('files.download')) + '</button>' +
-        '<button class="files-action-btn secondary" id="pa-share">' + escHtml(t('files.qrShare')) + '</button>' +
-        (type === 'text' ? '<button class="files-action-btn secondary" id="pa-edit">' + escHtml(t('files.edit')) + '</button>' : '');
+    var html = '<button class="files-action-btn" id="pa-dl">' + escHtml(t('files.download')) + '</button>' +
+        '<button class="files-action-btn secondary" id="pa-share">' + escHtml(t('files.qrShare')) + '</button>';
+    if (type === 'text') html += '<button class="files-action-btn secondary" id="pa-edit">' + escHtml(t('files.edit')) + '</button>';
+    if (type === 'html') html += '<button class="files-action-btn secondary" id="pa-preview">' + escHtml(t('files.openInPreview')) + '</button>';
+    footer.innerHTML = html;
     footer.querySelector('#pa-dl').addEventListener('click', function() { downloadFile(item.path); });
     footer.querySelector('#pa-share').addEventListener('click', function() { shareFile(item.path); });
     if (type === 'text') footer.querySelector('#pa-edit').addEventListener('click', function() { openEditor(item, content); });
+    if (type === 'html') footer.querySelector('#pa-preview').addEventListener('click', function() {
+        window._openPreviewUrl && window._openPreviewUrl(rawUrl(item.path));
+    });
 }
 
 // --- Editor ---

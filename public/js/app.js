@@ -4,7 +4,7 @@
 import { initAuth } from './auth.js';
 import { initTerminal, getTA, sendText, sendKey, tmuxCmd, uploadImage, submitInput, getTtydUrl, updateSettings as updateTermSettings, openSendHistory, closeSendHistory } from './terminal.js';
 import { initPolling, startUsagePolling, stopUsagePolling, startServerPolling, stopServerPolling, startNotifyPolling, stopNotifyPolling, fetchClaudeUsage, fetchServerStatus, fetchTmuxSession, setNotifyEnabled } from './polling.js';
-import { initPreview } from './preview.js';
+import { initPreview, navigateActiveTab } from './preview.js';
 import { initNotes, loadNotesList, setViewSwitcher as setNotesViewSwitcher } from './notes.js';
 import { initBrain, loadBrainTree, setViewSwitcher as setBrainViewSwitcher } from './brain.js';
 import { initDash, loadDashboard } from './dash.js';
@@ -760,6 +760,7 @@ function showPWAPrompt() {
 
     // 5. Initialize feature modules
     initPreview();
+    window._openPreviewUrl = function(url) { switchView('preview'); navigateActiveTab(url); };
     initNotes();
     initBrain();
     initDash();
