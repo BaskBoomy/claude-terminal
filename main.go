@@ -39,6 +39,7 @@ func main() {
 	os.MkdirAll(cfg.DataDir, 0755)
 	os.MkdirAll(cfg.NotesDir, 0755)
 	os.MkdirAll(cfg.UploadDir, 0755)
+	os.MkdirAll(cfg.FilesDir, 0755)
 
 	// Initialize auth
 	auth := NewAuth(cfg)
@@ -61,6 +62,9 @@ func main() {
 	// Static files from embedded FS
 	publicSub, _ := fs.Sub(publicFS, "public")
 
+	// Custom file explorer with beautiful UI
+	filesServer := NewFileExplorer(cfg.FilesDir)
+
 	// Main handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Security headers
@@ -69,6 +73,22 @@ func main() {
 		w.Header().Set("Referrer-Policy", "same-origin")
 
 		path := r.URL.Path
+
+		// Static files: /files/* (auth required, directory listing enabled)
+		if path == "/files" || path == "/files/" || strings.HasPrefix(path, "/files/") {
+			token := getSessionToken(r, cfg.CookieName)
+			if !auth.ValidateSession(token) {
+				http.Redirect(w, r, "/login.html", http.StatusFound)
+				return
+			}
+			if path == "/files" {
+				http.Redirect(w, r, "/files/", http.StatusMovedPermanently)
+				return
+			}
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+			filesServer.ServeHTTP(w, r)
+			return
+		}
 
 		// ttyd proxy: /ttyd/*
 		if path == "/ttyd" || path == "/ttyd/" || strings.HasPrefix(path, "/ttyd/") {
