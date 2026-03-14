@@ -2,7 +2,7 @@
  * gestures.js — Touch gesture utilities (ES module)
  *
  * Exports:
- *   initGestures()                        — iOS edge swipe blockers + popstate trap
+ *   initGestures()                        — edge double-tap tab switching + popstate trap
  *   setupPullToRefresh(scrollEl, onRefresh) — pull-to-refresh on a scrollable element
  *   initTabDragDrop(tabsContainer, onReorder) — touch-based tab reordering with FLIP
  *   initTouchScroll(frame)                — touch scrolling for terminal iframe
@@ -11,102 +11,68 @@
 import { t } from './i18n.js';
 import { isMobile } from './utils.js';
 
-// ─── iOS Edge Swipe Prevention + Popstate Trap ───────────────────────────────
+// ─── Edge Double-Tap + Popstate Trap ─────────────────────────────────────────
+
+// Shared edge double-tap state (used by both document listener and iframe listener)
+var _edgeTap = { time: 0, side: null };
+var _edgeCallback = null;
+var EDGE_WIDTH = 50;
+var EDGE_DOUBLE_TAP_MS = 300;
+var EDGE_TAP_THRESHOLD = 10;
+
+// Core double-tap check — called from document listener and iframe listener.
+// All coordinates must be in parent window space.
+function _checkEdgeDoubleTap(endX, endY) {
+  var side = null;
+  if (endX < EDGE_WIDTH) side = 'left';
+  else if (endX > window.innerWidth - EDGE_WIDTH) side = 'right';
+  if (!side) { _edgeTap = { time: 0, side: null }; return; }
+
+  // Skip taps in bottom UI areas
+  var bottomIds = ['input-bar', 'toolbar', 'keys-bar'];
+  for (var i = 0; i < bottomIds.length; i++) {
+    var area = document.getElementById(bottomIds[i]);
+    if (area && area.offsetParent !== null) {
+      var r = area.getBoundingClientRect();
+      if (r.height > 0 && endY >= r.top) return;
+    }
+  }
+
+  var now = Date.now();
+  if (side === _edgeTap.side && now - _edgeTap.time < EDGE_DOUBLE_TAP_MS) {
+    _edgeTap = { time: 0, side: null };
+    if (_edgeCallback) {
+      _edgeCallback(side === 'right' ? 'next' : 'prev');
+    }
+  } else {
+    _edgeTap = { time: now, side: side };
+  }
+}
 
 export function initGestures(opts) {
-  // Edge swipe blockers and popstate trap only needed on mobile
   if (isMobile) {
-    _initEdgeSwipeBlockers(opts || {});
+    _edgeCallback = (opts && opts.onEdgeDoubleTap) || null;
+    _initDocEdgeListener();
     _initPopstateTrap();
   }
 }
 
-var _edgeOverlays = [];
+// Document-level passive listener — handles all taps EXCEPT inside iframes.
+function _initDocEdgeListener() {
+  var startX = 0, startY = 0;
 
-export function disableEdgeZones() {
-  _edgeOverlays.forEach(function(el) { el.style.pointerEvents = 'none'; });
-}
-export function enableEdgeZones() {
-  _edgeOverlays.forEach(function(el) { el.style.pointerEvents = ''; });
-}
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length !== 1) return;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true, capture: true });
 
-// Recalculate edge overlay height to stop above bottom UI areas
-function _updateEdgeHeight() {
-  var ids = ['input-bar', 'toolbar', 'keys-bar'];
-  var minTop = window.innerHeight;
-  for (var i = 0; i < ids.length; i++) {
-    var area = document.getElementById(ids[i]);
-    if (area && !area.classList.contains('hidden')) {
-      var r = area.getBoundingClientRect();
-      if (r.top < minTop) minTop = r.top;
-    }
-  }
-  _edgeOverlays.forEach(function(el) {
-    el.style.height = Math.max(0, minTop) + 'px';
-  });
-}
-
-function _initEdgeSwipeBlockers(opts) {
-  var EDGE = 50;
-  var TAP_THRESHOLD = 10;
-  var DOUBLE_TAP_MS = 300;
-
-  ['left', 'right'].forEach(function (side) {
-    var el = document.createElement('div');
-    el.style.cssText =
-      'position:fixed;top:0;' + side + ':0;width:' + EDGE +
-      'px;height:100%;z-index:9999;touch-action:none;-webkit-touch-callout:none;';
-    document.body.appendChild(el);
-    _edgeOverlays.push(el);
-
-    var startX, startY;
-    var lastTapTime = 0;
-
-    el.addEventListener('touchstart', function (e) {
-      e.preventDefault();
-      var t = e.touches[0];
-      startX = t.clientX;
-      startY = t.clientY;
-    }, { passive: false });
-
-    el.addEventListener('touchmove', function (e) {
-      e.preventDefault();
-    }, { passive: false });
-
-    el.addEventListener('touchend', function (e) {
-      e.preventDefault();
-      var t = e.changedTouches[0];
-      var dx = Math.abs(t.clientX - startX);
-      var dy = Math.abs(t.clientY - startY);
-      if (dx >= TAP_THRESHOLD || dy >= TAP_THRESHOLD) return;
-
-      var now = Date.now();
-      var tapX = t.clientX;
-      var tapY = t.clientY;
-
-      if (now - lastTapTime < DOUBLE_TAP_MS) {
-        // Double tap — fire tab switch
-        lastTapTime = 0;
-        if (opts.onEdgeDoubleTap) {
-          opts.onEdgeDoubleTap(side === 'right' ? 'next' : 'prev');
-        }
-      } else {
-        // Single tap — pass through immediately (no delay)
-        lastTapTime = now;
-        el.style.pointerEvents = 'none';
-        var target = document.elementFromPoint(tapX, tapY);
-        el.style.pointerEvents = '';
-        if (target) target.click();
-      }
-    }, { passive: false });
-  });
-
-  // Initial height calc + keep updated on resize and DOM changes
-  setTimeout(_updateEdgeHeight, 100);
-  window.addEventListener('resize', _updateEdgeHeight);
-  new MutationObserver(_updateEdgeHeight).observe(document.body, {
-    childList: true, subtree: true, attributes: true, attributeFilter: ['class']
-  });
+  document.addEventListener('touchend', function(e) {
+    var t = e.changedTouches[0];
+    if (Math.abs(t.clientX - startX) >= EDGE_TAP_THRESHOLD ||
+        Math.abs(t.clientY - startY) >= EDGE_TAP_THRESHOLD) return;
+    _checkEdgeDoubleTap(t.clientX, t.clientY);
+  }, { passive: true, capture: true });
 }
 
 function _initPopstateTrap() {
@@ -565,10 +531,21 @@ export function initTouchScroll(frame, callbacks) {
       }
     }, { passive: false });
 
-    xtermScreen.addEventListener('touchend', function() {
+    xtermScreen.addEventListener('touchend', function(e) {
       if (isSwiping && !swipeHandled) {
         frame.style.transition = 'transform 200ms ease-out';
         frame.style.transform = 'translateX(0)';
+      }
+      // Edge double-tap detection for iframe touches
+      if (!isScrolling && !isSwiping && e.changedTouches.length === 1) {
+        var t = e.changedTouches[0];
+        var dx = Math.abs(t.clientX - startX);
+        var dy = Math.abs(t.clientY - startY);
+        if (dx < THRESHOLD && dy < THRESHOLD) {
+          // Convert iframe coords to parent window coords
+          var frameRect = frame.getBoundingClientRect();
+          _checkEdgeDoubleTap(t.clientX + frameRect.left, t.clientY + frameRect.top);
+        }
       }
       isScrolling = false; isSwiping = false;
       swipeHandled = false; directionLocked = false;

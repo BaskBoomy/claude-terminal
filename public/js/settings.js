@@ -1,6 +1,5 @@
 // Settings Bottom Sheet — ES module
 import { showConfirm, closeConfirm, showToast } from './utils.js';
-import { disableEdgeZones, enableEdgeZones } from './gestures.js';
 import { t, setLocale, getLocale, translateDOM } from './i18n.js';
 import { I, icon } from './icons.js';
 
@@ -346,7 +345,6 @@ function openSettings() {
     shBackdrop.classList.add('open');
     shSheet.classList.add('open');
     document.body.style.overflow = 'hidden';
-    disableEdgeZones();
 }
 
 function closeSettings() {
@@ -355,7 +353,6 @@ function closeSettings() {
     shBackdrop.classList.remove('open');
     shSheet.classList.remove('open');
     document.body.style.overflow = '';
-    enableEdgeZones();
 }
 
 // --- Init ---
