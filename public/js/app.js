@@ -16,6 +16,7 @@ import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } fr
 import { renderSnippets } from './snippets.js';
 import { showToast, showConfirm, closeConfirm, isMobile } from './utils.js';
 import { initI18n, t, translateDOM } from './i18n.js';
+import { I, icon } from './icons.js';
 
 // --- Make showToast globally available (used by some modules) ---
 window.showToast = showToast;
@@ -276,7 +277,7 @@ function setupPlusMenu() {
             text.textContent = note.title || note.preview || t('notes.untitled');
             var del = document.createElement('button');
             del.className = 'pm-memo-del';
-            del.innerHTML = '&times;';
+            del.innerHTML = icon('x', 12);
             function deleteMemo(e) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -428,7 +429,7 @@ function setupToolbarToggle() {
         toolbarsOpen = open;
         toolbar.classList.toggle('hidden', !open);
         keysBar.classList.toggle('hidden', !open);
-        toolbarToggle.innerHTML = open ? '\u25BC' : '\u25B2';
+        toolbarToggle.innerHTML = open ? I.chevronDown : I.chevronUp;
         sessionStorage.setItem('toolbars-open', open ? '1' : '0');
     }
     setToolbars(toolbarsOpen);

@@ -1,6 +1,7 @@
 import { escapeHtml, colorForPct, colorForTemp } from './utils.js';
 import { t } from './i18n.js';
 import { T } from './theme.js';
+import { I, icon } from './icons.js';
 import { getCachedUsageData, getLastServerData } from './polling.js';
 
 // --- State ---
@@ -68,7 +69,7 @@ function bindGitEvents() {
             var sec = contentEl.querySelector('.git-files-section');
             if (sec) {
                 var open = sec.classList.toggle('open');
-                toggleBtn.textContent = open ? t('dash.hideFiles') : t('dash.showFiles');
+                toggleBtn.innerHTML = open ? icon('chevronUp', 12) + ' ' + t('dash.hideFiles') : icon('chevronDown', 12) + ' ' + t('dash.showFiles');
             }
         });
     }
@@ -77,7 +78,7 @@ function bindGitEvents() {
 // --- Usage section ---
 function renderUsageSection(data) {
     var html = '<div class="dash-section">';
-    html += '<div class="dash-section-title"><span>⚡</span> Claude Usage</div>';
+    html += '<div class="dash-section-title"><span style="color:' + T.accent() + '">' + icon('zap', 16) + '</span> Claude Usage</div>';
     if (!data || data.error || !data.five_hour) {
         var errMsg = (data && data.error && data.error.indexOf('429') !== -1)
             ? t('dash.rateLimited')
@@ -125,7 +126,7 @@ function renderUsageSection(data) {
 // --- Git section ---
 function renderGitSection(repos, activeId) {
     var html = '<div class="dash-git-wrap"><div class="dash-section">';
-    html += '<div class="dash-section-title"><span>📦</span> Git Status</div>';
+    html += '<div class="dash-section-title"><span style="color:' + T.textMuted() + '">' + icon('package', 16) + '</span> Git Status</div>';
 
     if (!repos || repos.length === 0) {
         html += '<div class="dash-empty">' + t('dash.noGitRepo') + '</div>';
@@ -157,11 +158,11 @@ function renderGitSection(repos, activeId) {
     html += '<div class="git-card">';
     // Branch row
     html += '<div class="git-branch-row">';
-    html += '<span class="git-branch-icon">🌿</span>';
+    html += '<span class="git-branch-icon" style="color:' + T.successText() + '">' + icon('chevronRight', 14) + '</span>';
     html += '<span class="git-branch-name">' + escapeHtml(git.branch || 'detached') + '</span>';
-    if (git.ahead > 0) html += '<span class="git-badge ahead">↑' + git.ahead + '</span>';
-    if (git.behind > 0) html += '<span class="git-badge behind">↓' + git.behind + '</span>';
-    if (git.changes && git.changes.total === 0) html += '<span class="git-badge clean">✓ clean</span>';
+    if (git.ahead > 0) html += '<span class="git-badge ahead">' + icon('arrowUp', 10) + git.ahead + '</span>';
+    if (git.behind > 0) html += '<span class="git-badge behind">' + icon('arrowDown', 10) + git.behind + '</span>';
+    if (git.changes && git.changes.total === 0) html += '<span class="git-badge clean">' + icon('checkCircle', 10) + ' clean</span>';
     html += '</div>';
 
     // Changes summary
@@ -183,7 +184,7 @@ function renderGitSection(repos, activeId) {
                 html += '<div class="git-file-row"><span class="git-file-status ' + stClass + '">' + escapeHtml(st) + '</span><span class="git-file-name">' + escapeHtml(f.file) + '</span></div>';
             });
             html += '</div>';
-            html += '<button class="git-files-toggle">' + t('dash.showFiles') + '</button>';
+            html += '<button class="git-files-toggle">' + icon('chevronDown', 12) + ' ' + t('dash.showFiles') + '</button>';
         }
     }
 
@@ -207,7 +208,7 @@ function renderGitSection(repos, activeId) {
 function renderServerSection(s) {
     if (!s) return '';
     var html = '<div class="dash-section">';
-    html += '<div class="dash-section-title"><span>🖥</span> Server</div>';
+    html += '<div class="dash-section-title"><span style="color:' + T.textMuted() + '">' + icon('terminal', 16) + '</span> Server</div>';
     html += '<div class="usage-card"><div class="usage-daily-row">';
     if (s.cpu != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">CPU</div><div class="usage-daily-val" style="color:' + (s.cpu >= 80 ? T.danger() : T.text()) + '">' + s.cpu + '%</div></div>';
     if (s.mem != null) html += '<div class="usage-daily-item"><div class="usage-daily-label">MEM</div><div class="usage-daily-val" style="color:' + (s.mem >= 80 ? T.danger() : T.text()) + '">' + s.memUsedGB + '/' + s.memTotalGB + 'G</div></div>';

@@ -1,6 +1,7 @@
 import { showConfirm, closeConfirm, escapeHtml, formatBytes } from './utils.js';
 import { t } from './i18n.js';
 import { renderMarkdown } from './markdown.js';
+import { I, icon } from './icons.js';
 
 let treeView, editorView, treeItems, refreshBtn, backBtn;
 let fileTitle, editToggle, rendered, textarea;
@@ -13,7 +14,7 @@ let saveTimer = null;
 let viewSwitcherFn = null;
 
 const CAT_ICONS = {
-    memory: '\u{1F9E0}', skills: '\u26A1', agents: '\u{1F916}', rules: '\u{1F4CF}', hooks: '\u{1FA9D}'
+    memory: I.brain, skills: I.zap, agents: I.bot, rules: I.ruler, hooks: I.hook
 };
 
 function formatSize(bytes) {
@@ -36,10 +37,10 @@ function renderTree() {
             var catEl = document.createElement('div');
             catEl.className = 'brain-cat';
             catEl.innerHTML =
-                '<span class="brain-cat-icon">' + (CAT_ICONS[cat.name] || '\u{1F4C4}') + '</span>' +
+                '<span class="brain-cat-icon">' + (CAT_ICONS[cat.name] || I.fileDoc) + '</span>' +
                 '<span class="brain-cat-name">' + escapeHtml(cat.name) + '</span>' +
                 '<span class="brain-cat-count">' + cat.files.length + '</span>' +
-                '<span class="brain-cat-arrow">\u25B6</span>';
+                '<span class="brain-cat-arrow">' + I.chevronRight + '</span>';
             treeItems.appendChild(catEl);
 
             var filesEl = document.createElement('div');
@@ -59,7 +60,7 @@ function renderTree() {
 
             catEl.addEventListener('click', function() {
                 var open = filesEl.classList.toggle('open');
-                catEl.querySelector('.brain-cat-arrow').textContent = open ? '\u25BC' : '\u25B6';
+                catEl.querySelector('.brain-cat-arrow').innerHTML = open ? I.chevronDown : I.chevronRight;
             });
         });
     });

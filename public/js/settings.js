@@ -2,6 +2,7 @@
 import { showConfirm, closeConfirm, showToast } from './utils.js';
 import { disableEdgeZones, enableEdgeZones } from './gestures.js';
 import { t, setLocale, getLocale, translateDOM } from './i18n.js';
+import { I, icon } from './icons.js';
 
 var shSettings = { general: { wakeLock: false, fontSize: 16, notification: false }, snippets: [] };
 
@@ -112,20 +113,20 @@ function renderSettingsSnippets() {
         var cmdPreview = sn.command ? sn.command.split('\n')[0] : '';
         if (cmdPreview.length > 30) cmdPreview = cmdPreview.substring(0, 30) + '…';
 
-        var visIcon = sn.hidden ? '&#x1F6AB;' : '&#x1F441;';
+        var visIcon = sn.hidden ? icon('eyeOff', 14) : icon('eye', 14);
         card.innerHTML =
             '<div class="sn-header">' +
-                '<span class="sn-handle">&#x2630;</span>' +
+                '<span class="sn-handle">' + icon('gripVertical', 14) + '</span>' +
                 '<button class="sn-visibility" data-action="toggle-visibility">' + visIcon + '</button>' +
                 '<div class="sn-color-dot" style="background:' + dotColor + '"></div>' +
                 '<span class="' + labelClass + '">' + escHtml(displayLabel) + '</span>' +
                 '<span class="sn-header-cmd">' + escHtml(cmdPreview) + '</span>' +
-                '<span class="sn-chevron">&#x25B6;</span>' +
+                '<span class="sn-chevron">' + I.chevronRight + '</span>' +
             '</div>' +
             '<div class="sn-body">' +
                 '<div class="sn-top">' +
                     '<input type="text" value="' + escAttr(sn.label) + '" placeholder="Label" data-field="label">' +
-                    '<button class="sn-del" data-action="delete">&times;</button>' +
+                    '<button class="sn-del" data-action="delete">' + icon('x', 14) + '</button>' +
                 '</div>' +
                 '<div class="sn-field">' +
                     '<div class="sn-field-label">Command</div>' +
@@ -210,7 +211,7 @@ function renderSettingsSnippets() {
                 shSettings.snippets[i].hidden = el.checked;
                 card.classList.toggle('hidden', el.checked);
                 var visBtn = card.querySelector('.sn-visibility');
-                if (visBtn) visBtn.innerHTML = el.checked ? '&#x1F6AB;' : '&#x1F441;';
+                if (visBtn) visBtn.innerHTML = el.checked ? icon('eyeOff', 14) : icon('eye', 14);
             }
         });
 
@@ -226,7 +227,7 @@ function renderSettingsSnippets() {
                 shSettings.snippets[i].hidden = !shSettings.snippets[i].hidden;
                 var isHidden = shSettings.snippets[i].hidden;
                 card.classList.toggle('hidden', isHidden);
-                t.innerHTML = isHidden ? '&#x1F6AB;' : '&#x1F441;';
+                t.innerHTML = isHidden ? icon('eyeOff', 14) : icon('eye', 14);
                 var hiddenCheckbox = card.querySelector('input[data-field="hidden"]');
                 if (hiddenCheckbox) hiddenCheckbox.checked = isHidden;
             }

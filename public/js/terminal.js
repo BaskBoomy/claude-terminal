@@ -1,6 +1,7 @@
 // terminal.js — ES module for terminal/xterm integration
 import { showToast, showConfirm, isMobile } from './utils.js';
 import { t } from './i18n.js';
+import { icon } from './icons.js';
 
 let frame = null;
 let textInput = null;
@@ -50,7 +51,7 @@ export function openSendHistory() {
                 item.appendChild(span);
                 var copyBtn = document.createElement('button');
                 copyBtn.className = 'send-history-copy';
-                copyBtn.innerHTML = '&#x1F4CB;';
+                copyBtn.innerHTML = icon('clipboard', 14);
                 copyBtn.title = t('terminal.pasteToInput');
                 copyBtn.addEventListener('click', function(e) {
                     e.stopPropagation();

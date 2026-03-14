@@ -1,5 +1,6 @@
 // preview.js — Multi-tab browser preview (ES module)
 import { t } from './i18n.js';
+import { I, icon } from './icons.js';
 
 let browserTabs = []; // [{id, url, label, history: string[], historyIndex: number}]
 let activeTabId = null;
@@ -61,7 +62,8 @@ function applyViewport() {
     }
   });
   if (viewportToggle) {
-    viewportToggle.textContent = VIEWPORT_LABELS[currentViewport];
+    var vpSpan = viewportToggle.querySelector('span');
+    if (vpSpan) vpSpan.textContent = VIEWPORT_LABELS[currentViewport];
     viewportToggle.classList.toggle('active', currentViewport !== 'mobile');
   }
 }
@@ -117,7 +119,7 @@ function updateBookmarkBtn() {
   var tab = browserTabs.find(function (tb) { return tb.id === activeTabId; });
   var url = tab ? tab.url : '';
   var isBookmarked = url && bookmarks.indexOf(url) >= 0;
-  previewBookmark.innerHTML = isBookmarked ? '&#x2605;' : '&#x2606;';
+  previewBookmark.innerHTML = isBookmarked ? I.starFilled : I.star;
   previewBookmark.classList.toggle('bookmarked', isBookmarked);
 }
 
@@ -144,7 +146,7 @@ export function renderBrowserTabs() {
 
     var closeBtn = document.createElement('span');
     closeBtn.className = 'browser-tab-close';
-    closeBtn.innerHTML = '&times;';
+    closeBtn.innerHTML = icon('x', 10);
     closeBtn.addEventListener('click', function (e) {
       e.stopPropagation();
       closeBrowserTab(tab.id);
@@ -288,7 +290,7 @@ function makeDropdownItem(url, removable, onRemove) {
   if (removable && onRemove) {
     var del = document.createElement('button');
     del.className = 'url-dropdown-del';
-    del.innerHTML = '&times;';
+    del.innerHTML = icon('x', 10);
     del.addEventListener('mousedown', function (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -454,7 +456,8 @@ export function initPreview() {
     var idx = VIEWPORTS.indexOf(currentViewport);
     currentViewport = VIEWPORTS[(idx + 1) % VIEWPORTS.length];
     applyViewport();
-    viewportToggle.textContent = t('preview.viewport').replace('M', VIEWPORT_LABELS[currentViewport]);
+    var vpText = viewportToggle.querySelector('span');
+    if (vpText) vpText.textContent = t('preview.viewport').replace('M', VIEWPORT_LABELS[currentViewport]);
     closeMoreMenu();
   });
 

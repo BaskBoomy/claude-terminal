@@ -27,6 +27,15 @@
    ============================================= */
 * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; }
+button svg, .pm-item svg, .pm-memo-del svg, .sn-handle svg, .sn-visibility svg, .sn-del svg,
+.sn-chevron svg, .preview-menu-item svg, .dash-section-title svg, .brain-cat-icon svg,
+.brain-cat-arrow svg, .launch-area-hdr svg, .launch-del-btn svg, .git-badge svg,
+.git-branch-icon svg, .files-sort-icon svg, .font-ctrl svg, .sheet-close svg,
+.settings-logout svg, .copy-header-btn svg {
+    vertical-align: middle; flex-shrink: 0;
+}
+.pm-item, .preview-menu-item { display: flex; align-items: center; gap: 8px; }
+.preview-menu-item svg { flex-shrink: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; overscroll-behavior: none; }
 
 /* =============================================

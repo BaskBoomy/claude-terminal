@@ -1,6 +1,7 @@
 import { escapeHtml, showConfirm, showToast } from './utils.js';
 import { t } from './i18n.js';
 import { T } from './theme.js';
+import { I, icon } from './icons.js';
 
 // --- State ---
 let contentEl = null;
@@ -13,22 +14,22 @@ let editingDate = false;
 
 // Area display order + icons
 var AREAS = [
-    { key: 'feature', icon: '\u2699' },
-    { key: 'billing', icon: '\uD83D\uDCB3' },
-    { key: 'infra', icon: '\uD83C\uDFD7' },
-    { key: 'security', icon: '\uD83D\uDD12' },
-    { key: 'legal', icon: '\u2696' },
-    { key: 'monitoring', icon: '\uD83D\uDCCA' },
-    { key: 'testing', icon: '\uD83E\uDDEA' },
-    { key: 'marketing', icon: '\uD83D\uDCE2' },
-    { key: 'performance', icon: '\u26A1' },
-    { key: 'dr', icon: '\uD83D\uDD04' },
-    { key: 'support', icon: '\uD83D\uDCAC' },
-    { key: 'docs', icon: '\uD83D\uDCD6' },
-    { key: 'migration', icon: '\uD83D\uDCE6' },
-    { key: 'seo', icon: '\uD83D\uDD0D' },
-    { key: 'analytics', icon: '\uD83D\uDCC8' },
-    { key: 'continuity', icon: '\uD83C\uDFE2' },
+    { key: 'feature', icon: I.settings },
+    { key: 'billing', icon: I.creditCard },
+    { key: 'infra', icon: I.building },
+    { key: 'security', icon: I.lock },
+    { key: 'legal', icon: I.scale },
+    { key: 'monitoring', icon: I.barChart },
+    { key: 'testing', icon: I.testTube },
+    { key: 'marketing', icon: I.megaphone },
+    { key: 'performance', icon: I.zap },
+    { key: 'dr', icon: I.refreshCw },
+    { key: 'support', icon: I.messageCircle },
+    { key: 'docs', icon: I.bookOpen },
+    { key: 'migration', icon: I.package },
+    { key: 'seo', icon: I.search },
+    { key: 'analytics', icon: I.trendingUp },
+    { key: 'continuity', icon: I.buildingOffice },
 ];
 
 var PRIO_COLORS = {
@@ -76,7 +77,7 @@ function render() {
 
 function renderEmpty() {
     return '<div class="dash-section" style="text-align:center;padding:60px 16px">' +
-        '<div style="font-size:48px;margin-bottom:16px">\uD83D\uDE80</div>' +
+        '<div style="margin-bottom:16px;color:' + T.textMuted() + '">' + icon('rocket', 48) + '</div>' +
         '<div style="font-size:16px;color:' + T.text() + ';margin-bottom:8px">' + t('launch.tracker') + '</div>' +
         '<div style="font-size:13px;color:' + T.textMuted() + ';margin-bottom:24px">' + t('launch.initDesc') + '</div>' +
         '<button id="launch-seed-btn" class="launch-btn launch-btn-primary">' + t('launch.initBtn') + '</button>' +
@@ -98,7 +99,7 @@ function renderHeader() {
     html += '</div>';
 
     if (!editingDate) {
-        html += '<button id="launch-date-edit-btn" class="launch-icon-btn" title="' + t('launch.changeDate') + '">' + escapeHtml(s.targetDate) + ' ✏</button>';
+        html += '<button id="launch-date-edit-btn" class="launch-icon-btn" title="' + t('launch.changeDate') + '">' + escapeHtml(s.targetDate) + ' ' + icon('pencil', 12) + '</button>';
     }
     html += '</div>';
 
@@ -168,7 +169,7 @@ function renderOverview() {
     var blockers = items.filter(function(it) { return !it.done && it.priority === 'P0'; });
     if (blockers.length > 0) {
         html += '<div class="dash-section">';
-        html += '<div class="dash-section-title"><span>⚠</span> ' + t('launch.blockers') + '</div>';
+        html += '<div class="dash-section-title"><span style="color:' + T.danger() + '">' + icon('alertTriangle', 16) + '</span> ' + t('launch.blockers') + '</div>';
         blockers.forEach(function(it) {
             html += renderItemRow(it);
         });
@@ -185,7 +186,7 @@ function renderOverview() {
     var upcoming = undone.slice(0, 10);
     if (upcoming.length > 0) {
         html += '<div class="dash-section">';
-        html += '<div class="dash-section-title"><span>📋</span> ' + t('launch.nextTodo') + '</div>';
+        html += '<div class="dash-section-title"><span style="color:' + T.accent() + '">' + icon('clipboardList', 16) + '</span> ' + t('launch.nextTodo') + '</div>';
         upcoming.forEach(function(it) {
             html += renderItemRow(it);
         });
@@ -198,7 +199,7 @@ function renderOverview() {
     var recent = completed.slice(0, 5);
     if (recent.length > 0) {
         html += '<div class="dash-section">';
-        html += '<div class="dash-section-title"><span>✅</span> ' + t('launch.recentDone') + '</div>';
+        html += '<div class="dash-section-title"><span style="color:' + T.successText() + '">' + icon('checkCircle', 16) + '</span> ' + t('launch.recentDone') + '</div>';
         recent.forEach(function(it) {
             html += renderItemRow(it);
         });
@@ -225,14 +226,14 @@ function renderChecklist() {
         var done = group.items.filter(function(it) { return it.done; }).length;
         var total = group.items.length;
         var expanded = expandedAreas[a.key] !== false; // default expanded
-        var arrow = expanded ? '\u25BC' : '\u25B6';
+        var arrow = expanded ? I.chevronDown : I.chevronRight;
 
         html += '<div class="dash-section" style="padding-bottom:0">';
         html += '<div class="launch-area-hdr" data-area="' + a.key + '">';
-        html += '<span style="font-size:14px">' + a.icon + '</span>';
+        html += '<span style="display:inline-flex;color:' + T.textMuted() + '">' + a.icon + '</span>';
         html += '<span style="flex:1;font-size:13px;font-weight:600;color:' + T.text() + '">' + escapeHtml(group.label) + '</span>';
         html += '<span style="font-size:12px;color:' + (done === total ? T.successText() : T.textMuted()) + ';font-family:\'SF Mono\',monospace">' + done + '/' + total + '</span>';
-        html += '<span style="font-size:10px;color:' + T.textSubtle() + ';margin-left:8px">' + arrow + '</span>';
+        html += '<span style="display:inline-flex;color:' + T.textSubtle() + ';margin-left:8px">' + arrow + '</span>';
         html += '</div>';
 
         if (expanded) {
@@ -265,7 +266,7 @@ function renderItemRow(it) {
     html += '<input type="checkbox" class="launch-cb" data-id="' + it.id + '"' + checked + '>';
     html += '<span style="font-size:13px;flex:1;' + textStyle + '">' + escapeHtml(it.title) + '</span>';
     html += '<span class="launch-prio-badge" style="background:' + c.bg + ';color:' + c.text + '">' + it.priority + '</span>';
-    html += '<button class="launch-del-btn" data-id="' + it.id + '" title="' + t('common.delete') + '">×</button>';
+    html += '<button class="launch-del-btn" data-id="' + it.id + '" title="' + t('common.delete') + '">' + icon('x', 12) + '</button>';
     html += '</div>';
     return html;
 }

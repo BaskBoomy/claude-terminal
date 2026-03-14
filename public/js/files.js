@@ -1,5 +1,6 @@
 // files.js — File Explorer module
 import { t } from './i18n.js';
+import { I } from './icons.js';
 import { renderMarkdown } from './markdown.js';
 
 var currentPath = '', selectedFiles = new Set(), selectMode = false;
@@ -108,7 +109,7 @@ function updateSortUI() {
     header.querySelectorAll('.files-col-btn').forEach(function(btn) {
         var key = btn.dataset.sort;
         btn.classList.toggle('active', key === sortBy);
-        btn.querySelector('.files-sort-icon').textContent = key === sortBy ? (sortDir === 'asc' ? ' \u25B2' : ' \u25BC') : '';
+        btn.querySelector('.files-sort-icon').innerHTML = key === sortBy ? (sortDir === 'asc' ? ' ' + I.chevronUp : ' ' + I.chevronDown) : '';
     });
 }
 
@@ -195,7 +196,7 @@ function renderItems(items, showDir) {
     itemMap = {};
 
     if (!currentPath && favorites.length > 0) {
-        html += '<div class="files-section-label">' + escHtml(t('files.favorites')) + '</div>';
+        html += '<div class="files-section-label">' + I.starFilled + ' ' + escHtml(t('files.favorites')) + '</div>';
         favorites.forEach(function(fav) {
             html += '<div class="files-item" data-fav="' + escHtml(fav) + '">' +
                 '<span class="files-item-icon">' + FILE_ICONS.dir + '</span>' +
