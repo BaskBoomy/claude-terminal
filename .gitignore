@@ -1,3 +1,7 @@
+# Build output
+/server
+/files/
+
 # Runtime data
 data/
 settings.json

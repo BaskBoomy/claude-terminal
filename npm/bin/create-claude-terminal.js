@@ -6,6 +6,7 @@ const { prompt } = require('../lib/prompt');
 const { installTtyd } = require('../lib/install-ttyd');
 const { installServer } = require('../lib/install-server');
 const { setupService } = require('../lib/service');
+const { renderQR } = require('../lib/qr');
 const pkg = require('../package.json');
 
 async function main() {
@@ -56,6 +57,17 @@ async function main() {
     lines.push(`${color(c.yellow, S.warn)} ${color(c.dim, 'Tunnel URL changes on restart — for testing only.')}`);
     lines.push(`${color(c.dim, '  Set DOMAIN in .env for a permanent address,')}`);
     lines.push(`${color(c.dim, '  or configure it in Settings > Server Access.')}`);
+  } else if (config.tunnel) {
+    // Tunnel enabled but URL not detected yet — show fallback commands
+    lines.push(`${color(c.cyan, S.pointer)} ${color(c.bold, localUrl)}`);
+    lines.push('');
+    lines.push(`${color(c.yellow, S.warn)} ${color(c.dim, 'Tunnel is starting — URL not ready yet.')}`);
+    lines.push(`${color(c.dim, '  Check in a few seconds:')}`);
+    if (process.platform === 'linux') {
+      lines.push(`${color(c.gray, '  sudo journalctl -u cloudflared-tunnel --no-pager -n 10 | grep trycloudflare')}`);
+    } else {
+      lines.push(`${color(c.gray, '  cat ~/.claude-terminal/logs/cloudflared.log | grep trycloudflare')}`);
+    }
   } else if (config.domain) {
     lines.push(`${color(c.cyan, S.pointer)} ${color(c.bold, 'https://' + config.domain)}`);
   } else {
@@ -75,6 +87,18 @@ async function main() {
   }
 
   console.log('\n' + box(lines, { color: c.green }) + '\n');
+
+  // Show QR code for easy mobile access
+  if (config.tunnelUrl) {
+    try {
+      const qrLines = renderQR(config.tunnelUrl);
+      console.log(color(c.dim, '  Scan to open on mobile:\n'));
+      qrLines.forEach(l => console.log('    ' + l));
+      console.log('');
+    } catch {
+      // QR generation failed silently — URL is already shown above
+    }
+  }
 }
 
 main().catch(err => {
