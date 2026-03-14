@@ -120,7 +120,7 @@ WantedBy=multi-user.target
       await exec(`sudo cp ${cfServicePath} /etc/systemd/system/cloudflared-tunnel.service`);
       await exec('sudo systemctl daemon-reload');
       await exec('sudo systemctl enable cloudflared-tunnel');
-      await exec('sudo systemctl start cloudflared-tunnel');
+      await exec('sudo systemctl restart cloudflared-tunnel');
       cfSpinner.succeed('cloudflared tunnel enabled & started');
     } catch {
       cfSpinner.warn('Could not auto-start cloudflared tunnel');
@@ -187,18 +187,25 @@ async function setupLaunchd(config, user) {
   fs.writeFileSync(ttydPlistPath, ttydPlist);
   fs.writeFileSync(ctPlistPath, ctPlist);
 
+  const uid = process.getuid ? process.getuid() : 501;
+  const domain = `gui/${uid}`;
+
   const spinner = createSpinner('Configuring launchd services...').start();
 
   try {
-    await exec(`launchctl load ${ttydPlistPath}`);
+    // Unload existing services first (ignore errors if not loaded)
+    await exec(`launchctl bootout ${domain}/${path.basename(ttydPlistPath, '.plist')} 2>/dev/null || true`);
+    await exec(`launchctl bootout ${domain}/${path.basename(ctPlistPath, '.plist')} 2>/dev/null || true`);
+
+    await exec(`launchctl bootstrap ${domain} ${ttydPlistPath}`);
     spinner.update('Loading claude-terminal...');
-    await exec(`launchctl load ${ctPlistPath}`);
+    await exec(`launchctl bootstrap ${domain} ${ctPlistPath}`);
     spinner.succeed('launchd services loaded');
   } catch {
     spinner.warn('Could not load services');
     sectionItem(color(c.dim, S.info), color(c.dim, 'Load manually:'));
-    sectionItem(color(c.dim, ' '), color(c.gray, `launchctl load ${ttydPlistPath}`));
-    sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${ctPlistPath}`));
+    sectionItem(color(c.dim, ' '), color(c.gray, `launchctl bootstrap ${domain} ${ttydPlistPath}`));
+    sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl bootstrap ${domain} ${ctPlistPath}`));
   }
 
   // Cloudflare Tunnel launchd service (with log file for URL detection)
@@ -229,13 +236,17 @@ async function setupLaunchd(config, user) {
     const cfPlistPath = path.join(launchAgentsDir, 'com.claude-terminal.cloudflared.plist');
     fs.writeFileSync(cfPlistPath, cfPlist);
 
+    // Clear old log so we only read the new tunnel URL
+    fs.writeFileSync(cfLogPath, '');
+
     const cfSpinner = createSpinner('Configuring cloudflared tunnel...').start();
     try {
-      await exec(`launchctl load ${cfPlistPath}`);
+      await exec(`launchctl bootout ${domain}/com.claude-terminal.cloudflared 2>/dev/null || true`);
+      await exec(`launchctl bootstrap ${domain} ${cfPlistPath}`);
       cfSpinner.succeed('cloudflared tunnel loaded');
     } catch {
       cfSpinner.warn('Could not load cloudflared tunnel');
-      sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl load ${cfPlistPath}`));
+      sectionEnd(color(c.dim, ' '), color(c.gray, `launchctl bootstrap ${domain} ${cfPlistPath}`));
     }
   }
 }
@@ -247,7 +258,7 @@ async function setupLaunchd(config, user) {
 async function waitForTunnelUrl(config) {
   const spinner = createSpinner('Waiting for tunnel URL...').start();
 
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 1000));
     spinner.update(`Waiting for tunnel URL... (${i + 1}s)`);
 
@@ -258,7 +269,7 @@ async function waitForTunnelUrl(config) {
     }
   }
 
-  spinner.warn('Tunnel URL not detected yet — it may take a moment');
+  spinner.warn('Tunnel URL not detected yet');
   return null;
 }
 
@@ -281,6 +292,7 @@ function parseTunnelUrl(config) {
     } catch {}
   }
 
+  let found = null;
   for (const line of logText.split('\n')) {
     const idx = line.indexOf('https://');
     if (idx >= 0) {
@@ -288,11 +300,11 @@ function parseTunnelUrl(config) {
       if (url.includes('trycloudflare.com')) {
         const sp = url.search(/[\s"']/);
         if (sp >= 0) url = url.substring(0, sp);
-        return url;
+        found = url;
       }
     }
   }
-  return null;
+  return found;
 }
 
 function findBinary(name) {
