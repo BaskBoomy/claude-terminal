@@ -207,7 +207,9 @@
     "memo": "Memo",
     "inputHasContent": "Input field has content.",
     "saveAndOverwrite": "Save & Overwrite",
-    "justOverwrite": "Just Overwrite"
+    "justOverwrite": "Just Overwrite",
+    "uploadFailed": "Upload failed",
+    "uploading": "Uploading..."
   },
   "snippets": {
     "runConfirm": "Run: {cmd}?",

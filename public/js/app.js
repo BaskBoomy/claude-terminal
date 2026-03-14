@@ -2,7 +2,7 @@
 // Orchestrates all modules, view switching, event bindings, and initialization.
 
 import { initAuth } from './auth.js';
-import { initTerminal, getTA, sendText, sendKey, tmuxCmd, uploadImage, submitInput, getTtydUrl, updateSettings as updateTermSettings, openSendHistory, closeSendHistory } from './terminal.js';
+import { initTerminal, getTA, sendText, sendKey, tmuxCmd, uploadFile, submitInput, getTtydUrl, updateSettings as updateTermSettings, openSendHistory, closeSendHistory } from './terminal.js';
 import { initPolling, startUsagePolling, stopUsagePolling, startServerPolling, stopServerPolling, startNotifyPolling, stopNotifyPolling, fetchClaudeUsage, fetchServerStatus, fetchTmuxSession, setNotifyEnabled } from './polling.js';
 import { initPreview, navigateActiveTab } from './preview.js';
 import { initNotes, loadNotesList, setViewSwitcher as setNotesViewSwitcher } from './notes.js';
@@ -369,11 +369,11 @@ function setupPlusMenu() {
         fileInputAny.click();
     });
     fileInput.addEventListener('change', function() {
-        if (fileInput.files[0]) uploadImage(fileInput.files[0]);
+        if (fileInput.files[0]) uploadFile(fileInput.files[0]);
         fileInput.value = '';
     });
     fileInputAny.addEventListener('change', function() {
-        if (fileInputAny.files[0]) uploadImage(fileInputAny.files[0]);
+        if (fileInputAny.files[0]) uploadFile(fileInputAny.files[0]);
         fileInputAny.value = '';
     });
 

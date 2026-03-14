@@ -207,7 +207,9 @@
     "memo": "메모",
     "inputHasContent": "입력창에 내용이 있습니다.",
     "saveAndOverwrite": "저장 후 덮어쓰기",
-    "justOverwrite": "그냥 덮어쓰기"
+    "justOverwrite": "그냥 덮어쓰기",
+    "uploadFailed": "업로드 실패",
+    "uploading": "업로드 중..."
   },
   "snippets": {
     "runConfirm": "실행: {cmd}?",

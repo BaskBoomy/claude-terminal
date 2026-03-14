@@ -14,6 +14,9 @@ let scrollBottomBtnEl = null;
 let inputHistory = [];
 let historyIndex = -1;
 let sendPending = false;
+let attachments = []; // [{ id, path, name, type, status, abortCtrl, localUrl }]
+let attachIdCounter = 0;
+let attachmentPreviewEl = null;
 
 let settings = { general: {} };
 
@@ -110,7 +113,7 @@ function autoResize() {
 
 function updateClearBtn() {
     if (clearInputBtn) {
-        clearInputBtn.classList.toggle('visible', textInput.value.length > 0);
+        clearInputBtn.classList.toggle('visible', textInput.value.length > 0 || attachments.length > 0);
     }
 }
 
@@ -161,26 +164,156 @@ export function tmuxCmd(cmdKey, cmdKeyCode) {
     }, 50);
 }
 
-// --- File upload ---
-export function uploadImage(file) {
-    if (imgBtn) imgBtn.classList.add('uploading');
+// --- Attachment management ---
+function renderAttachments() {
+    if (!attachmentPreviewEl) return;
+    attachmentPreviewEl.innerHTML = '';
+    if (attachments.length === 0) {
+        attachmentPreviewEl.classList.remove('has-items');
+        return;
+    }
+    attachmentPreviewEl.classList.add('has-items');
+    attachments.forEach(function (att) {
+        var chip = document.createElement('div');
+        chip.className = 'att-chip' + (att.status === 'error' ? ' error' : '');
+
+        // Icon/thumbnail
+        if (att.status === 'uploading') {
+            var spinner = document.createElement('div');
+            spinner.className = 'att-spinner';
+            chip.appendChild(spinner);
+        } else if (att.type === 'image' && att.localUrl) {
+            var img = document.createElement('img');
+            img.className = 'att-thumb';
+            img.src = att.localUrl;
+            img.alt = att.name;
+            chip.appendChild(img);
+        } else {
+            var ic = document.createElement('div');
+            ic.className = 'att-icon';
+            ic.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5z"/><path d="M9 2v3h3"/></svg>';
+            chip.appendChild(ic);
+        }
+
+        // Name
+        var nameEl = document.createElement('span');
+        nameEl.className = 'att-name';
+        nameEl.textContent = att.name;
+        chip.appendChild(nameEl);
+
+        // Error: retry button
+        if (att.status === 'error') {
+            var retry = document.createElement('button');
+            retry.className = 'att-retry';
+            retry.textContent = t('common.refresh');
+            retry.addEventListener('click', function (e) {
+                e.stopPropagation();
+                retryAttachment(att.id);
+            });
+            chip.appendChild(retry);
+        }
+
+        // Remove button
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'att-remove';
+        removeBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4l8 8"/><path d="M12 4l-8 8"/></svg>';
+        removeBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            removeAttachment(att.id);
+        });
+        chip.appendChild(removeBtn);
+
+        attachmentPreviewEl.appendChild(chip);
+    });
+    updateClearBtn();
+}
+
+function removeAttachment(id) {
+    var idx = attachments.findIndex(function (a) { return a.id === id; });
+    if (idx === -1) return;
+    var att = attachments[idx];
+    // Abort if uploading
+    if (att.status === 'uploading' && att.abortCtrl) {
+        att.abortCtrl.abort();
+    }
+    // Revoke local URL
+    if (att.localUrl) {
+        URL.revokeObjectURL(att.localUrl);
+    }
+    attachments.splice(idx, 1);
+    renderAttachments();
+}
+
+function retryAttachment(id) {
+    var att = attachments.find(function (a) { return a.id === id; });
+    if (!att || !att._file) return;
+    att.status = 'uploading';
+    att.abortCtrl = new AbortController();
+    renderAttachments();
+    doUpload(att);
+}
+
+function doUpload(att) {
     fetch('/upload', {
         method: 'POST',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file
+        headers: { 'Content-Type': att._file.type || 'application/octet-stream' },
+        body: att._file,
+        signal: att.abortCtrl ? att.abortCtrl.signal : undefined
     })
         .then(function (r) { return r.json(); })
         .then(function (data) {
-            var cur = textInput.value;
-            textInput.value = cur ? cur + ' ' + data.path : data.path;
+            att.path = data.path;
+            att.status = 'done';
         })
-        .catch(function () {
-            textInput.value += '[upload failed]';
+        .catch(function (err) {
+            if (err.name === 'AbortError') return; // user cancelled
+            att.status = 'error';
         })
         .finally(function () {
-            if (imgBtn) imgBtn.classList.remove('uploading');
+            renderAttachments();
+            // Update img-btn uploading state
+            var stillUploading = attachments.some(function (a) { return a.status === 'uploading'; });
+            if (imgBtn) imgBtn.classList.toggle('uploading', stillUploading);
             if (fileInput) fileInput.value = '';
         });
+}
+
+export function uploadImage(file) { return uploadFile(file); }
+
+export function uploadFile(file) {
+    var id = ++attachIdCounter;
+    var isImage = file.type && file.type.indexOf('image/') === 0;
+    var localUrl = null;
+    if (isImage) {
+        try { localUrl = URL.createObjectURL(file); } catch (e) {}
+    }
+    var att = {
+        id: id,
+        path: null,
+        name: file.name || (isImage ? 'image' : 'file'),
+        type: isImage ? 'image' : 'file',
+        status: 'uploading',
+        abortCtrl: new AbortController(),
+        localUrl: localUrl,
+        _file: file
+    };
+    attachments.push(att);
+    renderAttachments();
+    if (imgBtn) imgBtn.classList.add('uploading');
+    doUpload(att);
+}
+
+function getAttachmentPaths() {
+    return attachments.filter(function (a) { return a.status === 'done'; }).map(function (a) { return a.path; });
+}
+
+function clearAttachments() {
+    attachments.forEach(function (att) {
+        if (att.localUrl) URL.revokeObjectURL(att.localUrl);
+        if (att.status === 'uploading' && att.abortCtrl) att.abortCtrl.abort();
+    });
+    attachments = [];
+    renderAttachments();
 }
 
 // --- Internal: send text + Enter with retry ---
@@ -237,13 +370,16 @@ function actualSend(text, ta) {
                 bubbles: true, cancelable: true
             }));
             // Success — now safe to clear
-            if (text) {
-                inputHistory.push(text);
+            // Save only user-typed text to history (not attachment paths)
+            var historyText = textInput.value;
+            if (historyText) {
+                inputHistory.push(historyText);
                 if (inputHistory.length > 50) inputHistory.shift();
                 saveHistory();
             }
             historyIndex = -1;
             clearInput();
+            clearAttachments();
         } else {
             // Enter failed — keep text in input
             showToast(t('terminal.sendFailed'), 2000);
@@ -253,7 +389,12 @@ function actualSend(text, ta) {
 
 // --- Main submit function ---
 export function submitInput() {
-    var text = textInput.value;
+    var paths = getAttachmentPaths();
+    var rawText = textInput.value;
+    var text = rawText;
+    if (paths.length > 0) {
+        text = (rawText ? rawText + ' ' : '') + paths.join(' ');
+    }
 
     // If scrolled up, exit copy-mode via server API + scroll to bottom, then send
     if (scrollBottomBtnEl && scrollBottomBtnEl.classList.contains('visible')) {
@@ -302,6 +443,7 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
     fileInput = document.getElementById('file-input');
     clearInputBtn = document.getElementById('clear-input');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
+    attachmentPreviewEl = document.getElementById('attachment-preview');
 
     // Desktop: update placeholder to show Enter instead of Shift+Enter
     if (!isMobile) {
@@ -366,6 +508,7 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             showConfirm(t('terminal.clearConfirm'), [
                 { label: t('common.delete'), className: 'primary', action: function() {
                     clearInput();
+                    clearAttachments();
                     textInput.focus();
                 }},
                 { label: t('common.cancel'), className: 'cancel' }
@@ -399,9 +542,28 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
         for (var i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image/') === 0) {
                 e.preventDefault();
-                uploadImage(items[i].getAsFile());
+                uploadFile(items[i].getAsFile());
                 return;
             }
+        }
+    });
+
+    // --- Drag and drop files ---
+    var inputWrap = textInput.parentElement;
+    inputWrap.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        inputWrap.style.borderColor = 'var(--accent)';
+    });
+    inputWrap.addEventListener('dragleave', function () {
+        inputWrap.style.borderColor = '';
+    });
+    inputWrap.addEventListener('drop', function (e) {
+        e.preventDefault();
+        inputWrap.style.borderColor = '';
+        var files = e.dataTransfer && e.dataTransfer.files;
+        if (!files) return;
+        for (var i = 0; i < files.length; i++) {
+            uploadFile(files[i]);
         }
     });
 
