@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="/css/style.css?v=32">
+    <link rel="stylesheet" href="/css/style.css?v=33">
     <style>html,body{visibility:visible!important}</style>
 </head>
 <body>
@@ -182,6 +182,8 @@
         <div class="sep"></div>
         <button class="key-btn" data-key="tmux-prev"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg></button>
         <button class="key-btn" data-key="tmux-next"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3l5 5-5 5"/></svg></button>
+        <div class="sep"></div>
+        <button class="key-btn" id="quick-copy-btn" title="Copy Screen"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="8" height="11" rx="1"/><path d="M6 3V2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1"/></svg></button>
     </div>
     <div id="input-bar">
         <button id="img-btn">+</button>
@@ -213,10 +215,6 @@
                 <span class="more-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg></span>
                 <span class="more-label" data-i18n="app.more.history">History</span>
             </button>
-            <button class="more-item" id="more-copy-mode">
-                <span class="more-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="8" height="11" rx="1"/><path d="M6 3V2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1"/></svg></span>
-                <span class="more-label" data-i18n="app.more.copyMode">Copy</span>
-            </button>
             <button class="more-item" id="more-reload">
                 <span class="more-icon"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8A5 5 0 1 1 8 3h3"/><path d="M11 1l2 2-2 2"/></svg></span>
                 <span class="more-label" data-i18n="app.more.reload">Reload</span>
@@ -242,18 +240,6 @@
             <button id="send-history-close"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l8 8"/><path d="M12 4l-8 8"/></svg></button>
         </div>
         <div id="send-history-list"></div>
-    </div>
-    <div id="copy-overlay">
-        <div id="copy-overlay-header">
-            <button class="copy-header-btn" id="copy-close-btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg> <span data-i18n="copy.close">Close</span></button>
-            <h3 data-i18n="copy.title">Terminal Copy</h3>
-            <button class="copy-header-btn" id="copy-history-btn" data-i18n="copy.scrollback">Scrollback</button>
-            <button class="copy-header-btn primary" id="copy-all-btn" data-i18n="copy.copyAll">Copy All</button>
-        </div>
-        <textarea id="copy-text-area" readonly data-i18n-placeholder="copy.loadingPlaceholder" placeholder="Loading..."></textarea>
-        <div id="copy-status">
-            <span id="copy-status-text" data-i18n="copy.selectAndCopy">Select text then copy</span>
-        </div>
     </div>
     <div id="confirm-backdrop"></div>
     <div id="confirm-dialog">
@@ -413,6 +399,6 @@ if (!('ontouchstart' in window) || navigator.maxTouchPoints === 0) {
     if (vp) vp.content = 'width=device-width, initial-scale=1.0';
 }
 </script>
-<script type="module" src="/js/app.js?v=22"></script>
+<script type="module" src="/js/app.js?v=23"></script>
 </body>
 </html>

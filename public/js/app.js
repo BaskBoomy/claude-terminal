@@ -12,7 +12,7 @@ import { initLaunch, loadLaunch } from './launch.js';
 import { initFiles, loadFiles } from './files.js';
 import { initMonitor, loadMonitor, startMonitorPolling, stopMonitorPolling } from './monitoring.js';
 import { initSettings, openSettings, subscribePush } from './settings.js';
-import { initCopyMode, openCopyMode } from './copy-mode.js';
+import { quickCopy, invalidateCellSize, prefetchTerminalText } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
 import { renderSnippets } from './snippets.js';
 import { showToast, showConfirm, closeConfirm, isMobile, escapeHtml } from './utils.js';
@@ -160,6 +160,7 @@ function applyGeneral(general) {
     if (general.termFontSize && general.termFontSize !== 15) {
         var url = '/ttyd/?fontSize=' + general.termFontSize;
         if (frame.src.indexOf('fontSize=' + general.termFontSize) === -1) {
+            invalidateCellSize();
             frame.src = url;
         }
     }
@@ -530,7 +531,6 @@ function setupMorePanel() {
     var actions = {
         'more-settings': function() { openSettings(); },
         'more-history': function() { openSendHistory(); },
-        'more-copy-mode': function() { openCopyMode(false); },
         'more-reload': function() { location.reload(); },
         'more-tmux-new': function() { KEYS['tmux-new'](); },
         'more-tmux-list': function() { KEYS['tmux-list'](); },
@@ -1010,7 +1010,21 @@ function showPWAPrompt() {
     initLaunch();
     initFiles();
     initMonitor();
-    initCopyMode();
+    // 5a. Quick copy button in keys-bar
+    // Pre-fetch on touchstart so text is ready by the time click fires
+    var quickCopyBtn = document.getElementById('quick-copy-btn');
+    if (quickCopyBtn) {
+        quickCopyBtn.addEventListener('touchstart', function() {
+            prefetchTerminalText(frame);
+        }, { passive: true });
+        quickCopyBtn.addEventListener('mousedown', function() {
+            prefetchTerminalText(frame);
+        }, { passive: true });
+        quickCopyBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            quickCopy();
+        });
+    }
 
     // 5b. Pull-to-refresh on brain tree and dashboard (mobile only)
     if (isMobile) {

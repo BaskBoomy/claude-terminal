@@ -10,6 +10,7 @@
 
 import { t } from './i18n.js';
 import { isMobile } from './utils.js';
+import { touchToCell, showSelectionOverlay, clearSelectionOverlay, selectionCopy, prefetchTerminalText, dismissFloatingCopyBtn, showLoupe, hideLoupe, showCursorLine, hideCursorLine } from './copy-mode.js';
 
 // ─── Edge Double-Tap + Popstate Trap ─────────────────────────────────────────
 
@@ -464,6 +465,14 @@ export function initTouchScroll(frame, callbacks) {
     var directionLocked = false, accumulated = 0;
     var THRESHOLD = 10, STEP = 30, SWIPE_MIN = 60;
 
+    // Long-press drag selection state
+    var selectMode = false;
+    var longPressTimer = null;
+    var LONGPRESS_MS = 500;
+    var LONGPRESS_MOVE_THRESHOLD = 5;
+    var startCell = null;
+    var endCell = null;
+
     function animateSwipeTransition(direction) {
       var slideOut = direction === 'left' ? '-100%' : '100%';
       var slideIn  = direction === 'left' ? '60%' : '-60%';
@@ -487,12 +496,40 @@ export function initTouchScroll(frame, callbacks) {
 
     xtermScreen.addEventListener('touchstart', function(e) {
       if (e.touches.length !== 1) return;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      var touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
       lastY = startY;
       isScrolling = false; isSwiping = false;
       swipeHandled = false; directionLocked = false;
       accumulated = 0;
+      selectMode = false;
+      startCell = null; endCell = null;
+      clearSelectionOverlay();
+      dismissFloatingCopyBtn();
+      hideLoupe();
+      hideCursorLine();
+
+      // touch.clientX/Y are in iframe viewport coords — pass directly
+      var iframeX = touch.clientX;
+      var iframeY = touch.clientY;
+
+      // Start long-press timer
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(function() {
+        selectMode = true;
+        startCell = touchToCell(frame, iframeX, iframeY);
+        endCell = startCell;
+        // Haptic feedback
+        if (navigator.vibrate) navigator.vibrate(50);
+        // Pre-fetch terminal text now so it's ready on touchend
+        prefetchTerminalText(frame);
+        if (startCell) {
+          showSelectionOverlay(frame, startCell, startCell);
+          showLoupe(frame, startCell, iframeX, iframeY);
+          showCursorLine(frame, startCell, iframeY);
+        }
+      }, LONGPRESS_MS);
     }, { passive: true });
 
     xtermScreen.addEventListener('touchmove', function(e) {
@@ -501,6 +538,27 @@ export function initTouchScroll(frame, callbacks) {
       var currentY = e.touches[0].clientY;
       var deltaY = Math.abs(startY - currentY);
       var deltaX = Math.abs(currentX - startX);
+
+      // Cancel long-press if moved before timer fires
+      if (!selectMode && longPressTimer) {
+        if (deltaX > LONGPRESS_MOVE_THRESHOLD || deltaY > LONGPRESS_MOVE_THRESHOLD) {
+          clearTimeout(longPressTimer);
+          longPressTimer = null;
+        }
+      }
+
+      // Selection mode: update highlight + loupe
+      if (selectMode) {
+        e.preventDefault();
+        // currentX/Y are already in iframe viewport coords
+        endCell = touchToCell(frame, currentX, currentY);
+        if (startCell && endCell) {
+          showSelectionOverlay(frame, startCell, endCell);
+          showLoupe(frame, endCell, currentX, currentY);
+          showCursorLine(frame, endCell, currentY);
+        }
+        return;
+      }
 
       if (!directionLocked && (deltaY > THRESHOLD || deltaX > THRESHOLD)) {
         directionLocked = true;
@@ -532,6 +590,30 @@ export function initTouchScroll(frame, callbacks) {
     }, { passive: false });
 
     xtermScreen.addEventListener('touchend', function(e) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+
+      // Selection mode: show floating Copy button
+      if (selectMode && startCell && endCell) {
+        hideLoupe();
+        hideCursorLine();
+        // Convert iframe coords to parent coords for button positioning
+        var frameRect = frame.getBoundingClientRect();
+        var lastTouch = e.changedTouches[0];
+        var parentTouchX = (lastTouch ? lastTouch.clientX : 0) + frameRect.left;
+        var parentTouchY = (lastTouch ? lastTouch.clientY : 0) + frameRect.top;
+        selectionCopy(frame, startCell, endCell, parentTouchX, parentTouchY);
+        // Keep highlights visible until floating button is dismissed
+        setTimeout(function() { clearSelectionOverlay(); }, 4500);
+        selectMode = false;
+        startCell = null; endCell = null;
+        isScrolling = false; isSwiping = false;
+        swipeHandled = false; directionLocked = false;
+        accumulated = 0;
+        return;
+      }
+      selectMode = false;
+
       if (isSwiping && !swipeHandled) {
         frame.style.transition = 'transform 200ms ease-out';
         frame.style.transform = 'translateX(0)';

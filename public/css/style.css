@@ -31,7 +31,7 @@ button svg, .pm-item svg, .pm-memo-del svg, .sn-handle svg, .sn-visibility svg, 
 .sn-chevron svg, .preview-menu-item svg, .dash-section-title svg, .brain-cat-icon svg,
 .brain-cat-arrow svg, .launch-area-hdr svg, .launch-del-btn svg, .git-badge svg,
 .git-branch-icon svg, .files-sort-icon svg, .font-ctrl svg, .sheet-close svg,
-.settings-logout svg, .copy-header-btn svg,
+.settings-logout svg,
 .mon-task-done svg, .mon-task-active svg, .mon-task-todo svg, .mon-icon-btn svg,
 .mon-collapsible-hdr svg, .mon-session-stats svg {
     vertical-align: middle; flex-shrink: 0;
@@ -482,8 +482,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 #preview-bookmark.bookmarked { color: #f5a623; }
 
 /* =============================================
-   Copy Mode Overlay
+   Text Loupe + Selection
    ============================================= */
+#term-loupe .loupe-cursor {
+    background: rgba(59,130,246,0.5);
+    border-radius: 2px;
+    padding: 0 1px;
+}
+#term-loupe .loupe-cursor.wide {
+    padding: 0 2px;
+}
+.term-selection {
+    position: fixed; pointer-events: none; z-index: 50;
+    border-radius: 2px; background: rgba(59,130,246,0.3);
+}
 /* --- Send History Panel --- */
 #send-history-panel {
     display: none; position: fixed; bottom: 0; left: 0; right: 0;
@@ -521,50 +533,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     color: var(--text-subtle); font-size: 14px; cursor: pointer; padding: 2px 6px;
 }
 
-/* --- Copy Mode Overlay --- */
-#copy-overlay {
-    position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,0.85); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-    display: none; flex-direction: column;
-}
-#copy-overlay.open { display: flex; }
-#copy-overlay-header {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 12px; background: var(--bg);
-    border-bottom: 1px solid var(--bg-raised); flex-shrink: 0;
-}
-#copy-overlay-header h3 {
-    flex: 1; margin: 0; font-size: 15px; font-weight: 600; color: var(--text);
-}
-.copy-header-btn {
-    background: none; border: 1px solid var(--border); border-radius: 6px;
-    color: var(--text-muted); cursor: pointer; padding: 5px 10px; font-size: 13px;
-    font-family: -apple-system, system-ui, sans-serif;
-    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-}
-.copy-header-btn:active { background: var(--bg-raised); color: var(--text); }
-.copy-header-btn.primary {
-    background: var(--accent); color: var(--white); border-color: var(--accent); font-weight: 600;
-}
-.copy-header-btn.primary:active { background: var(--accent-hover); }
-#copy-text-area {
-    flex: 1; width: 100%; border: none; outline: none; resize: none;
-    background: var(--bg-deep); color: var(--text);
-    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
-    font-size: 13px; line-height: 1.5; padding: 12px 16px;
-    box-sizing: border-box;
-    -webkit-user-select: text; user-select: text;
-}
-#copy-status {
-    padding: 8px 12px; background: var(--bg);
-    border-top: 1px solid var(--bg-raised); flex-shrink: 0;
-    display: flex; align-items: center; gap: 8px;
-}
-#copy-status-text {
-    flex: 1; font-size: 12px; color: var(--text-subtle);
-    font-family: 'SF Mono', 'Cascadia Code', monospace;
-}
-#copy-status-text.success { color: var(--success-text); }
 
 /* =============================================
    Settings Bottom Sheet
@@ -2215,6 +2183,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .dash-file-badge {
     display: inline-block; font-size: 9px; font-weight: 600;
     padding: 1px 4px; border-radius: 3px; margin-right: 4px;
+}
+
+/* =============================================
+   Terminal Long-press Selection
+   ============================================= */
+.term-selection {
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+    border-radius: 2px;
+    background: rgba(59,130,246,0.3);
+    transition: none;
 }
 
 /* =============================================

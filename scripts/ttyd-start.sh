@@ -3,6 +3,9 @@
 
 SESSION="${TMUX_SESSION:-claude}"
 
+# Enable OSC 52 clipboard passthrough (desktop tmux copy → browser clipboard)
+tmux set -g set-clipboard on 2>/dev/null
+
 if tmux has-session -t "$SESSION" 2>/dev/null; then
     exec tmux attach -t "$SESSION"
 else

@@ -79,18 +79,6 @@
     "sendToClaude": "Claude 전송",
     "loadFailed": "로드 실패"
   },
-  "copy": {
-    "close": "닫기",
-    "title": "터미널 복사",
-    "scrollback": "스크롤백",
-    "currentScreen": "현재 화면",
-    "history": "히스토리",
-    "copyAll": "전체 복사",
-    "selectAndCopy": "텍스트를 선택한 후 복사하세요",
-    "loadingPlaceholder": "로딩 중...",
-    "copied": "복사됨!",
-    "captureFailed": "캡처 실패"
-  },
   "preview": {
     "back": "뒤로",
     "forward": "앞으로",
@@ -213,7 +201,6 @@
     "more": {
       "settings": "설정",
       "history": "히스토리",
-      "copyMode": "복사",
       "reload": "새로고침",
       "newWindow": "새 창",
       "windowList": "창 목록",

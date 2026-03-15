@@ -79,18 +79,6 @@
     "sendToClaude": "Send to Claude",
     "loadFailed": "Load failed"
   },
-  "copy": {
-    "close": "Close",
-    "title": "Terminal Copy",
-    "scrollback": "Scrollback",
-    "currentScreen": "Current",
-    "history": "History",
-    "copyAll": "Copy All",
-    "selectAndCopy": "Select text then copy",
-    "loadingPlaceholder": "Loading...",
-    "copied": "Copied!",
-    "captureFailed": "Capture failed"
-  },
   "preview": {
     "back": "Back",
     "forward": "Forward",
@@ -213,7 +201,6 @@
     "more": {
       "settings": "Settings",
       "history": "History",
-      "copyMode": "Copy",
       "reload": "Reload",
       "newWindow": "New Win",
       "windowList": "Win List",
