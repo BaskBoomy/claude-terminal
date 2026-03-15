@@ -43,9 +43,9 @@ export function fetchTmuxSession() {
             var winDisplay = dotIdx >= 0
                 ? winPart.substring(0, dotIdx) + ':' + winPart.substring(dotIdx + 1)
                 : winPart;
-            tmuxSessionEl.innerHTML = 'tmux: <span>' + sessionName + '</span> \u00B7 ' + winDisplay;
+            tmuxSessionEl.innerHTML = '<span>' + sessionName + '</span>\u00B7' + winDisplay;
         } else {
-            tmuxSessionEl.innerHTML = 'tmux: <span>' + sessionName + '</span>';
+            tmuxSessionEl.innerHTML = '<span>' + sessionName + '</span>';
         }
     }).catch(function() {});
 }
@@ -96,19 +96,20 @@ export function fetchClaudeUsage() {
 }
 
 function _renderUsage(data) {
-    var pct = Math.round(data.five_hour.utilization);
-    var resetAt = new Date(data.five_hour.resets_at);
+    var pct = Math.round(parseFloat(data.five_hour.utilization) * 100);
+    var resetTs = parseInt(data.five_hour.resets_at, 10);
+    var resetAt = new Date(resetTs * 1000);
     var diffMs = resetAt - Date.now();
     var timeStr = '';
     if (diffMs > 0) {
         var totalMin = Math.floor(diffMs / 60000);
         var h = Math.floor(totalMin / 60);
         var m = totalMin % 60;
-        timeStr = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+        timeStr = h > 0 ? h + 'h' + m + 'm' : m + 'm';
     } else {
         timeStr = 'soon';
     }
-    usageEl.textContent = pct + '% \u00B7 ' + timeStr;
+    usageEl.textContent = pct + '%\u00B7' + timeStr;
     if (pct >= 80) {
         usageEl.style.color = T.danger();
     } else if (pct >= 50) {
@@ -258,19 +259,14 @@ export function initPolling() {
         usageEl.addEventListener('click', function() {
             fetchClaudeUsage();
             var data = window._cachedUsageData;
-            if (data) {
+            if (data && data.five_hour) {
                 var info = [];
-                if (data.bonusDailyLimit) {
-                    var b = data.bonusDailyLimit;
-                    var pct = Math.round((1 - (b.tokensRemaining || 0) / (b.tokenLimit || 1)) * 100);
-                    info.push('5h: ' + pct + '%');
+                info.push('5h: ' + Math.round(parseFloat(data.five_hour.utilization) * 100) + '%');
+                if (data.seven_day) {
+                    info.push('7d: ' + Math.round(parseFloat(data.seven_day.utilization) * 100) + '%');
                 }
-                if (data.dailyLimit) {
-                    var d = data.dailyLimit;
-                    var dpct = Math.round((1 - (d.tokensRemaining || 0) / (d.tokenLimit || 1)) * 100);
-                    info.push('Daily: ' + dpct + '%');
-                }
-                showToast(info.join(' · ') || t('polling.usageRefreshed'));
+                if (data.status) info.push(data.status);
+                showToast(info.join(' · '));
             } else {
                 showToast(t('polling.usageRefreshed'));
             }

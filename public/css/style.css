@@ -31,7 +31,9 @@ button svg, .pm-item svg, .pm-memo-del svg, .sn-handle svg, .sn-visibility svg, 
 .sn-chevron svg, .preview-menu-item svg, .dash-section-title svg, .brain-cat-icon svg,
 .brain-cat-arrow svg, .launch-area-hdr svg, .launch-del-btn svg, .git-badge svg,
 .git-branch-icon svg, .files-sort-icon svg, .font-ctrl svg, .sheet-close svg,
-.settings-logout svg, .copy-header-btn svg {
+.settings-logout svg, .copy-header-btn svg,
+.mon-task-done svg, .mon-task-active svg, .mon-task-todo svg, .mon-icon-btn svg,
+.mon-collapsible-hdr svg, .mon-session-stats svg {
     vertical-align: middle; flex-shrink: 0;
 }
 .pm-item, .preview-menu-item { display: flex; align-items: center; gap: 8px; }
@@ -299,15 +301,15 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 /* --- Status Bar (tmux session) --- */
 #status-bar {
     display: flex; align-items: center;
-    padding: 4px 12px; gap: 8px;
+    padding: 3px 8px; gap: 4px;
     background: var(--bg);
     border-bottom: 1px solid var(--bg-raised);
     flex-shrink: 0;
-    font-size: 12px; color: var(--text-subtle);
+    font-size: 11px; color: var(--text-subtle);
     font-family: 'SF Mono', 'Cascadia Code', monospace;
     white-space: nowrap; overflow: hidden;
 }
-#tmux-session-info { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#tmux-session-info { flex: 1; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 #tmux-session-info span { color: var(--text); }
 
 /* =============================================
@@ -1607,6 +1609,123 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .launch-icon-btn:active { background: var(--bg-raised); }
 
 /* =============================================
+   Monitor (claude-loop)
+   ============================================= */
+#monitor-container {
+    display: none; flex-direction: column;
+    width: 100%; height: 100%;
+    position: absolute; top: 0; left: 0;
+    background: var(--bg-deep);
+}
+#monitor-scroll {
+    flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+}
+.mon-session-card {
+    padding: 14px 16px; border-bottom: 1px solid var(--bg-raised);
+    cursor: pointer; transition: background 0.15s;
+}
+.mon-session-card:active { background: var(--bg-raised); }
+.mon-session-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+}
+.mon-session-name {
+    font-size: 15px; font-weight: 600; color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-status-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 8px; border-radius: 10px;
+    color: var(--bg-deep);
+}
+.mon-session-dir {
+    font-size: 12px; color: var(--text-subtle); margin-bottom: 6px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-session-stats {
+    display: flex; gap: 12px; margin-bottom: 6px;
+}
+.mon-stat {
+    font-size: 12px; color: var(--text-muted);
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-progress-bar {
+    height: 6px; background: var(--bg-raised); border-radius: 3px;
+    overflow: hidden; display: flex;
+}
+.mon-progress-done {
+    height: 100%; background: var(--success-text); transition: width 0.3s;
+}
+.mon-progress-active {
+    height: 100%; background: var(--accent); transition: width 0.3s;
+}
+.mon-icon-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-muted); padding: 6px 8px;
+    border-radius: 6px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.mon-icon-btn:active { background: var(--bg-raised); color: var(--text); }
+.mon-detail-stats {
+    display: flex; gap: 6px; flex-wrap: wrap;
+}
+.mon-detail-stat {
+    flex: 1; min-width: 60px; text-align: center;
+    padding: 8px 4px; background: var(--bg); border-radius: 8px;
+    border: 1px solid var(--bg-raised);
+}
+.mon-detail-stat-label {
+    font-size: 10px; color: var(--text-subtle); margin-bottom: 2px;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-detail-stat-val {
+    font-size: 16px; font-weight: 700; color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-md-content {
+    font-size: 13px; color: var(--text); line-height: 1.6;
+}
+.mon-task-line {
+    display: flex; align-items: center; gap: 6px; padding: 3px 0;
+}
+.mon-task-done { color: var(--success-text); display: inline-flex; flex-shrink: 0; }
+.mon-task-active { color: var(--accent); display: inline-flex; flex-shrink: 0; }
+.mon-task-todo { color: var(--text-subtle); display: inline-flex; flex-shrink: 0; }
+.mon-log-content {
+    font-size: 12px; color: var(--text-muted); line-height: 1.5;
+    white-space: pre-wrap; word-break: break-all;
+    background: var(--bg); padding: 12px;
+    border-radius: 8px; border: 1px solid var(--bg-raised);
+    max-height: 300px; overflow-y: auto;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-feedback-area {
+    width: 100%; min-height: 100px; padding: 12px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 13px; font-family: -apple-system, system-ui, sans-serif;
+    resize: vertical; outline: none;
+}
+.mon-feedback-area:focus { border-color: var(--accent); }
+.mon-feedback-area::placeholder { color: var(--text-subtle); }
+.mon-feedback-status {
+    font-size: 11px; color: var(--text-subtle); margin-top: 4px;
+    text-align: right;
+    font-family: 'SF Mono', 'Cascadia Code', monospace;
+}
+.mon-collapsible-hdr {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; padding: 4px 0;
+    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.mon-collapsible-hdr:active { opacity: 0.7; }
+.mon-collapsible-body {
+    margin-top: 8px;
+}
+
+/* =============================================
    Files Explorer
    ============================================= */
 #files-container {
@@ -1999,6 +2118,104 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     text-decoration: underline; text-underline-offset: 3px;
 }
 .pwa-skip:active { color: var(--text-muted); }
+
+/* =============================================
+   Dash — Usage & Section Styles
+   ============================================= */
+.dash-section { margin-bottom: 16px; }
+.dash-section-title {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--text-muted);
+    margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.dash-empty {
+    font-size: 13px; color: var(--text-subtle); padding: 12px 0;
+}
+.usage-card {
+    background: var(--bg-raised); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+}
+.usage-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+}
+.usage-pct { font-size: 28px; font-weight: 700; line-height: 1; }
+.usage-pct small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.usage-reset { font-size: 12px; color: var(--text-subtle); }
+.usage-bar-bg {
+    height: 6px; border-radius: 3px; background: var(--border);
+    overflow: hidden; margin-bottom: 12px;
+}
+.usage-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.5s ease;
+}
+.usage-daily-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+    gap: 8px; text-align: center;
+}
+.usage-daily-item {
+    padding: 6px 4px;
+    background: var(--bg); border-radius: 6px;
+}
+.usage-daily-label {
+    font-size: 10px; font-weight: 600; color: var(--text-subtle);
+    letter-spacing: 0.5px; margin-bottom: 2px;
+}
+.usage-daily-val { font-size: 16px; font-weight: 700; }
+.usage-daily-sub { font-size: 10px; color: var(--text-subtle); margin-top: 1px; }
+.usage-extras {
+    display: flex; flex-wrap: wrap; gap: 6px 12px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+.usage-extra-item { font-size: 11px; color: var(--text-muted); }
+.usage-extra-label { color: var(--text-subtle); }
+.usage-status { font-weight: 600; font-size: 11px; }
+.dash-refresh-btn {
+    margin-left: auto; background: none; border: none;
+    color: var(--text-subtle); cursor: pointer; padding: 4px;
+    border-radius: 4px; display: flex; align-items: center;
+    transition: color 0.15s;
+}
+.dash-refresh-btn:active { color: var(--accent); }
+.dash-refresh-btn.spinning svg { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Dash — Git */
+.dash-git-wrap { position: relative; }
+.dash-git-tabs {
+    display: flex; gap: 4px; margin-bottom: 8px; overflow-x: auto;
+}
+.dash-git-tab {
+    padding: 4px 10px; border-radius: 6px; font-size: 12px;
+    background: var(--bg); color: var(--text-muted);
+    border: 1px solid var(--border); cursor: pointer; white-space: nowrap;
+}
+.dash-git-tab.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.dash-commit {
+    font-size: 12px; padding: 4px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+}
+.dash-commit:last-child { border-bottom: none; }
+.dash-commit-hash { color: var(--accent); font-family: var(--font-mono, monospace); }
+.dash-commit-msg { color: var(--text-muted); }
+.dash-files-toggle {
+    font-size: 12px; color: var(--accent); cursor: pointer;
+    background: none; border: none; padding: 4px 0; margin-top: 4px;
+}
+.dash-files-section { margin-top: 6px; }
+.dash-file-item {
+    font-size: 11px; font-family: var(--font-mono, monospace);
+    padding: 2px 0; color: var(--text-muted);
+}
+.dash-file-badge {
+    display: inline-block; font-size: 9px; font-weight: 600;
+    padding: 1px 4px; border-radius: 3px; margin-right: 4px;
+}
 
 /* =============================================
    Desktop Overrides (non-touch, hover-capable devices)

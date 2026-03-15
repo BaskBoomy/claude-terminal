@@ -36,7 +36,6 @@
 <div id="app" style="display:none">
     <div id="status-bar">
         <span id="tmux-session-info">tmux: --</span>
-        <span style="flex:1"></span>
         <span id="server-status-info"></span>
         <span id="claude-usage-info"></span>
     </div>
@@ -48,6 +47,7 @@
         <button class="view-tab" data-view="dash">Dash</button>
         <button class="view-tab" data-view="launch">Launch</button>
         <button class="view-tab" data-view="files">Files</button>
+        <button class="view-tab" data-view="monitor">Monitor</button>
     </div>
     <div id="terminal-wrap">
         <iframe id="terminal-frame" src="/ttyd/"></iframe>
@@ -156,6 +156,7 @@
                 <div id="files-preview-footer"></div>
             </div>
         </div>
+        <div id="monitor-container"><div id="monitor-scroll"><div id="monitor-content"></div></div></div>
         <div id="scroll-indicator"></div>
         <button id="scroll-bottom-btn" class="scroll-bottom-btn"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l5 5 5-5"/></svg></button>
     </div>
