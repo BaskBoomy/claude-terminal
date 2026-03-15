@@ -327,12 +327,20 @@ func (a *API) totpDisable(w http.ResponseWriter, r *http.Request) {
 // Settings
 // ═══════════════════════════════════════════════════════════
 
+func defaultSnippets() []M {
+	return []M{
+		{"id": "s1", "label": "Claude", "command": "claude", "color": "blue", "confirm": false, "newWindow": true},
+		{"id": "s2", "label": "Resume", "command": "/resume", "color": "default", "confirm": false},
+		{"id": "s3", "label": "Compact", "command": "/compact", "color": "default", "confirm": false},
+	}
+}
+
 func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 	data, err := os.ReadFile(a.cfg.SettingsFile)
 	if err != nil {
 		jsonResponse(w, 200, M{
 			"general":  M{"wakeLock": false, "fontSize": 16, "notification": false},
-			"snippets": []any{},
+			"snippets": defaultSnippets(),
 		})
 		return
 	}
@@ -340,7 +348,7 @@ func (a *API) getSettings(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(data, &settings); err != nil {
 		jsonResponse(w, 200, M{
 			"general":  M{"wakeLock": false, "fontSize": 16, "notification": false},
-			"snippets": []any{},
+			"snippets": defaultSnippets(),
 		})
 		return
 	}
