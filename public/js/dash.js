@@ -1,8 +1,8 @@
-import { escapeHtml, colorForPct, colorForTemp } from './utils.js';
+import { escapeHtml, showToast, colorForPct, colorForTemp } from './utils.js';
 import { t } from './i18n.js';
 import { T } from './theme.js';
 import { I, icon } from './icons.js';
-import { getCachedUsageData, getLastServerData } from './polling.js';
+import { getCachedUsageData, getLastServerData, fetchClaudeUsage } from './polling.js';
 
 // --- State ---
 let contentEl = null;
@@ -43,6 +43,7 @@ export function loadDashboard(done) {
                 renderServerSection(server);
 
             bindGitEvents();
+            bindUsageRefresh();
             if (done) done();
         });
 }
@@ -75,10 +76,51 @@ function bindGitEvents() {
     }
 }
 
+function bindUsageRefresh() {
+    var btn = document.getElementById('usage-refresh-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        btn.classList.add('spinning');
+        btn.disabled = true;
+        fetchClaudeUsage();
+        // Wait for fetch to update cache, then re-render usage section
+        setTimeout(function() {
+            var usage = getCachedUsageData();
+            var section = contentEl.querySelector('.dash-section');
+            if (section) {
+                section.outerHTML = renderUsageSection(usage);
+                bindUsageRefresh();
+            }
+            btn.classList.remove('spinning');
+            btn.disabled = false;
+            showToast(t('polling.usageRefreshed'));
+        }, 2000);
+    });
+}
+
+// --- Usage helpers ---
+function _parsePct(v) { return Math.round(parseFloat(v) * 100); }
+function _parseReset(v) { return new Date(parseInt(v, 10) * 1000); }
+function _fmtTime(resetAt) {
+    var diff = resetAt - Date.now();
+    if (diff <= 0) return 'resetting...';
+    var m = Math.floor(diff / 60000), h = Math.floor(m / 60);
+    m = m % 60;
+    return h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+}
+function _pctColor(pct) {
+    return pct >= 80 ? T.danger() : pct >= 50 ? T.warn : T.successText();
+}
+function _statusBadge(status) {
+    if (!status) return '';
+    var color = status === 'allowed' ? T.successText() : status === 'allowed_warning' ? T.warn : T.danger();
+    return '<span class="usage-status" style="color:' + color + '">' + escapeHtml(status) + '</span>';
+}
+
 // --- Usage section ---
 function renderUsageSection(data) {
     var html = '<div class="dash-section">';
-    html += '<div class="dash-section-title"><span style="color:' + T.accent() + '">' + icon('zap', 16) + '</span> Claude Usage</div>';
+    html += '<div class="dash-section-title"><span style="color:' + T.accent() + '">' + icon('zap', 16) + '</span> Claude Usage<button class="dash-refresh-btn" id="usage-refresh-btn">' + icon('refreshCw', 14) + '</button></div>';
     if (!data || data.error || !data.five_hour) {
         var errMsg = (data && data.error && data.error.indexOf('429') !== -1)
             ? t('dash.rateLimited')
@@ -86,39 +128,44 @@ function renderUsageSection(data) {
         html += '<div class="dash-empty">' + errMsg + '</div>';
         return html + '</div>';
     }
-    var pct = Math.round(data.five_hour.utilization);
-    var resetAt = new Date(data.five_hour.resets_at);
-    var diffMs = resetAt - Date.now();
-    var timeStr = '';
-    if (diffMs > 0) {
-        var totalMin = Math.floor(diffMs / 60000);
-        var h = Math.floor(totalMin / 60);
-        var m = totalMin % 60;
-        timeStr = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
-    } else {
-        timeStr = 'resetting...';
-    }
-    var barColor = pct >= 80 ? T.danger() : pct >= 50 ? T.warn : T.successText();
+
+    // 5h window — primary
+    var pct5h = _parsePct(data.five_hour.utilization);
+    var reset5h = _parseReset(data.five_hour.resets_at);
+    var barColor = _pctColor(pct5h);
 
     html += '<div class="usage-card">';
     html += '<div class="usage-header">';
-    html += '<div class="usage-pct">' + pct + '%<small> used</small></div>';
-    html += '<div class="usage-reset">' + t('dash.reset', { time: timeStr }) + '</div>';
+    html += '<div class="usage-pct" style="color:' + barColor + '">' + pct5h + '%<small> used</small></div>';
+    html += '<div class="usage-reset">' + t('dash.reset', { time: _fmtTime(reset5h) }) + '</div>';
     html += '</div>';
-    html += '<div class="usage-bar-bg"><div class="usage-bar-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
+    html += '<div class="usage-bar-bg"><div class="usage-bar-fill" style="width:' + pct5h + '%;background:' + barColor + '"></div></div>';
 
-    // Daily/weekly if available
-    if (data.daily) {
-        var dPct = Math.round(data.daily.utilization);
-        html += '<div class="usage-daily-row">';
-        html += '<div class="usage-daily-item"><div class="usage-daily-label">5H WINDOW</div><div class="usage-daily-val">' + pct + '%</div></div>';
-        html += '<div class="usage-daily-item"><div class="usage-daily-label">DAILY</div><div class="usage-daily-val">' + dPct + '%</div></div>';
-        if (data.weekly) {
-            var wPct = Math.round(data.weekly.utilization);
-            html += '<div class="usage-daily-item"><div class="usage-daily-label">WEEKLY</div><div class="usage-daily-val">' + wPct + '%</div></div>';
+    // Stats row: 5h + 7d
+    html += '<div class="usage-daily-row">';
+    html += '<div class="usage-daily-item"><div class="usage-daily-label">5H</div><div class="usage-daily-val" style="color:' + _pctColor(pct5h) + '">' + pct5h + '%</div><div class="usage-daily-sub">' + _fmtTime(reset5h) + '</div></div>';
+    if (data.seven_day) {
+        var pct7d = _parsePct(data.seven_day.utilization);
+        var reset7d = _parseReset(data.seven_day.resets_at);
+        html += '<div class="usage-daily-item"><div class="usage-daily-label">7D</div><div class="usage-daily-val" style="color:' + _pctColor(pct7d) + '">' + pct7d + '%</div><div class="usage-daily-sub">' + _fmtTime(reset7d) + '</div></div>';
+    }
+    html += '</div>';
+
+    // Extra info row
+    var extras = [];
+    if (data.status) extras.push(['Status', _statusBadge(data.status)]);
+    if (data.overage_status) extras.push(['Overage', _statusBadge(data.overage_status)]);
+    if (data.fallback_percentage) extras.push(['Fallback', Math.round(parseFloat(data.fallback_percentage) * 100) + '%']);
+    if (data.representative_claim) extras.push(['Limit', escapeHtml(data.representative_claim.replace('_', ' '))]);
+
+    if (extras.length) {
+        html += '<div class="usage-extras">';
+        for (var i = 0; i < extras.length; i++) {
+            html += '<div class="usage-extra-item"><span class="usage-extra-label">' + extras[i][0] + '</span> ' + extras[i][1] + '</div>';
         }
         html += '</div>';
     }
+
     html += '</div></div>';
     return html;
 }

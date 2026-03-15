@@ -97,6 +97,12 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/launch/history", a.auth.RequireAuth(a.launchGetHistory))
 	mux.HandleFunc("POST /api/launch/seed", a.auth.RequireAuth(a.launchSeed))
 
+	// Monitor (claude-loop)
+	mux.HandleFunc("GET /api/monitor", a.auth.RequireAuth(a.monitorList))
+	mux.HandleFunc("GET /api/monitor/{name}", a.auth.RequireAuth(a.monitorDetail))
+	mux.HandleFunc("POST /api/monitor/{name}/feedback", a.auth.RequireAuth(a.monitorSaveFeedback))
+	mux.HandleFunc("POST /api/monitor/{name}/stop", a.auth.RequireAuth(a.monitorStop))
+
 	// Domain / Tunnel
 	mux.HandleFunc("GET /api/tunnel-url", a.auth.RequireAuth(a.tunnelURL))
 	mux.HandleFunc("GET /api/domain", a.auth.RequireAuth(a.getDomain))
@@ -992,10 +998,13 @@ func (a *API) claudeUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	req, _ := http.NewRequest("GET", "https://api.claude.ai/api/organizations/usage", nil)
+	client := &http.Client{Timeout: 15 * time.Second}
+	body := `{"model":"claude-haiku-4-5-20251001","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}`
+	req, _ := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("anthropic-beta", "oauth-2025-04-20")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -1005,9 +1014,38 @@ func (a *API) claudeUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	io.Copy(io.Discard, resp.Body)
 
-	var data any
-	json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&data)
+	if resp.StatusCode != 200 {
+		a.usageOk = false
+		a.usageCacheTs = time.Now()
+		jsonResponse(w, 500, M{"error": "API error: " + resp.Status})
+		return
+	}
+
+	// Parse rate limit headers
+	h := resp.Header
+	data := M{}
+	if v := h.Get("anthropic-ratelimit-unified-5h-utilization"); v != "" {
+		data["five_hour"] = M{
+			"utilization": v,
+			"resets_at":   h.Get("anthropic-ratelimit-unified-5h-reset"),
+			"status":      h.Get("anthropic-ratelimit-unified-5h-status"),
+		}
+	}
+	if v := h.Get("anthropic-ratelimit-unified-7d-utilization"); v != "" {
+		data["seven_day"] = M{
+			"utilization": v,
+			"resets_at":   h.Get("anthropic-ratelimit-unified-7d-reset"),
+			"status":      h.Get("anthropic-ratelimit-unified-7d-status"),
+		}
+	}
+	data["status"] = h.Get("anthropic-ratelimit-unified-status")
+	data["representative_claim"] = h.Get("anthropic-ratelimit-unified-representative-claim")
+	data["fallback_percentage"] = h.Get("anthropic-ratelimit-unified-fallback-percentage")
+	data["overage_status"] = h.Get("anthropic-ratelimit-unified-overage-status")
+	data["overage_disabled_reason"] = h.Get("anthropic-ratelimit-unified-overage-disabled-reason")
+
 	a.usageCache = data
 	a.usageCacheTs = time.Now()
 	a.usageOk = true
