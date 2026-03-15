@@ -10,6 +10,7 @@ import { initBrain, loadBrainTree, setViewSwitcher as setBrainViewSwitcher } fro
 import { initDash, loadDashboard } from './dash.js';
 import { initLaunch, loadLaunch } from './launch.js';
 import { initFiles, loadFiles } from './files.js';
+import { initMonitor, loadMonitor, startMonitorPolling, stopMonitorPolling } from './monitoring.js';
 import { initSettings, openSettings, subscribePush } from './settings.js';
 import { initCopyMode, openCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
@@ -43,6 +44,7 @@ var brainEditorView;
 var dashContainer;
 var launchContainer;
 var filesContainer;
+var monitorContainer;
 var scrollIndicatorEl;
 var scrollBottomBtnEl;
 var toolbarEl;
@@ -62,6 +64,7 @@ function switchView(view) {
     var isDash = view === 'dash';
     var isLaunch = view === 'launch';
     var isFiles = view === 'files';
+    var isMonitor = view === 'monitor';
 
     viewTabs.forEach(function(tab) {
         tab.classList.toggle('active', tab.dataset.view === view);
@@ -74,6 +77,7 @@ function switchView(view) {
     dashContainer.style.display = isDash ? 'flex' : 'none';
     launchContainer.style.display = isLaunch ? 'flex' : 'none';
     filesContainer.style.display = isFiles ? 'flex' : 'none';
+    monitorContainer.style.display = isMonitor ? 'flex' : 'none';
 
     // Hide all terminal-only chrome in non-terminal mode
     scrollIndicatorEl.style.display = isTerm ? '' : 'none';
@@ -100,6 +104,12 @@ function switchView(view) {
     }
     if (isFiles) {
         loadFiles();
+    }
+    if (isMonitor) {
+        loadMonitor();
+        startMonitorPolling();
+    } else {
+        stopMonitorPolling();
     }
 }
 
@@ -768,12 +778,14 @@ function setupVisibilityHandlers() {
             stopUsagePolling();
             stopServerPolling();
             stopNotifyPolling();
+            stopMonitorPolling();
             return;
         }
         // Visible again
         startUsagePolling();
         startServerPolling();
         startNotifyPolling();
+        if (activeView === 'monitor') startMonitorPolling();
         fetchClaudeUsage();
         fetchServerStatus();
         fetchTmuxSession();
@@ -977,6 +989,7 @@ function showPWAPrompt() {
     dashContainer = document.getElementById('dash-container');
     launchContainer = document.getElementById('launch-container');
     filesContainer = document.getElementById('files-container');
+    monitorContainer = document.getElementById('monitor-container');
     scrollIndicatorEl = document.getElementById('scroll-indicator');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
     toolbarEl = document.getElementById('toolbar');
@@ -996,6 +1009,7 @@ function showPWAPrompt() {
     initDash();
     initLaunch();
     initFiles();
+    initMonitor();
     initCopyMode();
 
     // 5b. Pull-to-refresh on brain tree and dashboard (mobile only)
@@ -1022,6 +1036,12 @@ function showPWAPrompt() {
         if (launchScroll) {
             setupPullToRefresh(launchScroll, function(done) {
                 loadLaunch(done);
+            });
+        }
+        var monitorScroll = document.getElementById('monitor-scroll');
+        if (monitorScroll) {
+            setupPullToRefresh(monitorScroll, function(done) {
+                loadMonitor(done);
             });
         }
     }
