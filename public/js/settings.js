@@ -363,14 +363,6 @@ function initSettings(callbacks) {
     var shSheet = document.getElementById('settings-sheet');
     var shHeader = document.getElementById('sheet-header');
     var shClose = document.getElementById('sheet-close');
-    var settingsBtn = document.getElementById('settings-btn');
-
-    // Open trigger
-    settingsBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        openSettings();
-    });
-
     // Close triggers
     shBackdrop.addEventListener('click', closeSettings);
     shClose.addEventListener('click', closeSettings);

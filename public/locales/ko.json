@@ -209,7 +209,16 @@
     "saveAndOverwrite": "저장 후 덮어쓰기",
     "justOverwrite": "그냥 덮어쓰기",
     "uploadFailed": "업로드 실패",
-    "uploading": "업로드 중..."
+    "uploading": "업로드 중...",
+    "more": {
+      "settings": "설정",
+      "history": "히스토리",
+      "copyMode": "복사",
+      "reload": "새로고침",
+      "newWindow": "새 창",
+      "windowList": "창 목록",
+      "killSession": "종료"
+    }
   },
   "snippets": {
     "runConfirm": "실행: {cmd}?",

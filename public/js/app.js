@@ -10,8 +10,8 @@ import { initBrain, loadBrainTree, setViewSwitcher as setBrainViewSwitcher } fro
 import { initDash, loadDashboard } from './dash.js';
 import { initLaunch, loadLaunch } from './launch.js';
 import { initFiles, loadFiles } from './files.js';
-import { initSettings, subscribePush } from './settings.js';
-import { initCopyMode } from './copy-mode.js';
+import { initSettings, openSettings, subscribePush } from './settings.js';
+import { initCopyMode, openCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
 import { renderSnippets } from './snippets.js';
 import { showToast, showConfirm, closeConfirm, isMobile } from './utils.js';
@@ -43,7 +43,6 @@ var brainEditorView;
 var dashContainer;
 var launchContainer;
 var filesContainer;
-var tmuxFab;
 var scrollIndicatorEl;
 var scrollBottomBtnEl;
 var toolbarEl;
@@ -77,7 +76,6 @@ function switchView(view) {
     filesContainer.style.display = isFiles ? 'flex' : 'none';
 
     // Hide all terminal-only chrome in non-terminal mode
-    tmuxFab.style.display = isTerm ? '' : 'none';
     scrollIndicatorEl.style.display = isTerm ? '' : 'none';
     scrollBottomBtnEl.style.display = isTerm ? '' : 'none';
     toolbarEl.style.display = isTerm ? '' : 'none';
@@ -178,7 +176,7 @@ function applyGeneral(general) {
 }
 
 // ========================================
-// Keys Map (toolbar + FAB)
+// Keys Map (toolbar + keys-bar)
 // ========================================
 var KEYS = {
     'ctrl-c':    function() { sendKey('c', 67, {ctrl: true}); },
@@ -441,6 +439,241 @@ function setupToolbarToggle() {
 }
 
 // ========================================
+// More Panel (bottom sheet with app icons)
+// ========================================
+function setupMorePanel() {
+    var moreBtn = document.getElementById('more-btn');
+    var morePanel = document.getElementById('more-panel');
+    var moreGrid = morePanel.querySelector('.more-grid');
+    var moreDoneBtn = document.getElementById('more-done-btn');
+    var inputBar = document.getElementById('input-bar');
+    var editMode = false;
+
+    // --- Order persistence ---
+    var ORDER_KEY = 'more-panel-order';
+    function restoreOrder() {
+        var saved = localStorage.getItem(ORDER_KEY);
+        if (!saved) return;
+        try {
+            var ids = JSON.parse(saved);
+            var items = Array.from(moreGrid.querySelectorAll('.more-item'));
+            var map = {};
+            items.forEach(function(el) { map[el.id] = el; });
+            ids.forEach(function(id) {
+                if (map[id]) moreGrid.appendChild(map[id]);
+            });
+        } catch(e) {}
+    }
+    function saveOrder() {
+        var ids = Array.from(moreGrid.querySelectorAll('.more-item')).map(function(el) { return el.id; });
+        localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
+    }
+    restoreOrder();
+
+    // --- Open / Close ---
+    function openMore() {
+        morePanel.classList.remove('hidden');
+        inputBar.classList.add('more-open');
+    }
+    function closeMore() {
+        morePanel.classList.add('hidden');
+        inputBar.classList.remove('more-open');
+        exitEditMode();
+    }
+
+    moreBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (morePanel.classList.contains('hidden')) {
+            openMore();
+        } else {
+            closeMore();
+        }
+    });
+
+    // --- Close panel on textarea focus (keyboard opens) ---
+    textInput.addEventListener('focus', function() {
+        if (!morePanel.classList.contains('hidden')) {
+            closeMore();
+        }
+    });
+
+    // --- Button actions ---
+    var actions = {
+        'more-settings': function() { openSettings(); },
+        'more-history': function() { openSendHistory(); },
+        'more-copy-mode': function() { openCopyMode(false); },
+        'more-reload': function() { location.reload(); },
+        'more-tmux-new': function() { KEYS['tmux-new'](); },
+        'more-tmux-list': function() { KEYS['tmux-list'](); },
+        'more-tmux-kill': function() { KEYS['tmux-kill'](); }
+    };
+
+    Object.keys(actions).forEach(function(id) {
+        document.getElementById(id).addEventListener('click', function(e) {
+            e.preventDefault();
+            if (editMode) return;
+            closeMore();
+            actions[id]();
+        });
+    });
+
+    // --- Edit mode (long-press reorder) ---
+    var holdTimer = null;
+    var HOLD_MS = 500;
+    var dragging = false;
+    var ghost = null;
+    var draggedItem = null;
+    var touchStartX = 0;
+    var touchStartY = 0;
+
+    function enterEditMode() {
+        if (editMode) return;
+        editMode = true;
+        morePanel.classList.add('edit-mode');
+        // Haptic feedback if available
+        if (navigator.vibrate) navigator.vibrate(30);
+    }
+    function exitEditMode() {
+        if (!editMode) return;
+        editMode = false;
+        morePanel.classList.remove('edit-mode');
+        _endDrag();
+    }
+
+    moreDoneBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        exitEditMode();
+    });
+
+    moreGrid.addEventListener('touchstart', function(e) {
+        var item = e.target.closest('.more-item');
+        if (!item) return;
+        var touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        draggedItem = item;
+
+        if (editMode) {
+            // In edit mode, start drag immediately on touch
+            holdTimer = setTimeout(function() { _startDrag(item, touch); }, 150);
+        } else {
+            // Long-press to enter edit mode
+            holdTimer = setTimeout(function() {
+                enterEditMode();
+            }, HOLD_MS);
+        }
+    }, { passive: true });
+
+    moreGrid.addEventListener('touchmove', function(e) {
+        var touch = e.touches[0];
+        var dx = Math.abs(touch.clientX - touchStartX);
+        var dy = Math.abs(touch.clientY - touchStartY);
+
+        if (!dragging) {
+            if (dx > 5 || dy > 5) clearTimeout(holdTimer);
+            return;
+        }
+
+        e.preventDefault();
+        _moveDrag(touch);
+    }, { passive: false });
+
+    moreGrid.addEventListener('touchend', function() {
+        clearTimeout(holdTimer);
+        if (dragging) _endDrag();
+    }, { passive: true });
+
+    moreGrid.addEventListener('touchcancel', function() {
+        clearTimeout(holdTimer);
+        if (dragging) _endDrag();
+    }, { passive: true });
+
+    function _startDrag(item, touch) {
+        dragging = true;
+        item.classList.add('dragging');
+        if (ghost) { ghost.remove(); ghost = null; }
+
+        ghost = item.cloneNode(true);
+        ghost.className = 'more-ghost';
+        var rect = item.getBoundingClientRect();
+        ghost.style.left = (touch.clientX - rect.width / 2) + 'px';
+        ghost.style.top = (touch.clientY - rect.height / 2) + 'px';
+        ghost.style.width = rect.width + 'px';
+        document.body.appendChild(ghost);
+    }
+
+    function _moveDrag(touch) {
+        if (!ghost || !draggedItem) return;
+
+        var gw = ghost.offsetWidth;
+        var gh = ghost.offsetHeight;
+        ghost.style.left = (touch.clientX - gw / 2) + 'px';
+        ghost.style.top = (touch.clientY - gh / 2) + 'px';
+
+        // Find drop target
+        var items = Array.from(moreGrid.querySelectorAll('.more-item'));
+        var dropIndex = -1;
+
+        for (var i = 0; i < items.length; i++) {
+            var rect = items[i].getBoundingClientRect();
+            var midX = rect.left + rect.width / 2;
+            var midY = rect.top + rect.height / 2;
+            if (touch.clientY < rect.bottom && touch.clientY > rect.top &&
+                touch.clientX < midX) {
+                dropIndex = i;
+                break;
+            }
+            if (touch.clientY < midY) {
+                dropIndex = i;
+                break;
+            }
+        }
+        if (dropIndex === -1) dropIndex = items.length;
+
+        // FLIP: record positions
+        var firstRects = {};
+        items.forEach(function(el) { firstRects[el.id] = el.getBoundingClientRect(); });
+
+        var currentIndex = items.indexOf(draggedItem);
+        if (currentIndex !== -1 && dropIndex !== currentIndex && dropIndex !== currentIndex + 1) {
+            if (dropIndex >= items.length) {
+                moreGrid.appendChild(draggedItem);
+            } else {
+                var ref = items[dropIndex];
+                if (ref !== draggedItem) moreGrid.insertBefore(draggedItem, ref);
+            }
+
+            // FLIP animate
+            var updated = Array.from(moreGrid.querySelectorAll('.more-item'));
+            updated.forEach(function(el) {
+                if (!firstRects[el.id]) return;
+                var last = el.getBoundingClientRect();
+                var dxx = firstRects[el.id].left - last.left;
+                var dyy = firstRects[el.id].top - last.top;
+                if (dxx === 0 && dyy === 0) return;
+                el.style.transform = 'translate(' + dxx + 'px,' + dyy + 'px)';
+                el.style.transition = 'none';
+                requestAnimationFrame(function() {
+                    el.style.transition = 'transform 200ms ease';
+                    el.style.transform = '';
+                    el.addEventListener('transitionend', function handler() {
+                        el.style.transition = '';
+                        el.removeEventListener('transitionend', handler);
+                    });
+                });
+            });
+        }
+    }
+
+    function _endDrag() {
+        clearTimeout(holdTimer);
+        if (ghost) { ghost.remove(); ghost = null; }
+        if (draggedItem) { draggedItem.classList.remove('dragging'); draggedItem = null; }
+        if (dragging) { dragging = false; saveOrder(); }
+    }
+}
+
+// ========================================
 // Toolbar Key Buttons
 // ========================================
 function bindToolbarButtons() {
@@ -453,28 +686,6 @@ function bindToolbarButtons() {
     });
 }
 
-// ========================================
-// FAB (tmux controls)
-// ========================================
-function setupFab() {
-    var tmuxFabToggle = document.getElementById('tmux-fab-toggle');
-    var tmuxFabPanel = document.getElementById('tmux-fab-panel');
-
-    tmuxFabToggle.addEventListener('click', function(e) {
-        e.preventDefault();
-        tmuxFabPanel.classList.toggle('open');
-    });
-    // Close panel when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#tmux-fab')) {
-            tmuxFabPanel.classList.remove('open');
-        }
-    });
-    // Close panel on iframe focus (terminal click)
-    window.addEventListener('blur', function() {
-        tmuxFabPanel.classList.remove('open');
-    });
-}
 
 // ========================================
 // Scroll Indicator + Scroll-to-bottom
@@ -517,7 +728,7 @@ function setupFocusPrevention() {
     // On desktop this breaks button focus and keyboard navigation.
     if (!isMobile) return;
 
-    var SELECTOR = 'button, .key-btn, .tool-btn, .fab-btn, .fab-circle, .toolbar-row, #toolbar-toggle, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add, .send-history-item, .send-history-copy';
+    var SELECTOR = 'button, .key-btn, .tool-btn, .toolbar-row, .pm-item, .pm-memo-item, .pm-memo-del, .confirm-btn, #confirm-dialog, .view-tab, .preview-btn, .browser-tab, .browser-tab-close, #browser-tab-add, .send-history-item, .send-history-copy';
 
     document.addEventListener('touchstart', function(e) {
         if (e.target.id === 'preview-url') return;
@@ -747,7 +958,6 @@ function showPWAPrompt() {
     dashContainer = document.getElementById('dash-container');
     launchContainer = document.getElementById('launch-container');
     filesContainer = document.getElementById('files-container');
-    tmuxFab = document.getElementById('tmux-fab');
     scrollIndicatorEl = document.getElementById('scroll-indicator');
     scrollBottomBtnEl = document.getElementById('scroll-bottom-btn');
     toolbarEl = document.getElementById('toolbar');
@@ -850,14 +1060,7 @@ function showPWAPrompt() {
     // 12. Bind toolbar key buttons
     bindToolbarButtons();
 
-    // 12b. Send history button
-    var historyBtn = document.getElementById('history-btn');
-    if (historyBtn) {
-        historyBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            openSendHistory();
-        });
-    }
+    // 12b. Send history close button
     var historyClose = document.getElementById('send-history-close');
     if (historyClose) {
         historyClose.addEventListener('click', function(e) {
@@ -869,7 +1072,7 @@ function showPWAPrompt() {
     // 13. Setup UI features
     setupPlusMenu();
     setupToolbarToggle();
-    setupFab();
+    setupMorePanel();
     setupScrollControls();
     setupFocusPrevention();
 

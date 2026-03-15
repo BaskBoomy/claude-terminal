@@ -209,7 +209,16 @@
     "saveAndOverwrite": "Save & Overwrite",
     "justOverwrite": "Just Overwrite",
     "uploadFailed": "Upload failed",
-    "uploading": "Uploading..."
+    "uploading": "Uploading...",
+    "more": {
+      "settings": "Settings",
+      "history": "History",
+      "copyMode": "Copy",
+      "reload": "Reload",
+      "newWindow": "New Win",
+      "windowList": "Win List",
+      "killSession": "Kill"
+    }
   },
   "snippets": {
     "runConfirm": "Run: {cmd}?",
