@@ -52,7 +52,7 @@ func main() {
 	totp := NewTOTP(cfg.DataDir)
 
 	// Initialize push manager + file watcher
-	push := NewPushManager(cfg.DataDir)
+	push := NewPushManager(cfg.DataDir, cfg.SettingsFile)
 	push.WatchNotifyDir(cfg.NotifyDir)
 
 	// Build API router

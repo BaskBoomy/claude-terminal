@@ -191,9 +191,7 @@ function notifyPoll() {
                 if (n.ts > notifySince) notifySince = n.ts;
             });
             var latest = d.notifications[d.notifications.length - 1];
-            var sessionLabel = latest.session || '';
-            if (latest.window) sessionLabel += ':' + latest.window;
-            var body = '[' + sessionLabel + '] ' + (latest.message || 'Done');
+            var body = latest.message || 'Done';
             // Push notifications are handled by SW via Web Push API.
             // Only show in-app toast when the app is in the foreground.
             if (document.visibilityState !== 'hidden') {

@@ -33,15 +33,17 @@ type PushSubscription struct {
 type PushManager struct {
 	mu            sync.RWMutex
 	dataDir       string
+	settingsFile  string
 	subscriptions []PushSubscription
 	vapidPrivate  *ecdsa.PrivateKey
 	vapidPublicB64 string
 	vapidSubject  string
 }
 
-func NewPushManager(dataDir string) *PushManager {
+func NewPushManager(dataDir, settingsFile string) *PushManager {
 	pm := &PushManager{
 		dataDir:      dataDir,
+		settingsFile: settingsFile,
 		vapidSubject: envStr("VAPID_SUBJECT", "https://example.com"),
 	}
 	pm.loadOrGenerateVAPIDKeys()
@@ -264,17 +266,6 @@ func (a *API) pushTest(w http.ResponseWriter, r *http.Request) {
 
 // ─── File Watcher — push on new notification files ───────────────────────────
 
-const pushDebounceMs = 4000 // 4 seconds debounce
-
-// Events worth sending a push for (others are intermediate tool calls)
-var pushWorthy = map[string]bool{
-	"Response complete": true,
-	"response_complete": true,
-	"done":              true,
-	"error":             true,
-	"timeout":           true,
-}
-
 func (pm *PushManager) WatchNotifyDir(notifyDir string) {
 	os.MkdirAll(notifyDir, 0755)
 
@@ -322,25 +313,10 @@ func (pm *PushManager) parseNotification(path string) (string, int64, bool) {
 	if err != nil {
 		return "", 0, false
 	}
-	var n map[string]any
-	if json.Unmarshal(data, &n) != nil {
+	lang := ReadSettingsLanguage(pm.settingsFile)
+	p, ok := ParseNotifyJSON(data, lang)
+	if !ok {
 		return "", 0, false
 	}
-
-	session, _ := n["session"].(string)
-	window, _ := n["window"].(string)
-	message, _ := n["message"].(string)
-	ts, _ := n["ts"].(float64)
-
-	label := session
-	if window != "" {
-		label += ":" + window
-	}
-	body := "[" + label + "] " + message
-	if message == "" {
-		body = "[" + label + "] Done"
-	}
-
-	worthy := pushWorthy[message]
-	return body, int64(ts), worthy
+	return p.Message, p.Ts, p.PushWorthy
 }

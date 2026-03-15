@@ -1054,6 +1054,7 @@ func (a *API) claudeUsage(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) notifications(w http.ResponseWriter, r *http.Request) {
 	since, _ := strconv.ParseInt(r.URL.Query().Get("since"), 10, 64)
+	lang := ReadSettingsLanguage(a.cfg.SettingsFile)
 	var result []M
 
 	entries, err := os.ReadDir(a.cfg.NotifyDir)
@@ -1071,11 +1072,17 @@ func (a *API) notifications(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			var notification M
-			if json.Unmarshal(data, &notification) == nil {
-				notification["timestamp"] = ts
-				result = append(result, notification)
+			p, ok := ParseNotifyJSON(data, lang)
+			if !ok {
+				continue
 			}
+			result = append(result, M{
+				"session":   p.Session,
+				"window":    p.Window,
+				"event":     p.Event,
+				"message":   p.Message,
+				"timestamp": ts,
+			})
 		}
 	}
 
