@@ -14,7 +14,7 @@ import { initSettings, openSettings, subscribePush } from './settings.js';
 import { initCopyMode, openCopyMode } from './copy-mode.js';
 import { initGestures, setupPullToRefresh, initTabDragDrop, initTouchScroll } from './gestures.js';
 import { renderSnippets } from './snippets.js';
-import { showToast, showConfirm, closeConfirm, isMobile } from './utils.js';
+import { showToast, showConfirm, closeConfirm, isMobile, escapeHtml } from './utils.js';
 import { initI18n, t, translateDOM } from './i18n.js';
 import { I, icon } from './icons.js';
 
@@ -270,6 +270,12 @@ function setupPlusMenu() {
         pmMemoCache.forEach(function(note) {
             var row = document.createElement('div');
             row.className = 'pm-memo-item';
+            if (note.pinned) {
+                var pin = document.createElement('span');
+                pin.className = 'pm-memo-pin';
+                pin.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" stroke="none"><path d="M5.5 2.5l5 1.5L9 7.5l2 5-7-4.5L7 5z"/></svg>';
+                row.appendChild(pin);
+            }
             var text = document.createElement('span');
             text.className = 'pm-memo-text';
             text.textContent = note.title || note.preview || t('notes.untitled');
@@ -290,21 +296,33 @@ function setupPlusMenu() {
             }
             del.addEventListener('click', deleteMemo);
             row.addEventListener('click', function() {
-                // Fetch full content, then paste into input
                 fetch('/api/notes/' + note.id, { credentials: 'same-origin' })
                     .then(function(r) { return r.json(); })
                     .then(function(data) {
                         var memoContent = data.content || '';
-                        var currentText = textInput.value.trim();
-                        if (!currentText) {
-                            textInput.value = memoContent;
-                            autoResize();
-                            sessionStorage.setItem('terminal-input', textInput.value);
-                            closePlusMenu();
-                            textInput.focus();
+                        closePlusMenu();
+
+                        // Pinned memo: show content in modal
+                        if (note.pinned) {
+                            var msgEl = document.getElementById('confirm-msg');
+                            var titleText = data.title || t('notes.untitled');
+                            showConfirm('', [
+                                { label: t('terminal.pasteToInput'), style: 'secondary', action: function() {
+                                    pasteToInput(memoContent);
+                                }},
+                                { label: t('common.close'), style: 'cancel' }
+                            ]);
+                            msgEl.innerHTML = '<div class="memo-modal-title">' + escapeHtml(titleText) + '</div>' +
+                                '<div class="memo-modal-content">' + escapeHtml(memoContent).replace(/\n/g, '<br>') + '</div>';
                             return;
                         }
-                        closePlusMenu();
+
+                        // Normal memo: paste into input
+                        var currentText = textInput.value.trim();
+                        if (!currentText) {
+                            pasteToInput(memoContent);
+                            return;
+                        }
                         showConfirm(t('app.inputHasContent'), [
                             { label: t('app.saveAndOverwrite'), style: 'primary', action: function() {
                                 var saveTitle = currentText.split('\n')[0].substring(0, 50) || t('app.memo');
@@ -313,16 +331,10 @@ function setupPlusMenu() {
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ title: saveTitle, content: currentText })
                                 }).then(function() { notesListLoaded = false; });
-                                textInput.value = memoContent;
-                                autoResize();
-                                sessionStorage.setItem('terminal-input', textInput.value);
-                                textInput.focus();
+                                pasteToInput(memoContent);
                             }},
                             { label: t('app.justOverwrite'), style: 'secondary', action: function() {
-                                textInput.value = memoContent;
-                                autoResize();
-                                sessionStorage.setItem('terminal-input', textInput.value);
-                                textInput.focus();
+                                pasteToInput(memoContent);
                             }},
                             { label: t('common.cancel'), style: 'cancel' }
                         ]);
@@ -332,6 +344,13 @@ function setupPlusMenu() {
             row.appendChild(del);
             pmMemoList.appendChild(row);
         });
+    }
+
+    function pasteToInput(content) {
+        textInput.value = content;
+        autoResize();
+        sessionStorage.setItem('terminal-input', textInput.value);
+        textInput.focus();
     }
 
     function openPlusMenu() {

@@ -942,6 +942,19 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 .pm-memo-item:active { background: var(--bg-raised); }
+.pm-memo-pin {
+    flex-shrink: 0; color: var(--accent); margin-right: 6px;
+    display: flex; align-items: center;
+}
+.memo-modal-title {
+    font-weight: 600; font-size: 15px; margin-bottom: 8px;
+    color: var(--text);
+}
+.memo-modal-content {
+    font-size: 13px; color: var(--text-muted); line-height: 1.6;
+    max-height: 50vh; overflow-y: auto; text-align: left;
+    white-space: pre-wrap; word-break: break-word;
+}
 .pm-memo-text {
     flex: 1; min-width: 0; font-size: 14px; color: var(--text-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
