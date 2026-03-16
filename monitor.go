@@ -44,6 +44,7 @@ type MonitorDetail struct {
 	RollbackTag  string       `json:"rollbackTag"`
 	StartTime    string       `json:"startTime"`
 	Elapsed      int64        `json:"elapsed"`
+	HasReport    bool         `json:"hasReport"`
 }
 
 // sessionNameRe validates session names (cl-xxx)
@@ -74,18 +75,9 @@ func (a *API) listClaudLoopSessions() []MonitorSession {
 			sess.Dir = strings.TrimSpace(dirOut)
 		}
 
-		// Check if session is active (has processes running)
-		cmdOut, err := a.tmux("display-message", "-p", "-t", name, "#{pane_current_command}")
-		if err == nil {
-			cmd := strings.TrimSpace(cmdOut)
-			if cmd == "bash" || cmd == "zsh" || cmd == "sh" || cmd == "" {
-				// Shell idle — might be stopped or completed
-				sess.Status = "stopped"
-			}
-		}
-
-		// Parse TASKS.md if available
+		// Parse TASKS.md if available (resolve worktree if exists)
 		if sess.Dir != "" {
+			sess.Dir = resolveLoopDir(sess.Dir)
 			sess.Tasks = parseTasks(sess.Dir)
 			sess.Iteration = detectIteration(sess.Dir)
 			sess.StartTime, sess.Elapsed = detectTiming(sess.Dir)
@@ -93,6 +85,20 @@ func (a *API) listClaudLoopSessions() []MonitorSession {
 			// Check completion
 			if sess.Tasks.Todo == 0 && sess.Tasks.Done > 0 {
 				sess.Status = "completed"
+			}
+		}
+
+		// Determine status: check pane command + recent activity
+		cmdOut, err := a.tmux("display-message", "-p", "-t", name, "#{pane_current_command}")
+		if err == nil {
+			cmd := strings.TrimSpace(cmdOut)
+			if cmd == "bash" || cmd == "zsh" || cmd == "sh" || cmd == "" {
+				if sess.Status != "completed" && isLoopRecentlyActive(sess.Dir) {
+					// Shell idle but loop was active recently — still running (between iterations)
+					sess.Status = "running"
+				} else if sess.Status != "completed" {
+					sess.Status = "stopped"
+				}
 			}
 		}
 
@@ -105,6 +111,68 @@ func (a *API) listClaudLoopSessions() []MonitorSession {
 	return sessions
 }
 
+// isLoopRecentlyActive checks if the loop has recent activity (iteration logs or TASKS.md changes within 10 minutes)
+func isLoopRecentlyActive(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	threshold := time.Now().Add(-10 * time.Minute)
+
+	// Check TASKS.md modification time
+	if info, err := os.Stat(filepath.Join(dir, "TASKS.md")); err == nil {
+		if info.ModTime().After(threshold) {
+			return true
+		}
+	}
+
+	// Check .claude-loop-logs/ for recent iteration dirs
+	logsDir := filepath.Join(dir, ".claude-loop-logs")
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		if info, err := e.Info(); err == nil {
+			if info.ModTime().After(threshold) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// resolveLoopDir finds the actual working directory (may be a worktree)
+func resolveLoopDir(dir string) string {
+	// Check if .worktrees/ exists and has subdirectories
+	worktreeBase := filepath.Join(dir, ".worktrees")
+	entries, err := os.ReadDir(worktreeBase)
+	if err != nil {
+		return dir
+	}
+	// Find the most recently modified worktree
+	var bestDir string
+	var bestTime time.Time
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		wtDir := filepath.Join(worktreeBase, e.Name())
+		// Check if this worktree has TASKS.md
+		info, err := os.Stat(filepath.Join(wtDir, "TASKS.md"))
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(bestTime) {
+			bestTime = info.ModTime()
+			bestDir = wtDir
+		}
+	}
+	if bestDir != "" {
+		return bestDir
+	}
+	return dir
+}
+
 // parseTasks reads TASKS.md and counts done/progress/todo
 func parseTasks(dir string) MonitorTasks {
 	data, err := os.ReadFile(filepath.Join(dir, "TASKS.md"))
@@ -115,11 +183,12 @@ func parseTasks(dir string) MonitorTasks {
 	var done, progress, todo int
 	for _, line := range strings.Split(string(data), "\n") {
 		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "- [x]") || strings.HasPrefix(trimmed, "- [X]") {
+		// claude-loop format: □ (todo), [✓ (done), [→ (progress), ■ (done alt)
+		if strings.Contains(trimmed, "[✓") || strings.Contains(trimmed, "■") {
 			done++
-		} else if strings.HasPrefix(trimmed, "- [~]") || strings.HasPrefix(trimmed, "- [>]") {
+		} else if strings.Contains(trimmed, "[→") {
 			progress++
-		} else if strings.HasPrefix(trimmed, "- [ ]") {
+		} else if strings.Contains(trimmed, "□") {
 			todo++
 		}
 	}
@@ -245,7 +314,7 @@ func (a *API) monitorDetail(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, 404, M{"error": "Session not found"})
 		return
 	}
-	dir := strings.TrimSpace(dirOut)
+	dir := resolveLoopDir(strings.TrimSpace(dirOut))
 
 	// Check status
 	status := "running"
@@ -264,6 +333,10 @@ func (a *API) monitorDetail(w http.ResponseWriter, r *http.Request) {
 
 	startTime, elapsed := detectTiming(dir)
 
+	// Check if report exists
+	reportPath := filepath.Join(dir, ".claude-loop-logs", "report.html")
+	_, reportErr := os.Stat(reportPath)
+
 	detail := MonitorDetail{
 		Name:         name,
 		Dir:          dir,
@@ -274,10 +347,11 @@ func (a *API) monitorDetail(w http.ResponseWriter, r *http.Request) {
 		LatestLog:    getLatestLog(dir),
 		Learnings:    readFileSafe(filepath.Join(dir, "LEARNINGS.md")),
 		Feedback:     readFileSafe(filepath.Join(dir, "FEEDBACK.md")),
-		Progress:     readFileSafe(filepath.Join(dir, "PROGRESS.md")),
+		Progress:     readFileSafe(filepath.Join(dir, ".claude-loop-logs", "progress.md")),
 		RollbackTag:  detectRollbackTag(dir),
 		StartTime:    startTime,
 		Elapsed:      elapsed,
+		HasReport:    reportErr == nil,
 	}
 
 	jsonResponse(w, 200, detail)
@@ -310,7 +384,7 @@ func (a *API) monitorSaveFeedback(w http.ResponseWriter, r *http.Request) {
 		jsonResponse(w, 404, M{"error": "Session not found"})
 		return
 	}
-	dir := strings.TrimSpace(dirOut)
+	dir := resolveLoopDir(strings.TrimSpace(dirOut))
 
 	// Write FEEDBACK.md
 	feedbackPath := filepath.Join(dir, "FEEDBACK.md")
@@ -320,6 +394,31 @@ func (a *API) monitorSaveFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jsonResponse(w, 200, M{"ok": true})
+}
+
+func (a *API) monitorReport(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if !sessionNameRe.MatchString(name) {
+		http.Error(w, "Invalid session name", 400)
+		return
+	}
+
+	dirOut, err := a.tmux("display-message", "-p", "-t", name, "#{pane_current_path}")
+	if err != nil {
+		http.Error(w, "Session not found", 404)
+		return
+	}
+	dir := resolveLoopDir(strings.TrimSpace(dirOut))
+
+	reportPath := filepath.Join(dir, ".claude-loop-logs", "report.html")
+	data, err := os.ReadFile(reportPath)
+	if err != nil {
+		http.Error(w, "Report not found", 404)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(data)
 }
 
 func (a *API) monitorStop(w http.ResponseWriter, r *http.Request) {

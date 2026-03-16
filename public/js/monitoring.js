@@ -159,6 +159,9 @@ function renderDetail(data) {
     html += '</div>';
     // Controls
     html += '<button id="mon-refresh-btn" class="mon-icon-btn" title="Refresh">' + icon('refresh', 14) + '</button>';
+    if (data.hasReport) {
+        html += '<button id="mon-report-btn" class="mon-icon-btn" title="View Report" style="color:' + T.accent() + ';border-color:' + T.accent() + '">' + icon('barChart', 14) + '</button>';
+    }
     if (data.status === 'running') {
         html += '<button id="mon-stop-btn" class="mon-icon-btn" style="color:' + T.danger() + ';border-color:' + T.danger() + '" title="Stop">' + icon('x', 14) + '</button>';
     }
@@ -261,12 +264,15 @@ function renderTasksMd(content) {
             html += '<div style="font-size:14px;font-weight:700;color:' + T.text() + ';margin:8px 0 4px">' + escapeHtml(trimmed.substring(2)) + '</div>';
         } else if (trimmed.startsWith('## ')) {
             html += '<div style="font-size:13px;font-weight:600;color:' + T.textMuted() + ';margin:6px 0 3px">' + escapeHtml(trimmed.substring(3)) + '</div>';
-        } else if (trimmed.startsWith('- [x]') || trimmed.startsWith('- [X]')) {
-            html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span class="mon-task-done">' + icon('checkCircle', 14) + '</span><span style="text-decoration:line-through;color:' + T.textSubtle() + '">' + escapeHtml(trimmed.substring(6)) + '</span></div>';
-        } else if (trimmed.startsWith('- [~]') || trimmed.startsWith('- [>]')) {
-            html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span class="mon-task-active">' + icon('zap', 14) + '</span><span style="color:' + T.accent() + '">' + escapeHtml(trimmed.substring(6)) + '</span></div>';
-        } else if (trimmed.startsWith('- [ ]')) {
-            html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span class="mon-task-todo">' + icon('minus', 14) + '</span><span>' + escapeHtml(trimmed.substring(6)) + '</span></div>';
+        } else if (trimmed.indexOf('[✓') !== -1 || trimmed.indexOf('■') !== -1) {
+            var taskText = trimmed.replace(/^-\s*/, '').replace(/\[✓[^\]]*\]\s*/, '').replace(/■\s*/, '');
+            html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span class="mon-task-done">' + icon('checkCircle', 14) + '</span><span style="text-decoration:line-through;color:' + T.textSubtle() + '">' + escapeHtml(taskText) + '</span></div>';
+        } else if (trimmed.indexOf('[→') !== -1) {
+            var taskText = trimmed.replace(/^-\s*/, '').replace(/\[→[^\]]*\]\s*/, '');
+            html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span class="mon-task-active">' + icon('zap', 14) + '</span><span style="color:' + T.accent() + '">' + escapeHtml(taskText) + '</span></div>';
+        } else if (trimmed.indexOf('□') !== -1) {
+            var taskText = trimmed.replace(/^-\s*/, '').replace(/□\s*/, '');
+            html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span class="mon-task-todo">' + icon('minus', 14) + '</span><span>' + escapeHtml(taskText) + '</span></div>';
         } else if (trimmed.startsWith('- ')) {
             html += '<div class="mon-task-line" style="padding-left:' + indentPx + 'px"><span style="color:' + T.textSubtle() + ';margin-right:6px">-</span>' + escapeHtml(trimmed.substring(2)) + '</div>';
         } else if (trimmed) {
@@ -302,6 +308,14 @@ function bindDetailEvents(data) {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
             loadDetail(data.name);
+        });
+    }
+
+    // Report
+    var reportBtn = document.getElementById('mon-report-btn');
+    if (reportBtn) {
+        reportBtn.addEventListener('click', function() {
+            window.open('/api/monitor/' + encodeURIComponent(data.name) + '/report', '_blank');
         });
     }
 

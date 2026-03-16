@@ -87,6 +87,32 @@ func NewAssetServer(embedFS fs.FS, diskDir string) *AssetServer {
 		return nil
 	})
 
+	// Walk disk directory for files NOT in embedded FS (e.g. newer assets)
+	if diskDir != "" {
+		filepath.WalkDir(diskDir, func(diskPath string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(diskDir, diskPath)
+			if err != nil {
+				return nil
+			}
+			rel = filepath.ToSlash(rel)
+			if _, exists := as.cache[rel]; exists {
+				return nil // already loaded from embed (possibly overridden)
+			}
+			data, err := os.ReadFile(diskPath)
+			if err != nil {
+				return nil
+			}
+			asset := as.processAsset(rel, data)
+			as.cache[rel] = asset
+			totalRaw += len(asset.Raw)
+			totalGz += len(asset.Gzipped)
+			return nil
+		})
+	}
+
 	ratio := float64(0)
 	if totalRaw > 0 {
 		ratio = (1 - float64(totalGz)/float64(totalRaw)) * 100

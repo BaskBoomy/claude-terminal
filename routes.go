@@ -102,6 +102,7 @@ func (a *API) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/monitor/{name}", a.auth.RequireAuth(a.monitorDetail))
 	mux.HandleFunc("POST /api/monitor/{name}/feedback", a.auth.RequireAuth(a.monitorSaveFeedback))
 	mux.HandleFunc("POST /api/monitor/{name}/stop", a.auth.RequireAuth(a.monitorStop))
+	mux.HandleFunc("GET /api/monitor/{name}/report", a.auth.RequireAuth(a.monitorReport))
 
 	// Domain / Tunnel
 	mux.HandleFunc("GET /api/tunnel-url", a.auth.RequireAuth(a.tunnelURL))
