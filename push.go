@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	webpush "github.com/SherClockHolmes/webpush-go"
@@ -38,6 +39,8 @@ type PushManager struct {
 	vapidPrivate  *ecdsa.PrivateKey
 	vapidPublicB64 string
 	vapidSubject  string
+	lastPushMsg   string
+	lastPushTime  time.Time
 }
 
 func NewPushManager(dataDir, settingsFile string) *PushManager {
@@ -151,6 +154,17 @@ func (pm *PushManager) SendPush(title, body string, ts int64) {
 	if pm.vapidPrivate == nil {
 		return
 	}
+
+	// Dedup: suppress identical push within 5 seconds
+	pm.mu.Lock()
+	if body == pm.lastPushMsg && time.Since(pm.lastPushTime) < 5*time.Second {
+		pm.mu.Unlock()
+		log.Printf("[push] dedup suppressed: %s", body)
+		return
+	}
+	pm.lastPushMsg = body
+	pm.lastPushTime = time.Now()
+	pm.mu.Unlock()
 
 	pm.mu.RLock()
 	subs := make([]PushSubscription, len(pm.subscriptions))

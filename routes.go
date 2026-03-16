@@ -1059,6 +1059,8 @@ func (a *API) notifications(w http.ResponseWriter, r *http.Request) {
 
 	entries, err := os.ReadDir(a.cfg.NotifyDir)
 	if err == nil {
+		var lastMsg string
+		var lastTs int64
 		for _, e := range entries {
 			if !strings.HasSuffix(e.Name(), ".json") {
 				continue
@@ -1076,6 +1078,12 @@ func (a *API) notifications(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				continue
 			}
+			// Dedup: suppress identical message within 5 seconds
+			if p.Message == lastMsg && (ts-lastTs) < 5000 {
+				continue
+			}
+			lastMsg = p.Message
+			lastTs = ts
 			result = append(result, M{
 				"session":   p.Session,
 				"window":    p.Window,

@@ -12,6 +12,8 @@ let usageBackoff = 60000;
 let lastServerData = null;
 let notifySince = Date.now();
 let notifyEnabled = false;
+let lastToastMsg = '';
+let lastToastTime = 0;
 
 window._cachedUsageData = null;
 
@@ -192,6 +194,11 @@ function notifyPoll() {
             });
             var latest = d.notifications[d.notifications.length - 1];
             var body = latest.message || 'Done';
+            // Dedup: suppress identical toast within 3 seconds
+            var now = Date.now();
+            if (body === lastToastMsg && (now - lastToastTime) < 3000) return;
+            lastToastMsg = body;
+            lastToastTime = now;
             // Push notifications are handled by SW via Web Push API.
             // Only show in-app toast when the app is in the foreground.
             if (document.visibilityState !== 'hidden') {
