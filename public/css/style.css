@@ -38,7 +38,19 @@ button svg, .pm-item svg, .pm-memo-del svg, .sn-handle svg, .sn-visibility svg, 
 }
 .pm-item, .preview-menu-item { display: flex; align-items: center; gap: 8px; }
 .preview-menu-item svg { flex-shrink: 0; }
-html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; overscroll-behavior: none; }
+html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+}
+/* Text-selectable content areas */
+input, textarea, [contenteditable],
+.files-preview-text, .files-preview-md, .files-edit-textarea,
+#brain-rendered, .mon-log-content, .mon-md-content,
+.mon-task-line, .mon-detail-stat-val,
+.send-history-text,
+.git-branch-name, .git-commit-hash, .git-commit-msg, .git-file-name,
+.totp-recovery-code, #tunnel-url-text {
+    -webkit-user-select: text; user-select: text;
+}
 
 /* =============================================
    Core Layout (#app, terminal, toolbar)
@@ -330,7 +342,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     font-family: -apple-system, system-ui, sans-serif;
     -webkit-tap-highlight-color: transparent;
     transition: color 0.15s, border-color 0.15s, transform 0.15s, opacity 0.15s;
-    user-select: none; -webkit-user-select: none;
     flex-shrink: 0; white-space: nowrap;
 }
 .view-tab.dragging { opacity: 0.3; }
@@ -560,7 +571,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 
 .sheet-header {
     display: flex; align-items: center; padding: 10px 16px 6px;
-    flex-shrink: 0; cursor: grab; user-select: none; touch-action: none;
+    flex-shrink: 0; cursor: grab; touch-action: none;
 }
 .sheet-handle {
     width: 32px; height: 4px; background: var(--border); border-radius: 2px;
@@ -703,7 +714,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .sn-card.expanded .sn-chevron { transform: rotate(90deg); }
 .sn-handle {
     cursor: grab; color: var(--text-subtle); font-size: 14px; padding: 4px;
-    user-select: none; touch-action: none; min-width: 24px; text-align: center;
+    touch-action: none; min-width: 24px; text-align: center;
 }
 .sn-handle:active { cursor: grabbing; color: var(--accent); }
 
@@ -809,7 +820,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     flex: 1; padding: 8px; background: var(--bg); border: 1px solid var(--border);
     border-radius: 6px; font-family: 'SF Mono', 'Cascadia Code', monospace;
     font-size: 13px; color: var(--text); word-break: break-all;
-    user-select: all;
+    -webkit-user-select: all; user-select: all;
 }
 .totp-copy-btn {
     padding: 6px 10px; background: var(--bg); border: 1px solid var(--border);
@@ -1794,7 +1805,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     padding: 10px 12px; border-bottom: 1px solid var(--bg);
     cursor: pointer; transition: background 0.1s;
     touch-action: manipulation;
-    -webkit-user-select: none; user-select: none;
 }
 .files-item:active { background: var(--bg-raised); }
 .files-item.selected { background: rgba(201, 100, 66, 0.15); }
