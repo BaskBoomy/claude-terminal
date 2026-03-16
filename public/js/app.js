@@ -19,8 +19,9 @@ import { showToast, showConfirm, closeConfirm, isMobile, escapeHtml } from './ut
 import { initI18n, t, translateDOM } from './i18n.js';
 import { I, icon } from './icons.js';
 
-// --- Make showToast globally available (used by some modules) ---
+// --- Make showToast/showConfirm globally available (used by some modules) ---
 window.showToast = showToast;
+window.showConfirm = showConfirm;
 
 // ========================================
 // State

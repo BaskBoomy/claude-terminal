@@ -261,7 +261,7 @@ function enterSelectMode() { selectMode = true; selectedFiles.clear(); updateSel
 function exitSelectMode() { selectMode = false; selectedFiles.clear(); updateSelectUI(); renderItems(getDisplayItems(allItems)); }
 
 // --- Context menu ---
-function showContextMenu(item, e) {
+function showContextMenu(item) {
     if (navigator.vibrate) navigator.vibrate(30);
     var actions = [];
     if (!item.isDir) {
@@ -460,16 +460,28 @@ function applyFilter(query) {
 
 // --- Event delegation ---
 function setupDelegation() {
-    var longTimer = null, longPath = null;
+    var longTimer = null, longPath = null, longTouchX = 0, longTouchY = 0, longFired = false;
 
-    // Breadcrumb delegation
+    function startLong(path) {
+        longPath = path; longFired = false;
+        longTimer = setTimeout(function() {
+            longTimer = null; longFired = true;
+            var item = itemMap[longPath];
+            if (item) showContextMenu(item);
+        }, 500);
+    }
+
+    function clearLong() { if (longTimer) { clearTimeout(longTimer); longTimer = null; } }
+
+    // Breadcrumb
     pathBreadcrumb.addEventListener('click', function(e) {
         var btn = e.target.closest('.files-crumb');
         if (btn && btn.dataset.crumb !== undefined) loadDirectory(btn.dataset.crumb);
     });
 
-    // File items delegation
+    // File items click
     fileItems.addEventListener('click', function(e) {
+        if (longFired) { longFired = false; return; }
         var dlBtn = e.target.closest('.files-dl-btn');
         if (dlBtn) { e.stopPropagation(); var r = dlBtn.closest('.files-item'); if (r && r.dataset.path) downloadFile(r.dataset.path); return; }
         var row = e.target.closest('.files-item');
@@ -481,16 +493,29 @@ function setupDelegation() {
         if (item.isDir) loadDirectory(path); else openPreview(item);
     });
 
+    // Long-press: touch
     fileItems.addEventListener('touchstart', function(e) {
         var row = e.target.closest('.files-item');
         if (!row || !row.dataset.path) return;
-        longPath = row.dataset.path;
-        longTimer = setTimeout(function() { longTimer = null; var item = itemMap[longPath]; if (item) showContextMenu(item, e); }, 500);
+        var touch = e.touches[0];
+        longTouchX = touch.clientX; longTouchY = touch.clientY;
+        startLong(row.dataset.path);
     }, { passive: true });
-
-    var clearLong = function() { if (longTimer) { clearTimeout(longTimer); longTimer = null; } };
     fileItems.addEventListener('touchend', clearLong);
-    fileItems.addEventListener('touchmove', clearLong);
+    fileItems.addEventListener('touchmove', function(e) {
+        if (!longTimer) return;
+        var touch = e.touches[0], dx = touch.clientX - longTouchX, dy = touch.clientY - longTouchY;
+        if (dx * dx + dy * dy > 100) clearLong();
+    });
+
+    // Long-press: mouse
+    fileItems.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        var row = e.target.closest('.files-item');
+        if (row && row.dataset.path) startLong(row.dataset.path);
+    });
+    fileItems.addEventListener('mouseup', clearLong);
+    fileItems.addEventListener('mouseleave', clearLong);
 }
 
 // --- Init ---

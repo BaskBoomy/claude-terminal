@@ -1794,6 +1794,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
     padding: 10px 12px; border-bottom: 1px solid var(--bg);
     cursor: pointer; transition: background 0.1s;
     touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
 }
 .files-item:active { background: var(--bg-raised); }
 .files-item.selected { background: rgba(201, 100, 66, 0.15); }
