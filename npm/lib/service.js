@@ -3,14 +3,50 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { c, color, S, createSpinner, exec, sectionStart, sectionItem, sectionEnd } = require('./ui');
+const { shellQuote, xmlEscape, isPortAvailable } = require('./shared');
 
 function getUser() {
-  return os.userInfo().username;
+  // Prefer SUDO_USER to avoid services running as root when installed via sudo
+  return process.env.SUDO_USER || os.userInfo().username;
+}
+
+function findBinary(name) {
+  try {
+    return execSync(`which ${name}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  } catch {
+    // Check common locations before giving up
+    const commonPaths = [
+      `/usr/local/bin/${name}`,
+      `/usr/bin/${name}`,
+      `/opt/homebrew/bin/${name}`,
+      `${os.homedir()}/.local/bin/${name}`,
+    ];
+    for (const p of commonPaths) {
+      try { fs.accessSync(p, fs.constants.X_OK); return p; } catch {}
+    }
+    throw new Error(`Binary '${name}' not found. Install it first.`);
+  }
+}
+
+/** Quote a path for systemd service files (uses C-style double quotes). */
+function systemdQuote(s) {
+  return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
 }
 
 async function setupService(config) {
   const { installDir, port } = config;
   const user = getUser();
+
+  // Pre-flight: check port availability
+  const portsToCheck = [config.port, config.ttydPort];
+  for (const p of portsToCheck) {
+    if (!await isPortAvailable(p)) {
+      throw new Error(
+        `Port ${p} is already in use.\n` +
+        `  Stop the existing service or choose a different port.`
+      );
+    }
+  }
 
   if (process.platform === 'linux') {
     await setupSystemd(config, user);
@@ -37,10 +73,10 @@ After=network.target
 [Service]
 Type=simple
 User=${user}
-ExecStart=${ttydPath} -p ${ttydPort} -W -b /ttyd ${scriptPath}
+ExecStart=${systemdQuote(ttydPath)} -p ${ttydPort} -W -b /ttyd ${systemdQuote(scriptPath)}
 Restart=on-failure
 RestartSec=5
-Environment=CLAUDE_CMD=${config.claudeCmd || 'claude'}
+Environment="CLAUDE_CMD=${config.claudeCmd || 'claude'}"
 
 [Install]
 WantedBy=multi-user.target
@@ -53,11 +89,11 @@ After=network.target ttyd.service
 [Service]
 Type=simple
 User=${user}
-WorkingDirectory=${installDir}
-ExecStart=${binPath}
+WorkingDirectory=${systemdQuote(installDir)}
+ExecStart=${systemdQuote(binPath)}
 Restart=on-failure
 RestartSec=5
-Environment=PORT=${config.port}
+Environment="PORT=${config.port}"
 
 [Install]
 WantedBy=multi-user.target
@@ -65,25 +101,52 @@ WantedBy=multi-user.target
 
   sectionStart('Service Setup');
 
-  const ttydServicePath = '/tmp/ttyd.service';
-  const ctServicePath = '/tmp/claude-terminal.service';
-  fs.writeFileSync(ttydServicePath, ttydService);
-  fs.writeFileSync(ctServicePath, ctService);
+  // Write service files to installDir (not /tmp) for security
+  const ttydServicePath = path.join(installDir, 'ttyd.service');
+  const ctServicePath = path.join(installDir, 'claude-terminal.service');
+  fs.writeFileSync(ttydServicePath, ttydService, { mode: 0o600 });
+  fs.writeFileSync(ctServicePath, ctService, { mode: 0o600 });
 
   const spinner = createSpinner('Configuring systemd services...').start();
 
   try {
-    await exec(`sudo cp ${ttydServicePath} /etc/systemd/system/ttyd.service`);
-    await exec(`sudo cp ${ctServicePath} /etc/systemd/system/claude-terminal.service`);
+    // Gracefully stop existing services before replacing
+    await exec('sudo systemctl stop claude-terminal 2>/dev/null || true', { timeout: 15000 });
+    await exec('sudo systemctl stop ttyd 2>/dev/null || true', { timeout: 15000 });
+
+    await exec(`sudo cp ${shellQuote(ttydServicePath)} /etc/systemd/system/ttyd.service`);
+    await exec(`sudo cp ${shellQuote(ctServicePath)} /etc/systemd/system/claude-terminal.service`);
     spinner.update('Reloading daemon...');
     await exec('sudo systemctl daemon-reload');
     spinner.update('Enabling services...');
     await exec('sudo systemctl enable ttyd claude-terminal');
     spinner.update('Starting ttyd...');
     await exec('sudo systemctl start ttyd');
+
+    // Wait for ttyd port to be ready (instead of hardcoded sleep)
+    spinner.update('Waiting for ttyd...');
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      const available = await isPortAvailable(config.ttydPort);
+      if (!available) break; // Port taken = ttyd is listening
+    }
+
     spinner.update('Starting claude-terminal...');
-    await exec('sleep 1 && sudo systemctl start claude-terminal');
-    spinner.succeed('systemd services enabled & started');
+    await exec('sudo systemctl start claude-terminal');
+
+    // Health check
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const status = execSync('systemctl is-active claude-terminal', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+      if (status === 'active') {
+        spinner.succeed('systemd services enabled & started');
+      } else {
+        spinner.warn('Services started but may not be healthy');
+        sectionItem(color(c.dim, S.info), color(c.dim, 'Check: journalctl -u claude-terminal -n 20'));
+      }
+    } catch {
+      spinner.warn('Services started but status unknown');
+    }
   } catch (err) {
     spinner.warn('Could not auto-start services');
     sectionItem(color(c.dim, S.info), color(c.dim, 'Start manually:'));
@@ -91,12 +154,20 @@ WantedBy=multi-user.target
     sectionEnd(color(c.dim, ' '), color(c.gray, `PORT=${config.port} ${binPath} &`));
   }
 
-  fs.unlinkSync(ttydServicePath);
-  fs.unlinkSync(ctServicePath);
+  // Clean up service files from installDir
+  try { fs.unlinkSync(ttydServicePath); } catch {}
+  try { fs.unlinkSync(ctServicePath); } catch {}
 
   // Cloudflare Tunnel service
   if (config.tunnel) {
-    const cloudflaredPath = findBinary('cloudflared');
+    let cloudflaredPath;
+    try {
+      cloudflaredPath = findBinary('cloudflared');
+    } catch {
+      sectionItem(color(c.red, S.cross), 'cloudflared not found — tunnel service skipped');
+      return;
+    }
+
     const cfService = `[Unit]
 Description=Cloudflare Tunnel for Claude Terminal
 After=claude-terminal.service
@@ -104,7 +175,7 @@ After=claude-terminal.service
 [Service]
 Type=simple
 User=${user}
-ExecStart=${cloudflaredPath} tunnel --url http://localhost:${config.port} --no-autoupdate
+ExecStart=${systemdQuote(cloudflaredPath)} tunnel --url http://localhost:${config.port} --no-autoupdate
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal
@@ -112,12 +183,12 @@ StandardOutput=journal
 [Install]
 WantedBy=multi-user.target
 `;
-    const cfServicePath = '/tmp/cloudflared-tunnel.service';
-    fs.writeFileSync(cfServicePath, cfService);
+    const cfServicePath = path.join(installDir, 'cloudflared-tunnel.service');
+    fs.writeFileSync(cfServicePath, cfService, { mode: 0o600 });
 
     const cfSpinner = createSpinner('Configuring cloudflared tunnel...').start();
     try {
-      await exec(`sudo cp ${cfServicePath} /etc/systemd/system/cloudflared-tunnel.service`);
+      await exec(`sudo cp ${shellQuote(cfServicePath)} /etc/systemd/system/cloudflared-tunnel.service`);
       await exec('sudo systemctl daemon-reload');
       await exec('sudo systemctl enable cloudflared-tunnel');
       await exec('sudo systemctl restart cloudflared-tunnel');
@@ -127,7 +198,7 @@ WantedBy=multi-user.target
       sectionItem(color(c.dim, S.info), color(c.dim, 'Start manually:'));
       sectionEnd(color(c.dim, ' '), color(c.gray, `${cloudflaredPath} tunnel --url http://localhost:${config.port}`));
     }
-    fs.unlinkSync(cfServicePath);
+    try { fs.unlinkSync(cfServicePath); } catch {}
   }
 }
 
@@ -149,11 +220,11 @@ async function setupLaunchd(config, user) {
     <key>Label</key><string>com.claude-terminal.ttyd</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${ttydPath}</string>
+        <string>${xmlEscape(ttydPath)}</string>
         <string>-p</string><string>${config.ttydPort}</string>
         <string>-W</string>
         <string>-b</string><string>/ttyd</string>
-        <string>${scriptPath}</string>
+        <string>${xmlEscape(scriptPath)}</string>
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
@@ -167,9 +238,9 @@ async function setupLaunchd(config, user) {
     <key>Label</key><string>com.claude-terminal</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${binPath}</string>
+        <string>${xmlEscape(binPath)}</string>
     </array>
-    <key>WorkingDirectory</key><string>${installDir}</string>
+    <key>WorkingDirectory</key><string>${xmlEscape(installDir)}</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PORT</key><string>${port}</string>
@@ -197,9 +268,9 @@ async function setupLaunchd(config, user) {
     await exec(`launchctl bootout ${domain}/${path.basename(ttydPlistPath, '.plist')} 2>/dev/null || true`);
     await exec(`launchctl bootout ${domain}/${path.basename(ctPlistPath, '.plist')} 2>/dev/null || true`);
 
-    await exec(`launchctl bootstrap ${domain} ${ttydPlistPath}`);
+    await exec(`launchctl bootstrap ${domain} ${shellQuote(ttydPlistPath)}`);
     spinner.update('Loading claude-terminal...');
-    await exec(`launchctl bootstrap ${domain} ${ctPlistPath}`);
+    await exec(`launchctl bootstrap ${domain} ${shellQuote(ctPlistPath)}`);
     spinner.succeed('launchd services loaded');
   } catch {
     spinner.warn('Could not load services');
@@ -210,7 +281,14 @@ async function setupLaunchd(config, user) {
 
   // Cloudflare Tunnel launchd service (with log file for URL detection)
   if (config.tunnel) {
-    const cloudflaredPath = findBinary('cloudflared');
+    let cloudflaredPath;
+    try {
+      cloudflaredPath = findBinary('cloudflared');
+    } catch {
+      sectionItem(color(c.red, S.cross), 'cloudflared not found — tunnel service skipped');
+      return;
+    }
+
     const cfLogPath = path.join(logDir, 'cloudflared.log');
     config._cfLogPath = cfLogPath;
 
@@ -221,15 +299,15 @@ async function setupLaunchd(config, user) {
     <key>Label</key><string>com.claude-terminal.cloudflared</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${cloudflaredPath}</string>
+        <string>${xmlEscape(cloudflaredPath)}</string>
         <string>tunnel</string>
         <string>--url</string><string>http://localhost:${config.port}</string>
         <string>--no-autoupdate</string>
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
-    <key>StandardOutPath</key><string>${cfLogPath}</string>
-    <key>StandardErrorPath</key><string>${cfLogPath}</string>
+    <key>StandardOutPath</key><string>${xmlEscape(cfLogPath)}</string>
+    <key>StandardErrorPath</key><string>${xmlEscape(cfLogPath)}</string>
 </dict>
 </plist>`;
 
@@ -242,7 +320,7 @@ async function setupLaunchd(config, user) {
     const cfSpinner = createSpinner('Configuring cloudflared tunnel...').start();
     try {
       await exec(`launchctl bootout ${domain}/com.claude-terminal.cloudflared 2>/dev/null || true`);
-      await exec(`launchctl bootstrap ${domain} ${cfPlistPath}`);
+      await exec(`launchctl bootstrap ${domain} ${shellQuote(cfPlistPath)}`);
       cfSpinner.succeed('cloudflared tunnel loaded');
     } catch {
       cfSpinner.warn('Could not load cloudflared tunnel');
@@ -253,7 +331,7 @@ async function setupLaunchd(config, user) {
 
 /**
  * Wait for cloudflared to establish tunnel and return the URL.
- * Polls logs for up to 15 seconds.
+ * Polls logs for up to 30 seconds.
  */
 async function waitForTunnelUrl(config) {
   const spinner = createSpinner('Waiting for tunnel URL...').start();
@@ -275,6 +353,7 @@ async function waitForTunnelUrl(config) {
 
 /**
  * Parse tunnel URL from logs (systemd journal or launchd log file).
+ * Supports trycloudflare.com and cfargotunnel.com domains.
  */
 function parseTunnelUrl(config) {
   let logText = '';
@@ -282,7 +361,7 @@ function parseTunnelUrl(config) {
   if (process.platform === 'linux') {
     try {
       logText = execSync(
-        'sudo journalctl -u cloudflared-tunnel --no-pager -n 30 --output=cat 2>/dev/null',
+        'sudo journalctl -u cloudflared-tunnel --no-pager -n 50 --output=cat 2>/dev/null',
         { encoding: 'utf8', timeout: 5000 }
       );
     } catch {}
@@ -297,7 +376,8 @@ function parseTunnelUrl(config) {
     const idx = line.indexOf('https://');
     if (idx >= 0) {
       let url = line.substring(idx);
-      if (url.includes('trycloudflare.com')) {
+      // Match cloudflare tunnel domains
+      if (url.includes('trycloudflare.com') || url.includes('cfargotunnel.com')) {
         const sp = url.search(/[\s"']/);
         if (sp >= 0) url = url.substring(0, sp);
         found = url;
@@ -305,14 +385,6 @@ function parseTunnelUrl(config) {
     }
   }
   return found;
-}
-
-function findBinary(name) {
-  try {
-    return execSync(`which ${name}`, { encoding: 'utf8' }).trim();
-  } catch {
-    return name;
-  }
 }
 
 module.exports = { setupService };

@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-const { c, color, S, banner, box, success, error } = require('../lib/ui');
+const fs = require('fs');
+const path = require('path');
+const { c, color, S, banner, box, success, error, stripAnsi } = require('../lib/ui');
 const { checkPrerequisites } = require('../lib/prerequisites');
 const { prompt } = require('../lib/prompt');
 const { installTtyd } = require('../lib/install-ttyd');
@@ -9,8 +11,39 @@ const { setupService } = require('../lib/service');
 const { renderQR } = require('../lib/qr');
 const pkg = require('../package.json');
 
+// ── Signal handling: clean up temp files on Ctrl+C / SIGTERM ─────────────────
+
+const tempPaths = new Set();
+
+function registerTemp(p) { tempPaths.add(p); }
+
+function cleanupTemps() {
+  for (const p of tempPaths) {
+    try { fs.rmSync(p, { recursive: true, force: true }); } catch {}
+  }
+}
+
+process.on('SIGINT', () => { cleanupTemps(); process.exit(130); });
+process.on('SIGTERM', () => { cleanupTemps(); process.exit(143); });
+
 async function main() {
   banner(pkg.version);
+
+  // Check for existing installation
+  const defaultDir = path.join(process.env.HOME || require('os').homedir(), '.claude-terminal');
+  const existingBinary = path.join(defaultDir, 'claude-terminal');
+  if (fs.existsSync(existingBinary)) {
+    const readline = require('readline');
+    const { ask } = require('../lib/ui');
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const answer = await ask(rl, 'Existing installation detected. Upgrade?', 'Y');
+    rl.close();
+    if (answer.toLowerCase().startsWith('n')) {
+      console.log('  Aborted.');
+      process.exit(0);
+    }
+    console.log('');
+  }
 
   // 1. Check prerequisites
   const checks = await checkPrerequisites();
@@ -92,9 +125,16 @@ async function main() {
   if (config.tunnelUrl) {
     try {
       const qrLines = renderQR(config.tunnelUrl);
-      console.log(color(c.dim, '  Scan to open on mobile:\n'));
-      qrLines.forEach(l => console.log('    ' + l));
-      console.log('');
+      if (qrLines && qrLines.length > 0) {
+        // Check terminal width before rendering
+        const qrWidth = stripAnsi(qrLines[0]).length + 4;
+        const termWidth = process.stdout.columns || 80;
+        if (qrWidth <= termWidth) {
+          console.log(color(c.dim, '  Scan to open on mobile:\n'));
+          qrLines.forEach(l => console.log('    ' + l));
+          console.log('');
+        }
+      }
     } catch {
       // QR generation failed silently — URL is already shown above
     }
@@ -102,6 +142,7 @@ async function main() {
 }
 
 main().catch(err => {
+  cleanupTemps();
   error(err.message);
   process.exit(1);
 });

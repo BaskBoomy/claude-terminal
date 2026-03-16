@@ -3,6 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { createSpinner, exec } = require('./ui');
+const { resolveArch, safeDownload } = require('./shared');
 
 function commandExists(cmd) {
   try {
@@ -30,18 +31,24 @@ async function installCloudflared() {
 
   try {
     if (process.platform === 'linux') {
-      const arch = process.arch === 'x64' ? 'amd64' : 'arm64';
-      const realArch = process.arch === 'arm' ? 'arm' : arch;
-      const url = `https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${realArch}`;
-      await exec(`curl -sL "${url}" -o /tmp/cloudflared && chmod +x /tmp/cloudflared`, { timeout: 60000 });
+      const archInfo = resolveArch();
+      const url = `https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${archInfo.cloudflared}`;
+      const tmpPath = path.join(os.tmpdir(), 'cloudflared');
+
+      await safeDownload(url, tmpPath, { timeout: 60000 });
+      fs.chmodSync(tmpPath, 0o755);
+
       try {
-        await exec('sudo mv /tmp/cloudflared /usr/local/bin/cloudflared');
+        await exec(`sudo mv ${tmpPath} /usr/local/bin/cloudflared`);
       } catch {
         const localBin = path.join(os.homedir(), '.local', 'bin');
         fs.mkdirSync(localBin, { recursive: true });
-        fs.copyFileSync('/tmp/cloudflared', path.join(localBin, 'cloudflared'));
+        fs.copyFileSync(tmpPath, path.join(localBin, 'cloudflared'));
         fs.chmodSync(path.join(localBin, 'cloudflared'), 0o755);
-        fs.unlinkSync('/tmp/cloudflared');
+        try { fs.unlinkSync(tmpPath); } catch {}
+        if (!process.env.PATH.includes(localBin)) {
+          process.env.PATH = `${localBin}:${process.env.PATH}`;
+        }
       }
       spinner.succeed('cloudflared installed');
       return true;

@@ -1,37 +1,15 @@
-const { execSync } = require('child_process');
-const https = require('https');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { createSpinner, exec } = require('./ui');
+const { c, color, S, createSpinner, exec } = require('./ui');
+const { resolveArch, safeDownload, isMusl } = require('./shared');
 
 const TTYD_VERSION = '1.7.7';
-
-function download(url, dest) {
-  return new Promise((resolve, reject) => {
-    const follow = (url) => {
-      https.get(url, res => {
-        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          follow(res.headers.location);
-          return;
-        }
-        if (res.statusCode !== 200) {
-          reject(new Error(`Download failed: ${res.statusCode}`));
-          return;
-        }
-        const file = fs.createWriteStream(dest);
-        res.pipe(file);
-        file.on('finish', () => { file.close(); resolve(); });
-      }).on('error', reject);
-    };
-    follow(url);
-  });
-}
 
 function findBrew() {
   const paths = ['/opt/homebrew/bin/brew', '/usr/local/bin/brew'];
   for (const p of paths) {
-    try { require('fs').accessSync(p, require('fs').constants.X_OK); return p; } catch {}
+    try { fs.accessSync(p, fs.constants.X_OK); return p; } catch {}
   }
   return 'brew';
 }
@@ -51,13 +29,26 @@ async function installTtyd() {
   }
 
   // Linux: download binary
-  const arch = (process.arch === 'arm64' || process.arch === 'aarch64') ? 'aarch64' : 'x86_64';
-  const url = `https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${arch}`;
+  const archInfo = resolveArch();
 
-  const spinner = createSpinner(`Downloading ttyd ${TTYD_VERSION} (${arch})`).start();
+  // Check musl libc (Alpine) — pre-built binaries may not work
+  if (isMusl()) {
+    const spinner = createSpinner('Checking ttyd...').start();
+    spinner.warn('Alpine Linux (musl) detected — pre-built ttyd may not work');
+    console.log(`  ${color(c.dim, '  Try: apk add ttyd')}`);
+    // Still try the download, but warn
+  }
+
+  const url = `https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.${archInfo.ttyd}`;
+  const spinner = createSpinner(`Downloading ttyd ${TTYD_VERSION} (${archInfo.ttyd})`).start();
 
   const tmpPath = path.join(os.tmpdir(), 'ttyd');
-  await download(url, tmpPath);
+  try {
+    await safeDownload(url, tmpPath, { timeout: 60000 });
+  } catch (err) {
+    spinner.fail(`Download failed: ${err.message}`);
+    throw new Error(`Failed to download ttyd. Install manually or try: apt install ttyd`);
+  }
   fs.chmodSync(tmpPath, 0o755);
 
   spinner.update('Installing ttyd...');
@@ -67,10 +58,15 @@ async function installTtyd() {
     await exec(`sudo mv ${tmpPath} /usr/local/bin/ttyd`);
     spinner.succeed('ttyd installed to /usr/local/bin/ttyd');
   } catch {
-    const localBin = path.join(process.env.HOME, '.local', 'bin');
+    const localBin = path.join(os.homedir(), '.local', 'bin');
     fs.mkdirSync(localBin, { recursive: true });
     fs.renameSync(tmpPath, path.join(localBin, 'ttyd'));
+    // Ensure ~/.local/bin is in PATH for subsequent findBinary() calls
+    if (!process.env.PATH.includes(localBin)) {
+      process.env.PATH = `${localBin}:${process.env.PATH}`;
+    }
     spinner.succeed(`ttyd installed to ${localBin}/ttyd`);
+    console.log(`  ${color(c.yellow, S.warn)} ${color(c.dim, `Add to your shell profile: export PATH="${localBin}:$PATH"`)}`);
   }
 }
 

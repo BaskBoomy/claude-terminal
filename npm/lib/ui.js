@@ -8,6 +8,7 @@ const readline = require('readline');
 // ─── ANSI Colors ─────────────────────────────────────────────────────────────
 
 const ESC = '\x1b[';
+const useColor = !process.env.NO_COLOR && process.env.TERM !== 'dumb';
 const c = {
   reset:   `${ESC}0m`,
   bold:    `${ESC}1m`,
@@ -30,6 +31,7 @@ const c = {
 };
 
 function color(style, text) {
+  if (!useColor) return String(text);
   return `${style}${text}${c.reset}`;
 }
 
@@ -57,9 +59,11 @@ function createSpinner(text) {
   let i = 0;
   let timer = null;
   const stream = process.stderr;
+  const isTTY = stream.isTTY;
 
   return {
     start() {
+      if (!isTTY) return this;
       timer = setInterval(() => {
         const frame = color(c.brand, SPINNER_FRAMES[i++ % SPINNER_FRAMES.length]);
         stream.write(`\r  ${frame} ${color(c.dim, text)}`);
@@ -68,17 +72,32 @@ function createSpinner(text) {
     },
     succeed(msg) {
       clearInterval(timer);
-      stream.write(`\r  ${color(c.green, S.check)} ${msg || text}\n`);
+      timer = null;
+      if (isTTY) {
+        stream.write(`\r  ${color(c.green, S.check)} ${msg || text}\n`);
+      } else {
+        stream.write(`  ${S.check} ${msg || text}\n`);
+      }
       return this;
     },
     fail(msg) {
       clearInterval(timer);
-      stream.write(`\r  ${color(c.red, S.cross)} ${msg || text}\n`);
+      timer = null;
+      if (isTTY) {
+        stream.write(`\r  ${color(c.red, S.cross)} ${msg || text}\n`);
+      } else {
+        stream.write(`  ${S.cross} ${msg || text}\n`);
+      }
       return this;
     },
     warn(msg) {
       clearInterval(timer);
-      stream.write(`\r  ${color(c.yellow, S.warn)} ${msg || text}\n`);
+      timer = null;
+      if (isTTY) {
+        stream.write(`\r  ${color(c.yellow, S.warn)} ${msg || text}\n`);
+      } else {
+        stream.write(`  ${S.warn} ${msg || text}\n`);
+      }
       return this;
     },
     update(newText) {
@@ -112,7 +131,7 @@ function box(lines, opts = {}) {
 }
 
 function stripAnsi(str) {
-  return str.replace(/\x1b\[[0-9;]*m/g, '');
+  return str.replace(/\x1b\[[0-9;]*[A-Za-z]|\x1b\].*?\x07/g, '');
 }
 
 // ─── Section Headers ─────────────────────────────────────────────────────────
@@ -137,14 +156,13 @@ function sectionBlank() {
 // ─── Styled Prompts ──────────────────────────────────────────────────────────
 
 function ask(rl, label, defaultVal) {
-  const hint = defaultVal ? color(c.gray, ` (${defaultVal})`) : '';
+  const hint = defaultVal ? color(c.gray, ` [${defaultVal}]`) : color(c.gray, ' (optional)');
   return new Promise(resolve => {
-    const prompt = `  ${color(c.brand, S.bullet)} ${color(c.bold, label)}${hint}\n  ${color(c.gray, S.bar)} `;
+    const prompt = `  ${color(c.brand, S.bullet)} ${color(c.bold, label)}${hint}${color(c.dim, ': ')}`;
     rl.question(prompt, answer => {
-      // Move cursor up and rewrite with the answer
       const val = answer.trim() || defaultVal || '';
       const display = val || color(c.gray, 'skipped');
-      process.stdout.write(`\x1b[1A\r  ${color(c.gray, S.bar)} ${display}\n`);
+      process.stdout.write(`\x1b[1A\r  ${color(c.green, S.check)} ${label}: ${display}\n`);
       resolve(val);
     });
   });
@@ -152,21 +170,29 @@ function ask(rl, label, defaultVal) {
 
 function askPassword(label) {
   return new Promise(resolve => {
-    const hint = '';
-    process.stdout.write(`  ${color(c.brand, S.bullet)} ${color(c.bold, label)}${hint}\n  ${color(c.gray, S.bar)} `);
+    process.stdout.write(`  ${color(c.brand, S.bullet)} ${color(c.bold, label)}${color(c.dim, ': ')}`);
 
     const stdin = process.stdin;
     const oldRawMode = stdin.isRaw;
     if (stdin.setRawMode) stdin.setRawMode(true);
 
+    // Safety: always restore raw mode on process exit
+    const restore = () => {
+      if (stdin.setRawMode) {
+        try { stdin.setRawMode(oldRawMode); } catch {}
+      }
+    };
+    process.once('exit', restore);
+
     let password = '';
     const onData = (ch) => {
       const char = ch.toString();
       if (char === '\n' || char === '\r') {
-        if (stdin.setRawMode) stdin.setRawMode(oldRawMode);
+        restore();
+        process.removeListener('exit', restore);
         stdin.removeListener('data', onData);
-        const masked = '●'.repeat(password.length);
-        process.stdout.write(`\r  ${color(c.gray, S.bar)} ${masked}\n`);
+        const masked = password.length > 0 ? '●'.repeat(password.length) : color(c.dim, 'auto-generate');
+        process.stdout.write(`\r  ${color(c.green, S.check)} Password: ${masked}\n`);
         resolve(password);
       } else if (char === '\x7f' || char === '\b') {
         if (password.length > 0) {
@@ -174,8 +200,11 @@ function askPassword(label) {
           process.stdout.write('\b \b');
         }
       } else if (char === '\x03') {
+        restore();
+        process.removeListener('exit', restore);
+        stdin.removeListener('data', onData);
         console.log('\n');
-        process.exit(0);
+        process.exit(130);
       } else {
         password += char;
         process.stdout.write('●');
@@ -201,6 +230,8 @@ function banner(version) {
 
 // ─── Async Exec (non-blocking, keeps spinner alive) ─────────────────────────
 
+const MAX_STDERR = 64 * 1024;
+
 /**
  * Async exec — non-blocking so spinners keep animating.
  * opts.live = true  → stdio: 'inherit' (show real output, for installs)
@@ -214,7 +245,7 @@ function exec(cmd, opts = {}) {
     if (opts.live) {
       stdio = 'inherit';
     } else if (cmd.startsWith('sudo ') || opts.stdin) {
-      stdio = ['inherit', 'ignore', 'pipe'];
+      stdio = ['inherit', 'inherit', 'pipe'];
     } else {
       stdio = ['ignore', 'ignore', 'pipe'];
     }
@@ -227,17 +258,31 @@ function exec(cmd, opts = {}) {
 
     let stderr = '';
     if (child.stderr) {
-      child.stderr.on('data', d => { stderr += d.toString(); });
+      child.stderr.on('data', d => {
+        if (stderr.length < MAX_STDERR) {
+          stderr += d.toString();
+          if (stderr.length > MAX_STDERR) {
+            stderr = stderr.slice(0, MAX_STDERR) + '\n...(truncated)';
+          }
+        }
+      });
     }
 
     let killed = false;
+    let killTimer = null;
     const timer = opts.timeout ? setTimeout(() => {
       killed = true;
       child.kill('SIGTERM');
+      // Escalate to SIGKILL after 5s if process ignores SIGTERM
+      killTimer = setTimeout(() => {
+        try { child.kill('SIGKILL'); } catch {}
+      }, 5000);
+      killTimer.unref();
     }, opts.timeout) : null;
 
     child.on('close', code => {
       if (timer) clearTimeout(timer);
+      if (killTimer) clearTimeout(killTimer);
       if (killed) return reject(new Error(`Timed out: ${cmd}`));
       if (code !== 0) {
         const err = new Error(`Exit code ${code}: ${cmd}`);

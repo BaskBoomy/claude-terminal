@@ -109,6 +109,21 @@ async function fixBrewIfNeeded(brewPath) {
       }
     } catch {}
   }
+  // Clear corrupted API cache (fixes "Cannot download non-corrupt formula.jws.json")
+  const apiCacheDirs = [
+    `${process.env.HOME}/Library/Caches/Homebrew/api`,
+    '/opt/homebrew/var/homebrew/api',
+  ];
+  for (const dir of apiCacheDirs) {
+    try {
+      const entries = fs.readdirSync(dir);
+      for (const f of entries) {
+        if (f.endsWith('.json') || f.endsWith('.jws.json')) {
+          try { fs.unlinkSync(`${dir}/${f}`); } catch {}
+        }
+      }
+    } catch {}
+  }
   // Quick brew cleanup
   try {
     await exec(`${brewPath} cleanup 2>/dev/null || true`, { timeout: 15000 });
@@ -116,37 +131,46 @@ async function fixBrewIfNeeded(brewPath) {
 }
 
 /**
- * Install a package with live terminal output.
- * Spinner stops → real output shown → result displayed.
+ * Install a package with spinner feedback.
+ * Shows spinning animation during install, ✔/✖ on completion.
  */
-async function liveInstall(label, cmd, opts = {}) {
-  console.log(`  ${color(c.gray, S.bar)}`);
-  console.log(`  ${color(c.gray, S.barT)} ${color(c.yellow, S.warn)} ${label}`);
-  console.log(`  ${color(c.gray, S.bar)}   ${color(c.dim, '$ ' + cmd)}`);
-  console.log(`  ${color(c.gray, S.bar)}`);
-
+async function spinnerInstall(label, cmd, opts = {}) {
+  const spinner = createSpinner(label).start();
   try {
-    await exec(cmd, { live: true, timeout: 180000 });
-    console.log(`  ${color(c.gray, S.bar)}`);
+    await exec(cmd, { timeout: opts.timeout || 180000 });
+    spinner.succeed(label.replace(/\.{3}$/, ''));
     return true;
   } catch (err) {
-    console.log(`  ${color(c.gray, S.bar)}`);
-
     // Auto-retry on brew lock error
     const errMsg = (err.stderr || err.message || '').toLowerCase();
     if (opts.brewPath && (errMsg.includes('already locked') || errMsg.includes('already running'))) {
-      console.log(`  ${color(c.gray, S.bar)}   ${color(c.yellow, 'Brew lock detected — cleaning up and retrying...')}`);
+      spinner.update('Brew lock detected — retrying...');
       await fixBrewIfNeeded(opts.brewPath);
-      console.log(`  ${color(c.gray, S.bar)}`);
       try {
-        await exec(cmd, { live: true, timeout: 180000 });
-        console.log(`  ${color(c.gray, S.bar)}`);
+        await exec(cmd, { timeout: opts.timeout || 180000 });
+        spinner.succeed(label.replace(/\.{3}$/, ''));
         return true;
       } catch {}
     }
-
+    spinner.fail(label.replace(/\.{3}$/, ' — failed'));
     return false;
   }
+}
+
+/**
+ * Check a binary with spinner feedback.
+ * Returns { found: bool, ver: string|null }
+ */
+function checkBin(name, versionCmd) {
+  const spinner = createSpinner(`Checking ${name}...`).start();
+  const path = findBin(name);
+  if (path) {
+    const ver = versionCmd ? getVersion(versionCmd) : null;
+    spinner.succeed(`${name} ${color(c.dim, ver || '')}`);
+    return { found: true, ver };
+  }
+  spinner.warn(`${name} ${color(c.dim, 'not found')}`);
+  return { found: false, ver: null };
 }
 
 // ── Main ──
@@ -156,6 +180,7 @@ async function checkPrerequisites() {
 
   sectionStart('Prerequisites');
   sectionItem(color(c.cyan, S.info), `${color(c.bold, plat.os)} ${color(c.dim, plat.arch)}`);
+  console.log(`  ${color(c.gray, S.bar)}`);
 
   if (plat.platform === 'darwin' && !plat.brewPath) {
     sectionItem(color(c.yellow, S.warn), `Homebrew not found ${color(c.dim, '— some auto-installs may fail')}`);
@@ -171,15 +196,26 @@ async function checkPrerequisites() {
   }
 
   // ── tmux ──
-  if (findBin('tmux')) {
-    const ver = getVersion('tmux -V');
-    sectionItem(color(c.green, S.check), `tmux ${color(c.dim, ver || '')}`);
-  } else {
+  const tmux = checkBin('tmux', 'tmux -V');
+  if (!tmux.found) {
     const cmd = installCmd('tmux', plat);
     let installed = false;
     if (cmd) {
-      if (plat.pkg === 'brew') await fixBrewIfNeeded(plat.brewPath);
-      installed = await liveInstall('tmux not found — installing', cmd, { brewPath: plat.brewPath });
+      if (plat.pkg === 'brew') {
+        const brewSpinner = createSpinner('Preparing Homebrew...').start();
+        await fixBrewIfNeeded(plat.brewPath);
+        brewSpinner.succeed('Homebrew ready');
+      }
+      installed = await spinnerInstall('Installing tmux...', cmd, { brewPath: plat.brewPath });
+
+      // Retry: on brew failure, run brew update to refresh API cache then retry
+      if (!installed && plat.pkg === 'brew' && plat.brewPath) {
+        const refreshSpinner = createSpinner('Refreshing Homebrew cache...').start();
+        await fixBrewIfNeeded(plat.brewPath);
+        try { await exec(`${plat.brewPath} update`, { timeout: 120000 }); } catch {}
+        refreshSpinner.succeed('Cache refreshed');
+        installed = await spinnerInstall('Retrying tmux install...', `${plat.brewPath} install tmux`, { brewPath: plat.brewPath });
+      }
     }
     if (installed && findBin('tmux')) {
       const ver = getVersion('tmux -V');
@@ -193,14 +229,12 @@ async function checkPrerequisites() {
   }
 
   // ── Claude Code ──
-  if (findBin('claude')) {
-    const ver = getVersion('claude --version');
-    sectionItem(color(c.green, S.check), `Claude Code ${color(c.dim, ver || '')}`);
-  } else {
+  const claude = checkBin('claude', 'claude --version');
+  if (!claude.found) {
     const npmPath = findBin('npm') || 'npm';
-    let installed = await liveInstall('Claude Code not found — installing', `${npmPath} install -g @anthropic-ai/claude-code`);
+    let installed = await spinnerInstall('Installing Claude Code...', `${npmPath} install -g @anthropic-ai/claude-code`, { timeout: 300000 });
     if (!installed) {
-      installed = await liveInstall('Retrying with sudo', `sudo ${npmPath} install -g @anthropic-ai/claude-code`);
+      installed = await spinnerInstall('Retrying with sudo...', `sudo ${npmPath} install -g @anthropic-ai/claude-code`, { timeout: 300000 });
     }
     if (installed && findBin('claude')) {
       const ver = getVersion('claude --version');
@@ -213,12 +247,9 @@ async function checkPrerequisites() {
   }
 
   // ── ttyd (optional) ──
-  if (findBin('ttyd')) {
-    const ver = getVersion('ttyd --version');
-    sectionEnd(color(c.green, S.check), `ttyd ${color(c.dim, ver || '')}`);
+  const ttyd = checkBin('ttyd', 'ttyd --version');
+  if (ttyd.found) {
     checks.ttyd = true;
-  } else {
-    sectionEnd(color(c.yellow, S.warn), `ttyd ${color(c.dim, 'will install automatically')}`);
   }
 
   console.log('');
