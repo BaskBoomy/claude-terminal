@@ -193,17 +193,10 @@ function notifyPoll() {
                 if (n.ts > notifySince) notifySince = n.ts;
             });
             var latest = d.notifications[d.notifications.length - 1];
+            // In-app toasts disabled — push notifications (SW) still work in background.
             var body = latest.message || 'Done';
-            // Dedup: suppress identical toast within 3 seconds
-            var now = Date.now();
-            if (body === lastToastMsg && (now - lastToastTime) < 3000) return;
             lastToastMsg = body;
-            lastToastTime = now;
-            // Push notifications are handled by SW via Web Push API.
-            // Only show in-app toast when the app is in the foreground.
-            if (document.visibilityState !== 'hidden') {
-                showToast(body, 2000);
-            }
+            lastToastTime = Date.now();
         })
         .catch(function() {});
 }

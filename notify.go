@@ -101,7 +101,12 @@ func ParseNotifyJSON(data []byte, lang string) (ParsedNotification, bool) {
 		toolInput, _ := raw["tool_input"].(map[string]any)
 		rawMsg, _ := raw["raw_message"].(string)
 		p.Message = formatNotification(evt, tool, toolInput, rawMsg, lang)
-		p.PushWorthy = pushWorthyEvents[evt]
+		// "waiting for input" is redundant after Stop — suppress push & toast
+		if evt == "Notification" && (rawMsg == "Claude is waiting for your input" || rawMsg == "") {
+			p.PushWorthy = false
+		} else {
+			p.PushWorthy = pushWorthyEvents[evt]
+		}
 	} else {
 		// Old format: pre-formatted message from Python hook
 		p.Message, _ = raw["message"].(string)

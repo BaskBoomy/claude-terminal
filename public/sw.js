@@ -1,5 +1,5 @@
 // v3 — network-first for all app assets
-var CACHE_VERSION = 'v18';
+var CACHE_VERSION = 'v19';
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
