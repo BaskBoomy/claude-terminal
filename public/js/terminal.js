@@ -13,6 +13,7 @@ let scrollBottomBtnEl = null;
 
 let inputHistory = [];
 let historyIndex = -1;
+let draftInput = '';
 let sendPending = false;
 let attachments = []; // [{ id, path, name, type, status, abortCtrl, localUrl }]
 let attachIdCounter = 0;
@@ -378,6 +379,7 @@ function actualSend(text, ta) {
                 saveHistory();
             }
             historyIndex = -1;
+            draftInput = '';
             clearInput();
             clearAttachments();
         } else {
@@ -574,19 +576,22 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             submitInput();
         } else if (e.key === 'ArrowUp' && !e.isComposing && document.activeElement === textInput) {
             if (inputHistory.length > 0 && historyIndex < inputHistory.length - 1) {
+                if (historyIndex === -1) draftInput = textInput.value;
                 e.preventDefault();
                 historyIndex++;
                 textInput.value = inputHistory[inputHistory.length - 1 - historyIndex];
                 autoResize();
             }
         } else if (e.key === 'ArrowDown' && !e.isComposing && document.activeElement === textInput) {
+            if (historyIndex === -1) return;
             e.preventDefault();
             if (historyIndex > 0) {
                 historyIndex--;
                 textInput.value = inputHistory[inputHistory.length - 1 - historyIndex];
             } else {
                 historyIndex = -1;
-                textInput.value = '';
+                textInput.value = draftInput;
+                draftInput = '';
             }
             autoResize();
         }
