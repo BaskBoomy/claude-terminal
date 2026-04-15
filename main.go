@@ -171,30 +171,86 @@ func main() {
 }
 
 // Script injected into ttyd's HTML to:
-//  1. auto-copy xterm.js selection to the clipboard (writable/blur-safe)
-//  2. drop ttyd's built-in "Are you sure you want to leave?" beforeunload
+//  1. enable drag-to-copy while keeping tmux mouse-mode clicks working.
+//     tmux's `mouse on` captures drags before xterm.js can select, so plain
+//     drag would be swallowed. Strategy: let the native mousedown pass
+//     through (so tmux still gets single-click events — status-bar session
+//     selection, pane focus). Once movement exceeds a small threshold while
+//     the button is held, synthesize a shift+mousedown at the origin which
+//     makes xterm.js's selection service engage (shift-held bypasses app
+//     mouse tracking). Subsequent moves extend the selection naturally, and
+//     on mouseup we copy `term.getSelection()` to the clipboard with an
+//     execCommand fallback for older/non-secure contexts.
+//  2. drop ttyd's built-in "Are you sure you want to leave?" beforeunload.
 const ttydInjectScript = `<script>(function(){
-function wireTerm(t){
-  if(!t||t.__copyHooked)return;
-  t.__copyHooked=true;
-  t.onSelectionChange&&t.onSelectionChange(function(){
-    try{
-      var s=t.getSelection&&t.getSelection();
-      if(s&&navigator.clipboard&&navigator.clipboard.writeText){
-        navigator.clipboard.writeText(s).catch(function(){});
-      }
-    }catch(e){}
-  });
+function copy(text){
+  if(!text)return;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).catch(function(){execFallback(text);});
+      return;
+    }
+  }catch(e){}
+  execFallback(text);
 }
-var tries=0,iv=setInterval(function(){
-  if(window.term){wireTerm(window.term);clearInterval(iv);}
-  else if(++tries>100)clearInterval(iv);
-},100);
+function execFallback(text){
+  try{
+    var ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }catch(e){}
+}
+var DRAG_THRESHOLD=4;
+var down=null;
+var dragStarted=false;
+document.addEventListener('mousedown',function(e){
+  if(e.button!==0)return;
+  if(e.shiftKey){down=null;dragStarted=false;return;}
+  down={x:e.clientX,y:e.clientY,target:e.target};
+  dragStarted=false;
+},true);
+document.addEventListener('mousemove',function(e){
+  if(!down||dragStarted)return;
+  var dx=Math.abs(e.clientX-down.x),dy=Math.abs(e.clientY-down.y);
+  if(dx<DRAG_THRESHOLD&&dy<DRAG_THRESHOLD)return;
+  dragStarted=true;
+  var target=document.elementFromPoint(down.x,down.y)||down.target;
+  if(!target)return;
+  try{
+    var ev=new MouseEvent('mousedown',{
+      bubbles:true,cancelable:true,button:0,buttons:1,
+      clientX:down.x,clientY:down.y,screenX:down.x,screenY:down.y,
+      shiftKey:true,view:window
+    });
+    target.dispatchEvent(ev);
+  }catch(err){}
+},true);
+function finishGesture(){
+  var wasDrag=dragStarted;
+  down=null;dragStarted=false;
+  if(!wasDrag)return;
+  setTimeout(function(){
+    try{
+      var t=window.term;
+      var s=t&&t.getSelection&&t.getSelection();
+      if(s&&s.length>0)copy(s);
+    }catch(err){}
+  },0);
+}
+document.addEventListener('mouseup',finishGesture,true);
+document.addEventListener('mouseleave',function(e){
+  if(e.target===document||e.target===document.documentElement)finishGesture();
+},true);
 window.addEventListener('beforeunload',function(e){
   e.stopImmediatePropagation&&e.stopImmediatePropagation();
   delete e.returnValue;
 },true);
 try{window.onbeforeunload=null;}catch(e){}
+Object.defineProperty(window,'onbeforeunload',{configurable:true,get:function(){return null;},set:function(){}});
 })();</script>`
 
 // ensureAuth validates the session; if missing/invalid it checks the
