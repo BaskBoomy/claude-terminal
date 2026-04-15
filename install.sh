@@ -133,7 +133,7 @@ After=network.target
 Type=simple
 User=$CURRENT_USER
 EnvironmentFile=$SCRIPT_DIR/.env
-ExecStart=$TTYD_BIN --port $TTYD_PORT --base-path /ttyd --writable $SCRIPT_DIR/scripts/ttyd-start.sh
+ExecStart=$TTYD_BIN --port $TTYD_PORT --base-path /ttyd --writable -t disableLeaveAlert=true $SCRIPT_DIR/scripts/ttyd-start.sh
 Restart=on-failure
 RestartSec=5
 
