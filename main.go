@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/tls"
 	"embed"
 	"flag"
@@ -171,7 +173,36 @@ func main() {
 	}
 }
 
+// Script injected into ttyd's HTML to:
+//  1. auto-copy xterm.js selection to the clipboard (writable/blur-safe)
+//  2. drop ttyd's built-in "Are you sure you want to leave?" beforeunload
+const ttydInjectScript = `<script>(function(){
+function wireTerm(t){
+  if(!t||t.__copyHooked)return;
+  t.__copyHooked=true;
+  t.onSelectionChange&&t.onSelectionChange(function(){
+    try{
+      var s=t.getSelection&&t.getSelection();
+      if(s&&navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(s).catch(function(){});
+      }
+    }catch(e){}
+  });
+}
+var tries=0,iv=setInterval(function(){
+  if(window.term){wireTerm(window.term);clearInterval(iv);}
+  else if(++tries>100)clearInterval(iv);
+},100);
+window.addEventListener('beforeunload',function(e){
+  e.stopImmediatePropagation&&e.stopImmediatePropagation();
+  delete e.returnValue;
+},true);
+try{window.onbeforeunload=null;}catch(e){}
+})();</script>`
+
 // newTtydProxy creates a reverse proxy for ttyd with WebSocket support.
+// For text/html responses it injects ttydInjectScript before </body> so
+// terminal selection auto-copies and ttyd's leave-alert is disarmed.
 func newTtydProxy(cfg *Config) http.Handler {
 	target, _ := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", cfg.TtydPort))
 
@@ -180,7 +211,10 @@ func newTtydProxy(cfg *Config) http.Handler {
 			req.URL.Scheme = target.Scheme
 			req.URL.Host = target.Host
 			req.Host = target.Host
+			// Disable gzip so ModifyResponse can rewrite the body without decompressing.
+			req.Header.Set("Accept-Encoding", "identity")
 		},
+		ModifyResponse: injectTtydScript,
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -191,6 +225,43 @@ func newTtydProxy(cfg *Config) http.Handler {
 		}
 		proxy.ServeHTTP(w, r)
 	})
+}
+
+func injectTtydScript(resp *http.Response) error {
+	ct := resp.Header.Get("Content-Type")
+	if !strings.Contains(strings.ToLower(ct), "text/html") {
+		return nil
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	// Handle gzip just in case the backend ignored our Accept-Encoding.
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		gr, err := gzip.NewReader(bytes.NewReader(body))
+		if err == nil {
+			if decoded, err2 := io.ReadAll(gr); err2 == nil {
+				body = decoded
+				resp.Header.Del("Content-Encoding")
+			}
+			gr.Close()
+		}
+	}
+
+	inject := []byte(ttydInjectScript)
+	if idx := bytes.LastIndex(body, []byte("</body>")); idx >= 0 {
+		body = append(body[:idx], append(inject, body[idx:]...)...)
+	} else {
+		body = append(body, inject...)
+	}
+
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	resp.ContentLength = int64(len(body))
+	resp.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
+	return nil
 }
 
 func isWebSocketUpgrade(r *http.Request) bool {
