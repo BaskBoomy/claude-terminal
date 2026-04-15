@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -37,6 +38,29 @@ func NewAuth(cfg *Config) *Auth {
 	}
 	go a.backgroundCleanup()
 	return a
+}
+
+// IsAutoLoginIP reports whether the given client IP matches the configured
+// AUTO_LOGIN_IPS whitelist (CIDR or exact match).
+func (a *Auth) IsAutoLoginIP(ipStr string) bool {
+	if len(a.cfg.AutoLoginNets) == 0 && len(a.cfg.AutoLoginIPs) == 0 {
+		return false
+	}
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return false
+	}
+	for _, n := range a.cfg.AutoLoginNets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	for _, allowed := range a.cfg.AutoLoginIPs {
+		if allowed.Equal(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *Auth) VerifyPassword(password string) bool {

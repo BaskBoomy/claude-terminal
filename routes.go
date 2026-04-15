@@ -195,8 +195,19 @@ func runCmd(args []string, cwd string, timeout time.Duration) (string, error) {
 func (a *API) authCheck(w http.ResponseWriter, r *http.Request) {
 	a.auth.CleanupSessions()
 	token := getSessionToken(r, a.cfg.CookieName)
-	authenticated := a.auth.ValidateSession(token)
-	jsonResponse(w, 200, M{"authenticated": authenticated})
+	if a.auth.ValidateSession(token) {
+		jsonResponse(w, 200, M{"authenticated": true})
+		return
+	}
+	// Auto-login if the client IP is whitelisted.
+	ip := getClientIP(r, a.cfg.TrustProxy)
+	if a.auth.IsAutoLoginIP(ip) {
+		newToken := a.auth.CreateSession(ip)
+		setSessionCookie(w, a.cfg, newToken)
+		jsonResponse(w, 200, M{"authenticated": true})
+		return
+	}
+	jsonResponse(w, 200, M{"authenticated": false})
 }
 
 func (a *API) authLogin(w http.ResponseWriter, r *http.Request) {

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -51,6 +52,12 @@ type Config struct {
 
 	TrustProxy bool
 
+	// Auto-login: requests originating from these IPs/CIDRs bypass the
+	// password/TOTP flow. Configured via AUTO_LOGIN_IPS env
+	// (comma-separated list, e.g. "192.168.1.0/24,10.0.0.5,::1").
+	AutoLoginNets []*net.IPNet
+	AutoLoginIPs  []net.IP
+
 	RootDir string
 	HomeDir string
 }
@@ -86,6 +93,8 @@ func LoadConfig(flagPort int, flagPassword string) *Config {
 
 	cfg.NotesDir = filepath.Join(cfg.DataDir, "notes")
 	cfg.SettingsFile = filepath.Join(cfg.DataDir, "settings.json")
+
+	cfg.AutoLoginNets, cfg.AutoLoginIPs = parseAutoLoginList(envStr("AUTO_LOGIN_IPS", ""))
 
 	// CLI flags override env
 	if flagPort > 0 {
@@ -134,6 +143,36 @@ func (c *Config) ensurePasswordHash() {
 	content := fmt.Sprintf("%s:%s", c.PasswordSalt, c.PasswordHash)
 	os.WriteFile(hashFile, []byte(content), 0600)
 	c.Password = ""
+}
+
+// parseAutoLoginList splits a comma-separated list of IP/CIDR entries.
+// Unparseable entries are logged and skipped so a typo never fails startup.
+func parseAutoLoginList(raw string) ([]*net.IPNet, []net.IP) {
+	var nets []*net.IPNet
+	var ips []net.IP
+	if raw == "" {
+		return nets, ips
+	}
+	for _, part := range strings.Split(raw, ",") {
+		s := strings.TrimSpace(part)
+		if s == "" {
+			continue
+		}
+		if strings.Contains(s, "/") {
+			if _, n, err := net.ParseCIDR(s); err == nil {
+				nets = append(nets, n)
+			} else {
+				log.Printf("AUTO_LOGIN_IPS: skipping invalid CIDR %q: %v", s, err)
+			}
+			continue
+		}
+		if ip := net.ParseIP(s); ip != nil {
+			ips = append(ips, ip)
+		} else {
+			log.Printf("AUTO_LOGIN_IPS: skipping invalid IP %q", s)
+		}
+	}
+	return nets, ips
 }
 
 func hashPassword(password, saltHex string) string {

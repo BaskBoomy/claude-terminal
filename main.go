@@ -90,8 +90,7 @@ func main() {
 
 		// Static files: /files/* (auth required, directory listing enabled)
 		if path == "/files" || path == "/files/" || strings.HasPrefix(path, "/files/") {
-			token := getSessionToken(r, cfg.CookieName)
-			if !auth.ValidateSession(token) {
+			if !ensureAuth(w, r, cfg, auth) {
 				http.Redirect(w, r, "/login.html", http.StatusFound)
 				return
 			}
@@ -106,8 +105,7 @@ func main() {
 
 		// ttyd proxy: /ttyd/*
 		if path == "/ttyd" || path == "/ttyd/" || strings.HasPrefix(path, "/ttyd/") {
-			token := getSessionToken(r, cfg.CookieName)
-			if !auth.ValidateSession(token) {
+			if !ensureAuth(w, r, cfg, auth) {
 				http.Error(w, "Forbidden", 403)
 				return
 			}
@@ -129,8 +127,7 @@ func main() {
 
 		// Auth check for non-public paths
 		if !isPublicPath(path) {
-			token := getSessionToken(r, cfg.CookieName)
-			if !auth.ValidateSession(token) {
+			if !ensureAuth(w, r, cfg, auth) {
 				http.Redirect(w, r, "/login.html", http.StatusFound)
 				return
 			}
@@ -199,6 +196,23 @@ window.addEventListener('beforeunload',function(e){
 },true);
 try{window.onbeforeunload=null;}catch(e){}
 })();</script>`
+
+// ensureAuth validates the session; if missing/invalid it checks the
+// auto-login IP whitelist and, on match, mints a session cookie on the fly.
+// Returns true when the caller may proceed as an authenticated user.
+func ensureAuth(w http.ResponseWriter, r *http.Request, cfg *Config, auth *Auth) bool {
+	token := getSessionToken(r, cfg.CookieName)
+	if auth.ValidateSession(token) {
+		return true
+	}
+	ip := getClientIP(r, cfg.TrustProxy)
+	if !auth.IsAutoLoginIP(ip) {
+		return false
+	}
+	newToken := auth.CreateSession(ip)
+	setSessionCookie(w, cfg, newToken)
+	return true
+}
 
 // newTtydProxy creates a reverse proxy for ttyd with WebSocket support.
 // For text/html responses it injects ttydInjectScript before </body> so
@@ -370,6 +384,9 @@ func logStartupInfo(cfg *Config) {
 	log.Printf("  ttyd port: %d", cfg.TtydPort)
 	if cfg.TmuxSocket != "" {
 		log.Printf("  tmux socket: %s", cfg.TmuxSocket)
+	}
+	if n := len(cfg.AutoLoginNets) + len(cfg.AutoLoginIPs); n > 0 {
+		log.Printf("  auto-login IPs: %d entries configured", n)
 	}
 }
 
