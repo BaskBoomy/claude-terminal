@@ -512,10 +512,11 @@ function initSettings(callbacks) {
             btn.textContent = t('common.saved');
             btn.classList.add('saved');
             setTimeout(function() {
+                closeSettings();
                 btn.textContent = t('common.save');
                 btn.classList.remove('saved');
                 btn.disabled = false;
-            }, 1500);
+            }, 400);
         })
         .catch(function() {
             btn.textContent = t('common.error');
