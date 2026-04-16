@@ -575,6 +575,9 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
             e.preventDefault();
             submitInput();
         } else if (e.key === 'ArrowUp' && !e.isComposing && document.activeElement === textInput) {
+            // Only navigate history when the caret is on the first line —
+            // otherwise let the textarea move the caret up within the text.
+            if (textInput.value.slice(0, textInput.selectionStart).indexOf('\n') !== -1) return;
             if (inputHistory.length > 0 && historyIndex < inputHistory.length - 1) {
                 if (historyIndex === -1) draftInput = textInput.value;
                 e.preventDefault();
@@ -583,6 +586,8 @@ export function initTerminal(frameEl, textInputEl, sendBtnEl) {
                 autoResize();
             }
         } else if (e.key === 'ArrowDown' && !e.isComposing && document.activeElement === textInput) {
+            // Only navigate history when the caret is on the last line.
+            if (textInput.value.slice(textInput.selectionEnd).indexOf('\n') !== -1) return;
             if (historyIndex === -1) return;
             e.preventDefault();
             if (historyIndex > 0) {
