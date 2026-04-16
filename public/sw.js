@@ -1,5 +1,14 @@
 // v3 — network-first for all app assets
-var CACHE_VERSION = 'v19';
+var CACHE_VERSION = 'v20';
+
+function urlBase64ToUint8Array(base64String) {
+    var padding = '='.repeat((4 - base64String.length % 4) % 4);
+    var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    var rawData = atob(base64);
+    var outputArray = new Uint8Array(rawData.length);
+    for (var i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+    return outputArray;
+}
 
 self.addEventListener('install', function(e) {
     e.waitUntil(
@@ -38,6 +47,30 @@ self.addEventListener('push', function(e) {
                 vibrate: [200, 100, 200]
             });
         })
+    );
+});
+
+// Re-subscribe when the browser rotates the push subscription (iOS updates,
+// long inactivity, etc.). Without this, the server keeps pushing to a dead
+// endpoint while APNs silently accepts and drops the message.
+self.addEventListener('pushsubscriptionchange', function(e) {
+    e.waitUntil(
+        fetch('/api/push/vapid-key', { credentials: 'same-origin' })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                return self.registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+                });
+            })
+            .then(function(sub) {
+                return fetch('/api/push/subscribe', {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sub.toJSON())
+                });
+            })
+            .catch(function(err) { console.error('[sw] resubscribe failed', err); })
     );
 });
 
